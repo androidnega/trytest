@@ -140,6 +140,9 @@ function trytest_base_path(): string
         return $cached;
     }
     $cached = $p[0] === '/' ? $p : '/' . $p;
+    if (!trytest_is_local_dev_host() && $cached !== '' && trytest_detect_base_path() === '') {
+        $cached = '';
+    }
     return $cached;
 }
 

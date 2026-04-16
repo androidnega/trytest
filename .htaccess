@@ -4,10 +4,17 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Send site root to dashboard (adjust if hosted in subfolder).
+    RewriteRule ^$ dashboard [L,QSA]
+
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
+
+    # Normalize trailing slashes on non-directories.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.+)/$ $1 [R=301,L]
 
     # Map /path to /path.php when that script exists (extensionless "pages")
     RewriteCond %{REQUEST_FILENAME}.php -f
