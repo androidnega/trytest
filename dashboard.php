@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($setupErr !== '') {
             $error = $setupErr;
         } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_home_url());
+            header('Location: ' . trytest_url('dashboard'));
             exit;
         } else {
             $error = 'Account was created but sign-in failed. Try logging in.';
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = trim((string) ($_POST['username'] ?? ''));
         $pass = (string) ($_POST['password'] ?? '');
         if (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_home_url());
+            header('Location: ' . trytest_url('dashboard'));
             exit;
         }
         $error = 'Invalid admin username or password.';

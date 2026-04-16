@@ -23,6 +23,53 @@ function trytest_detect_base_path(): string
 }
 
 /**
+ * @param array{base_path?: string, domain_root_hosts?: list<string>} $cfg
+ */
+function trytest_host_prefers_domain_root(array $cfg): bool
+{
+    $hosts = $cfg['domain_root_hosts'] ?? [];
+    if (!is_array($hosts) || $hosts === []) {
+        return false;
+    }
+    $h = preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? ''));
+    foreach ($hosts as $allowed) {
+        if (!is_string($allowed) || $allowed === '') {
+            continue;
+        }
+        if (strcasecmp($h, $allowed) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function trytest_request_path(): string
+{
+    $p = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    $p = '/' . trim(str_replace('\\', '/', (string) $p), '/');
+    return $p === '//' ? '/' : $p;
+}
+
+/** True when the request targets the public homepage (not /dashboard, /quiz, etc.). */
+function trytest_is_app_root_request(): bool
+{
+    $p = trytest_request_path();
+    if ($p === '/index.php') {
+        return true;
+    }
+    $homeRaw = trytest_home_url();
+    $base = trytest_base_path();
+    if ($base !== '' && $p === $base . '/index.php') {
+        return true;
+    }
+    $home = rtrim($homeRaw, '/');
+    if ($home === '' || $home === '/') {
+        return $p === '/' || $p === '';
+    }
+    return $p === $home || $p === $home . '/';
+}
+
+/**
  * URL path prefix, e.g. '/trytest' or '' when the app is at the site root.
  */
 function trytest_base_path(): string
@@ -42,10 +89,14 @@ function trytest_base_path(): string
         $cached = trytest_detect_base_path();
         return $cached;
     }
-    /** @var array{base_path?: string} $cfg */
+    /** @var array{base_path?: string, domain_root_hosts?: list<string>} $cfg */
     $cfg = require $file;
     $raw = isset($cfg['base_path']) ? trim((string) $cfg['base_path']) : 'auto';
     if (strtolower($raw) === 'auto') {
+        if (trytest_host_prefers_domain_root($cfg)) {
+            $cached = '';
+            return $cached;
+        }
         $cached = trytest_detect_base_path();
         return $cached;
     }
