@@ -22,25 +22,63 @@ function trytest_detect_base_path(): string
     return $rel === '' ? '' : '/' . $rel;
 }
 
-/**
- * @param array{base_path?: string, domain_root_hosts?: list<string>} $cfg
- */
-function trytest_host_prefers_domain_root(array $cfg): bool
+function trytest_request_host_without_port(): string
 {
-    $hosts = $cfg['domain_root_hosts'] ?? [];
-    if (!is_array($hosts) || $hosts === []) {
-        return false;
+    return preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? ''));
+}
+
+/**
+ * True when the request is clearly local dev (XAMPP subfolder URLs use /trytest/...).
+ */
+function trytest_is_local_dev_host(): bool
+{
+    $h = trytest_request_host_without_port();
+    if ($h === 'localhost' || $h === '127.0.0.1' || str_starts_with($h, 'localhost.')) {
+        return true;
     }
-    $h = preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? ''));
-    foreach ($hosts as $allowed) {
-        if (!is_string($allowed) || $allowed === '') {
-            continue;
-        }
-        if (strcasecmp($h, $allowed) === 0) {
-            return true;
-        }
+    if (preg_match('/^192\.168\.\d{1,3}\.\d{1,3}$/', $h) === 1) {
+        return true;
+    }
+    if (str_ends_with(strtolower($h), '.local')) {
+        return true;
     }
     return false;
+}
+
+/**
+ * If production uses root URLs but the browser still requests /trytest/..., 301 to /...
+ * Skipped on local dev (where /trytest is the real mount) and when base_path is non-empty.
+ */
+function trytest_redirect_legacy_trytest_prefix(): void
+{
+    if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
+        return;
+    }
+    if (headers_sent()) {
+        return;
+    }
+    if (trytest_is_local_dev_host()) {
+        return;
+    }
+    if (trytest_base_path() !== '') {
+        return;
+    }
+    $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    if (!is_string($path)) {
+        return;
+    }
+    if ($path !== '/trytest' && !str_starts_with($path, '/trytest/')) {
+        return;
+    }
+    $tail = $path === '/trytest' ? '/' : (substr($path, strlen('/trytest')) ?: '/');
+    if ($tail === '' || $tail[0] !== '/') {
+        $tail = '/' . ltrim($tail, '/');
+    }
+    $qs = isset($_SERVER['QUERY_STRING']) && (string) $_SERVER['QUERY_STRING'] !== ''
+        ? '?' . (string) $_SERVER['QUERY_STRING']
+        : '';
+    header('Location: ' . $tail . $qs, true, 301);
+    exit;
 }
 
 function trytest_request_path(): string
@@ -86,18 +124,14 @@ function trytest_base_path(): string
     }
     $file = __DIR__ . '/../config/app.php';
     if (!is_file($file)) {
-        $cached = trytest_detect_base_path();
+        $cached = trytest_is_local_dev_host() ? trytest_detect_base_path() : '';
         return $cached;
     }
-    /** @var array{base_path?: string, domain_root_hosts?: list<string>} $cfg */
+    /** @var array{base_path?: string} $cfg */
     $cfg = require $file;
     $raw = isset($cfg['base_path']) ? trim((string) $cfg['base_path']) : 'auto';
     if (strtolower($raw) === 'auto') {
-        if (trytest_host_prefers_domain_root($cfg)) {
-            $cached = '';
-            return $cached;
-        }
-        $cached = trytest_detect_base_path();
+        $cached = trytest_is_local_dev_host() ? trytest_detect_base_path() : '';
         return $cached;
     }
     $p = rtrim($raw, '/');
@@ -158,3 +192,5 @@ function trytest_home_with_query(array $params): string
     }
     return rtrim($h, '/') . '/?' . $q;
 }
+
+trytest_redirect_legacy_trytest_prefix();

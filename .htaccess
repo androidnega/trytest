@@ -3,16 +3,6 @@
 </IfModule>
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # If extensionless URLs 404 while the app lives in a subfolder (e.g. public_html/trytest),
-    # uncomment and set the folder URL path (leading slash, no trailing slash):
-    # RewriteBase /trytest
-
-    # --- Optional: strip legacy /trytest/ prefix from the URL ---
-    # Only enable BOTH rules below when the subdomain's document root is the PARENT of the
-    # `trytest` folder (so the real app lives at /trytest/... but you want URLs at /...).
-    # If the document root is already the `trytest` folder, leave these commented or you get a loop.
-    # RewriteCond %{REQUEST_URI} ^/trytest(/.*)?$ [NC]
-    # RewriteRule ^trytest(?:/(.*))?$ /$1 [L,R=301]
 
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
