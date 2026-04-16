@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  * - `auto` (default): derive from DOCUMENT_ROOT vs project root (works for both
  *   subdomain docroot installs and XAMPP `htdocs/tryTest` → `/trytest` URLs).
- * - `''` : force site root (e.g. you know the vhost docroot is this app folder).
+ * - `''` : force site root (use when the live site must be at domain root).
  * - `/trytest` : force a subfolder prefix.
  *
  * Server override (Apache): SetEnv TRYTEST_WEB_BASE /trytest  or SetEnv TRYTEST_WEB_BASE ""
@@ -19,8 +19,7 @@ declare(strict_types=1);
  * or leave empty for filesystem-only detection.
  */
 return [
-    'base_path' => 'auto',
-    'domain_root_hosts' => [
-        'trytest.manuelcode.info',
-    ],
+    // Force live URLs to the subdomain root.
+    'base_path' => '',
+    'domain_root_hosts' => [],
 ];
