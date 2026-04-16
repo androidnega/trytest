@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+
+# Local SQLite DB and uploaded files (recreated on server / via install)
+/data/*.sqlite
+/data/uploads/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require __DIR__ . '/config/db.php';
+
+if (empty($_SESSION['is_admin'])) {
+    header('Location: /trytest/dashboard/?mode=admin');
+    exit;
+}
+
+$courseCount = (int) $db->query('SELECT COUNT(*) FROM courses')->fetchColumn();
+$quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
+$userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+$questionCount = (int) $db->query('SELECT COUNT(*) FROM questions')->fetchColumn();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trytest — Admin Manager</title>
+    <link rel="icon" type="image/svg+xml" href="/trytest/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-3 sm:p-4">
+    <div class="mx-auto max-w-2xl py-4 space-y-4">
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 sm:text-xl">Admin Manager</h1>
+                    <p class="text-[11px] text-slate-500 sm:text-xs">Jump to a section.</p>
+                </div>
+                <a href="/trytest/dashboard/" class="text-xs font-medium text-indigo-600 hover:underline sm:text-sm">← Dashboard</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
+            <a href="/trytest/dashboard/manage_courses" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <i class="fa-solid fa-book-open text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Courses</h2>
+                        <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $courseCount; ?></span>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Programs &amp; departments</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+            <a href="/trytest/dashboard/manage_quizzes" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <i class="fa-solid fa-clipboard-question text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Quizzes</h2>
+                        <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $quizCount; ?></span>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Tests &amp; schedules</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+            <a href="/trytest/dashboard/manage_users" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                    <i class="fa-solid fa-users text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Users</h2>
+                        <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $userCount; ?></span>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Student accounts</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+            <a href="/trytest/dashboard/manage_questions" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                    <i class="fa-solid fa-circle-check text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Questions</h2>
+                        <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $questionCount; ?></span>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Review, approve, export</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+            <a href="/trytest/dashboard/manage_resources" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                    <i class="fa-solid fa-file-pdf text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Student PDFs</h2>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Uploads by program &amp; level</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
