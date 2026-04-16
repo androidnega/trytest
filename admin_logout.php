@@ -7,6 +7,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/trytest_urls.php';
 trytest_admin_logout();
 
 trytest_redirect(trytest_home_with_query(['mode' => 'admin']));

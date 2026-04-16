@@ -78,9 +78,41 @@ function trytest_reject_trytest_prefix_when_at_root(): void
 }
 
 /**
- * Some shared hosts mis-resolve external redirects so the browser ends up with a path like
- * /home3/user/.../trytest/trytest/dashboard. If we see that pattern on a public host, 301 to
- * the real site path (respects TRYTEST_WEB_BASE / configured base_path).
+ * If a URL path looks like a leaked filesystem path under /home3/, return the document-root
+ * tail (e.g. "dashboard/manage_admin") or null when we cannot map it safely.
+ */
+function trytest_leaked_home_path_tail(string $path): ?string
+{
+    if (!str_starts_with($path, '/home3/')) {
+        return null;
+    }
+    if (preg_match('#^/home3/[^/]+/(?:[^/]+/)*trytest/(?:trytest/)*(.*)$#', $path, $m)) {
+        return trim((string) ($m[1] ?? ''), '/');
+    }
+    // Typical cPanel docroot: /home3/user/public_html/...
+    if (preg_match('#^/home3/[^/]+/(?:[^/]+/)*public_html/(.*)$#', $path, $m)) {
+        return trim((string) ($m[1] ?? ''), '/');
+    }
+    return null;
+}
+
+/**
+ * Turn a docroot-relative tail into the public URL path (applies base_path for subfolder installs).
+ */
+function trytest_url_path_from_docroot_tail(string $tail): string
+{
+    $tail = trim($tail, '/');
+    $base = trytest_base_path();
+    if ($base === '') {
+        return $tail === '' ? '/' : '/' . $tail;
+    }
+    return $tail === '' ? $base : $base . '/' . $tail;
+}
+
+/**
+ * Some shared hosts mis-resolve redirects so the browser ends up with a path like
+ * /home3/user/.../public_html/dashboard or .../trytest/trytest/dashboard. If we see that on a
+ * public host, 301 to the real site path (respects TRYTEST_WEB_BASE / configured base_path).
  */
 function trytest_redirect_leaked_server_path_prefix(): void
 {
@@ -94,19 +126,14 @@ function trytest_redirect_leaked_server_path_prefix(): void
         return;
     }
     $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
-    if (!is_string($path) || !str_starts_with($path, '/home3/')) {
+    if (!is_string($path)) {
         return;
     }
-    if (!preg_match('#^/home3/[^/]+/(?:[^/]+/)*trytest/(?:trytest/)*(.*)$#', $path, $m)) {
+    $tail = trytest_leaked_home_path_tail($path);
+    if ($tail === null) {
         return;
     }
-    $tail = trim((string) ($m[1] ?? ''), '/');
-    $base = trytest_base_path();
-    if ($base === '') {
-        $target = $tail === '' ? '/' : '/' . $tail;
-    } else {
-        $target = $tail === '' ? $base : $base . '/' . $tail;
-    }
+    $target = trytest_url_path_from_docroot_tail($tail);
     $norm = '/' . trim(str_replace('\\', '/', $path), '/');
     if ($norm === '//') {
         $norm = '/';
@@ -284,6 +311,12 @@ function trytest_redirect_location(string $location): string
         || str_starts_with($lower, '/usr/')
         || preg_match('#^/[a-z]:/#i', $pathPart) === 1
     ) {
+        if (str_starts_with($pathPart, '/home3/')) {
+            $tail = trytest_leaked_home_path_tail($pathPart);
+            if ($tail !== null) {
+                return trytest_url_path_from_docroot_tail($tail) . $query;
+            }
+        }
         return trytest_home_url();
     }
     return $pathPart . $query;
@@ -292,6 +325,30 @@ function trytest_redirect_location(string $location): string
 /**
  * Send an HTTP redirect and exit. Always pass through trytest_redirect_location().
  */
+function trytest_redirect_scheme_host_prefix(): string
+{
+    if (trytest_is_local_dev_host()) {
+        return '';
+    }
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+    $cached = '';
+    $file = __DIR__ . '/../config/app.php';
+    if (!is_file($file)) {
+        return $cached;
+    }
+    /** @var array{public_base_url?: string} $cfg */
+    $cfg = require $file;
+    $u = trim((string) ($cfg['public_base_url'] ?? ''));
+    if ($u === '') {
+        return $cached;
+    }
+    $cached = rtrim($u, '/');
+    return $cached;
+}
+
 function trytest_redirect(string $location, int $status = 302): void
 {
     if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
@@ -300,7 +357,9 @@ function trytest_redirect(string $location, int $status = 302): void
     if (headers_sent()) {
         return;
     }
-    header('Location: ' . trytest_redirect_location($location), true, $status);
+    $loc = trytest_redirect_location($location);
+    $prefix = trytest_redirect_scheme_host_prefix();
+    header('Location: ' . ($prefix !== '' ? $prefix : '') . $loc, true, $status);
     exit;
 }
 

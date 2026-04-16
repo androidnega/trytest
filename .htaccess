@@ -4,8 +4,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Site root → dashboard (absolute path so the browser never resolves relative to a bad path).
-    RewriteRule ^$ /dashboard/ [R=302,L,QSA]
+    # Site root: internal rewrite only (no [R]). External redirects to /dashboard/ have caused
+    # bad Location headers on some shared hosts (browser ends up under /home3/...).
+    RewriteRule ^$ index.php [L,QSA]
 
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
