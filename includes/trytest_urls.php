@@ -77,6 +77,54 @@ function trytest_reject_trytest_prefix_when_at_root(): void
     exit;
 }
 
+/**
+ * Some shared hosts mis-resolve external redirects so the browser ends up with a path like
+ * /home3/user/.../trytest/trytest/dashboard. If we see that pattern on a public host, 301 to
+ * the real site path (respects TRYTEST_WEB_BASE / configured base_path).
+ */
+function trytest_redirect_leaked_server_path_prefix(): void
+{
+    if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
+        return;
+    }
+    if (headers_sent()) {
+        return;
+    }
+    if (trytest_is_local_dev_host()) {
+        return;
+    }
+    $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    if (!is_string($path) || !str_starts_with($path, '/home3/')) {
+        return;
+    }
+    if (!preg_match('#^/home3/[^/]+/(?:[^/]+/)*trytest/(?:trytest/)*(.*)$#', $path, $m)) {
+        return;
+    }
+    $tail = trim((string) ($m[1] ?? ''), '/');
+    $base = trytest_base_path();
+    if ($base === '') {
+        $target = $tail === '' ? '/' : '/' . $tail;
+    } else {
+        $target = $tail === '' ? $base : $base . '/' . $tail;
+    }
+    $norm = '/' . trim(str_replace('\\', '/', $path), '/');
+    if ($norm === '//') {
+        $norm = '/';
+    }
+    $want = '/' . trim(str_replace('\\', '/', $target), '/');
+    if ($want === '//') {
+        $want = '/';
+    }
+    if ($norm === $want) {
+        return;
+    }
+    $qs = isset($_SERVER['QUERY_STRING']) && (string) $_SERVER['QUERY_STRING'] !== ''
+        ? '?' . (string) $_SERVER['QUERY_STRING']
+        : '';
+    header('Location: ' . $want . $qs, true, 301);
+    exit;
+}
+
 function trytest_request_path(): string
 {
     $p = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
@@ -192,4 +240,5 @@ function trytest_home_with_query(array $params): string
     return rtrim($h, '/') . '/?' . $q;
 }
 
+trytest_redirect_leaked_server_path_prefix();
 trytest_reject_trytest_prefix_when_at_root();

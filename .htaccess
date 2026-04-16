@@ -12,9 +12,10 @@
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Normalize trailing slashes on non-directories.
+    # Strip trailing slash internally only — never [R] with a bare $1 here: on some hosts that
+    # emits a relative Location and the browser stacks it onto the path (e.g. …/home3/…/trytest/…).
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.+)/$ $1 [R=301,L]
+    RewriteRule ^(.+)/$ $1 [L]
 
     # Map /path to /path.php when that script exists (extensionless "pages")
     RewriteCond %{REQUEST_FILENAME}.php -f
