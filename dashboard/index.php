@@ -8,6 +8,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require_once dirname(__DIR__) . '/includes/trytest_urls.php';
 
+// When the host sends every request through index.php, REQUEST_URI can still be /admin — route it here.
+if (trytest_is_admin_entry_request()) {
+    if (!empty($_SESSION['is_admin'])) {
+        trytest_redirect(trytest_url('dashboard'), 302);
+    }
+    require dirname(__DIR__) . '/dashboard.php';
+    exit;
+}
+
 if ((!empty($_SESSION['is_admin']) || !empty($_SESSION['user_id'])) && trytest_is_app_root_request()) {
     trytest_redirect(trytest_url('dashboard'), 302);
 }

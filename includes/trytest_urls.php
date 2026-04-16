@@ -191,6 +191,18 @@ function trytest_is_dashboard_root_request(): bool
 }
 
 /**
+ * True when the request is the admin sign-in URL (/admin), respecting base_path.
+ */
+function trytest_is_admin_entry_request(): bool
+{
+    $p = rtrim(trytest_request_path(), '/') ?: '/';
+    $b = trytest_base_path();
+    $admin = $b === '' ? '/admin' : $b . '/admin';
+    $admin = rtrim($admin, '/') ?: '/';
+    return $p === $admin;
+}
+
+/**
  * URL path prefix, e.g. '/trytest' or '' when the app is at the site root.
  */
 function trytest_base_path(): string

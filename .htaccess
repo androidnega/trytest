@@ -8,6 +8,10 @@
     # bad Location headers on some shared hosts (browser ends up under /home3/...).
     RewriteRule ^$ index.php [L,QSA]
 
+    # Admin sign-in: always run admin/index.php (some stacks mishandle /admin as a directory or
+    # route unknown paths to the site root instead of DirectoryIndex).
+    RewriteRule ^admin/?$ admin/index.php [L,QSA]
+
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
