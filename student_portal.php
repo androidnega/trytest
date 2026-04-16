@@ -399,8 +399,8 @@ else: ?>
                         </section>
                     </div>
                     <div class="order-1 min-h-0 md:order-2">
-                        <figure class="h-full overflow-hidden rounded-2xl border border-slate-200 bg-indigo-50/40 shadow-sm">
-                            <img src="<?php echo htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="h-full w-full object-cover object-center" width="612" height="612" loading="eager" decoding="async">
+                        <figure class="h-full overflow-hidden rounded-2xl border border-slate-200 bg-indigo-50/40 shadow-sm md:rounded-none md:border-0 md:bg-transparent md:shadow-none">
+                            <img src="<?php echo htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="h-full w-full object-cover object-center md:rounded-none" width="612" height="612" loading="eager" decoding="async">
                         </figure>
                     </div>
                 </div>
