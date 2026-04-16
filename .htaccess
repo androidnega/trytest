@@ -4,8 +4,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Send site root to dashboard (adjust if hosted in subfolder).
-    RewriteRule ^$ dashboard [L,QSA]
+    # Site root → dashboard (absolute path so the browser never resolves relative to a bad path).
+    RewriteRule ^$ /dashboard/ [R=302,L,QSA]
 
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
