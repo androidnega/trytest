@@ -408,9 +408,6 @@ else: ?>
                 </div>
             <?php endif; ?>
         </div>
-        <p class="mt-6 text-center text-xs text-slate-500">
-            <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>?mode=admin">Staff / administrator sign in</a>
-        </p>
     </div>
     <script>
         (function () {

@@ -40,8 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $isAdmin = !empty($_SESSION['is_admin']);
 $needsAdminSetup = trytest_admin_count($db) === 0;
-$quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
-$userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+$quizCount = 0;
+$userCount = 0;
+if ($isAdmin) {
+    $quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
+    $userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+}
 $avatarImport = 'https://api.dicebear.com/9.x/icons/svg?seed=import';
 $avatarAi = 'https://api.dicebear.com/9.x/icons/svg?seed=ai';
 $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
@@ -80,6 +84,7 @@ $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
                 <?php endif; ?>
             </div>
 
+            <?php if ($isAdmin): ?>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
                 <div class="rounded-xl border border-slate-200 p-4">
                     <span class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -96,15 +101,14 @@ $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
                     <p class="mt-1 text-2xl font-bold text-slate-900"><?php echo $userCount; ?></p>
                 </div>
                 <div class="rounded-xl border border-slate-200 p-4">
-                    <span class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full <?php echo $isAdmin ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'; ?>">
+                    <span class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                         <i class="fa-solid fa-shield-halved text-sm"></i>
                     </span>
                     <p class="text-xs uppercase tracking-wide text-slate-500">Session</p>
-                    <p class="mt-1 text-sm font-semibold <?php echo $isAdmin ? 'text-emerald-600' : 'text-amber-600'; ?>">
-                        <?php echo $isAdmin ? 'Admin logged in' : 'Guest'; ?>
-                    </p>
+                    <p class="mt-1 text-sm font-semibold text-emerald-600">Admin logged in</p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php if ($error !== ''): ?>
                 <div class="mt-4 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -131,9 +135,12 @@ $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
             <?php else: ?>
                 <p class="mt-4 text-xs text-slate-500">Signed in as <span class="font-medium text-slate-700"><?php echo htmlspecialchars((string) ($_SESSION['admin_username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span> · <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/change_admin_password'), ENT_QUOTES, 'UTF-8'); ?>">Change password</a></p>
             <?php endif; ?>
+            <?php if (!$isAdmin): ?>
             <p class="mt-3 text-center text-sm text-slate-500"><a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-indigo-600 hover:underline">Student sign in</a></p>
+            <?php endif; ?>
         </div>
 
+        <?php if ($isAdmin): ?>
         <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
             <div class="rounded-2xl border border-slate-200 bg-white p-5">
                 <div class="flex items-center gap-3 mb-2">
@@ -165,6 +172,7 @@ $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
                 <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">Open Manager <i class="fa-solid fa-arrow-right"></i></a>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </body>
 </html>
