@@ -9,8 +9,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once dirname(__DIR__) . '/includes/trytest_urls.php';
 
 if ((!empty($_SESSION['is_admin']) || !empty($_SESSION['user_id'])) && trytest_is_app_root_request()) {
-    header('Location: ' . trytest_url('dashboard'), true, 302);
-    exit;
+    trytest_redirect(trytest_url('dashboard'), 302);
 }
 
 if (!empty($_SESSION['is_admin'])) {

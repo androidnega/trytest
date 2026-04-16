@@ -10,15 +10,13 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: ' . trytest_home_url());
-    exit;
+    trytest_redirect(trytest_home_url());
 }
 
 $settings = trytest_youtube_settings();
 if (!$settings['gate_active']) {
     $next = trytest_youtube_safe_next($_GET['next'] ?? '');
-    header('Location: ' . $next);
-    exit;
+    trytest_redirect($next);
 }
 
 $next = trytest_youtube_safe_next($_GET['next'] ?? trytest_home_url());
@@ -37,5 +35,4 @@ $url = 'https://accounts.google.com/o/oauth2/v2/auth'
     . '&prompt=consent'
     . '&state=' . rawurlencode($state);
 
-header('Location: ' . $url);
-exit;
+trytest_redirect($url);

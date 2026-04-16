@@ -121,8 +121,7 @@ function trytest_redirect_leaked_server_path_prefix(): void
     $qs = isset($_SERVER['QUERY_STRING']) && (string) $_SERVER['QUERY_STRING'] !== ''
         ? '?' . (string) $_SERVER['QUERY_STRING']
         : '';
-    header('Location: ' . $want . $qs, true, 301);
-    exit;
+    trytest_redirect($want . $qs, 301);
 }
 
 function trytest_request_path(): string
@@ -238,6 +237,71 @@ function trytest_home_with_query(array $params): string
         return '/?' . $q;
     }
     return rtrim($h, '/') . '/?' . $q;
+}
+
+/**
+ * Normalize Location targets so we never redirect to filesystem paths or protocol-relative URLs.
+ * Same-host absolute http(s) URLs are reduced to path + query only.
+ */
+function trytest_redirect_location(string $location): string
+{
+    $location = trim($location);
+    if ($location === '') {
+        return trytest_home_url();
+    }
+    if (str_starts_with($location, '//')) {
+        return trytest_home_url();
+    }
+    if (preg_match('#^https?://#i', $location) === 1) {
+        $host = parse_url($location, PHP_URL_HOST);
+        $cur = trytest_request_host_without_port();
+        if (is_string($host) && strcasecmp((string) $host, $cur) === 0) {
+            $path = parse_url($location, PHP_URL_PATH);
+            $query = parse_url($location, PHP_URL_QUERY);
+            $pathOnly = (is_string($path) && $path !== '') ? $path : '/';
+            $location = $pathOnly;
+            if (is_string($query) && $query !== '') {
+                $location .= '?' . $query;
+            }
+        } else {
+            return $location;
+        }
+    }
+    $query = '';
+    $pathPart = $location;
+    $qPos = strpos($location, '?');
+    if ($qPos !== false) {
+        $pathPart = substr($location, 0, $qPos);
+        $query = substr($location, $qPos);
+    }
+    if ($pathPart === '' || $pathPart[0] !== '/') {
+        $pathPart = '/' . ltrim($pathPart, '/');
+    }
+    $lower = strtolower($pathPart);
+    if (
+        str_starts_with($pathPart, '/home3/')
+        || str_starts_with($lower, '/var/')
+        || str_starts_with($lower, '/usr/')
+        || preg_match('#^/[a-z]:/#i', $pathPart) === 1
+    ) {
+        return trytest_home_url();
+    }
+    return $pathPart . $query;
+}
+
+/**
+ * Send an HTTP redirect and exit. Always pass through trytest_redirect_location().
+ */
+function trytest_redirect(string $location, int $status = 302): void
+{
+    if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
+        return;
+    }
+    if (headers_sent()) {
+        return;
+    }
+    header('Location: ' . trytest_redirect_location($location), true, $status);
+    exit;
 }
 
 trytest_redirect_leaked_server_path_prefix();

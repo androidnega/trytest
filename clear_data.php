@@ -17,8 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (trytest_admin_count($db) < 1) {
             $error = 'No administrator account yet. Open ' . trytest_home_with_query(['mode' => 'admin']) . ' to create one.';
         } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_url('dashboard/clear_data'));
-            exit;
+            trytest_redirect(trytest_url('dashboard/clear_data'));
         } else {
             $error = 'Invalid admin username or password.';
         }

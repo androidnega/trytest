@@ -10,8 +10,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 
 if (empty($_SESSION['user_id']) || empty($_SESSION['user_level'])) {
-    header('Location: ' . trytest_home_url());
-    exit;
+    trytest_redirect(trytest_home_url());
 }
 
 $quizId = isset($_GET['quiz_id']) ? (int) $_GET['quiz_id'] : 0;

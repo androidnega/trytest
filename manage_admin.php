@@ -9,8 +9,7 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
-    exit;
+    trytest_redirect(trytest_home_with_query(['mode' => 'admin']));
 }
 
 $courseCount = (int) $db->query('SELECT COUNT(*) FROM courses')->fetchColumn();

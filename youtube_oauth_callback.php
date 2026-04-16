@@ -30,8 +30,7 @@ if (empty($_SESSION['user_id'])) {
 
 $settings = trytest_youtube_settings();
 if (!$settings['gate_active']) {
-    header('Location: ' . trytest_home_url());
-    exit;
+    trytest_redirect(trytest_home_url());
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'confirm_hybrid') {
@@ -66,8 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
     trytest_youtube_mark_session_verified();
     $next = trytest_youtube_safe_next((string) ($_SESSION['oauth_youtube_hybrid_next'] ?? trytest_home_url()));
     unset($_SESSION['oauth_youtube_hybrid_next'], $_SESSION['oauth_youtube_hybrid_csrf']);
-    header('Location: ' . $next);
-    exit;
+    trytest_redirect($next);
 }
 
 $err = isset($_GET['error']) ? (string) $_GET['error'] : '';
@@ -136,5 +134,4 @@ if ($refresh === '') {
 $db->prepare('UPDATE users SET youtube_refresh_token = ? WHERE id = ?')->execute([$refresh, $uid]);
 trytest_youtube_mark_session_verified();
 
-header('Location: ' . $next);
-exit;
+trytest_redirect($next);

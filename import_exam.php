@@ -109,8 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (trytest_admin_count($db) < 1) {
             $error = 'No administrator account yet. Create one from the admin dashboard.';
         } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_url('dashboard/import_exam'));
-            exit;
+            trytest_redirect(trytest_url('dashboard/import_exam'));
         } else {
             $error = 'Invalid admin username or password.';
         }
