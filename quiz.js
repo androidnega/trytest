@@ -3,6 +3,19 @@
     const quizId = cfg.quizId;
     const durationSeconds = Number(cfg.durationSeconds || 0);
 
+    function trytestWebPrefix() {
+        var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '/trytest';
+        return b.replace(/\/+$/, '');
+    }
+    function absTrytestPath(path) {
+        var b = trytestWebPrefix();
+        path = String(path || '').replace(/^\//, '');
+        if (!b) {
+            return '/' + path;
+        }
+        return path === '' ? b : b + '/' + path;
+    }
+
     const questionBox = document.getElementById('questionBox');
     const progressLabel = document.getElementById('progressLabel');
     const wrongFlash = document.getElementById('wrongFlash');
@@ -32,7 +45,7 @@
 
     function apiUrl(params) {
         const q = new URLSearchParams(params);
-        return '/trytest/get_question?' + q.toString();
+        return absTrytestPath('get_question?' + q.toString());
     }
 
     function setProgress() {
@@ -422,8 +435,8 @@
 
     function saveScore() {
         if (!quizId || orderedIds.length < 1) return;
-        var doneUrl = '/trytest/dashboard/?done=' + encodeURIComponent(String(quizId));
-        fetch('/trytest/save_score', {
+        var doneUrl = absTrytestPath('dashboard/?done=' + encodeURIComponent(String(quizId)));
+        fetch(absTrytestPath('save_score'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -70,15 +70,27 @@ function trytest_youtube_settings(): array
 
 function trytest_youtube_safe_next(?string $next): string
 {
+    $fallback = trytest_url('dashboard/');
     $next = trim((string) $next);
     if ($next === '' || $next[0] !== '/') {
-        return '/trytest/dashboard/';
+        return $fallback;
     }
-    if (strncmp($next, '/trytest/', 9) !== 0) {
-        return '/trytest/dashboard/';
+    if (str_starts_with($next, '//')) {
+        return $fallback;
     }
     if (str_contains($next, "\r") || str_contains($next, "\n")) {
-        return '/trytest/dashboard/';
+        return $fallback;
+    }
+    $base = trytest_base_path();
+    if ($base === '') {
+        if (!preg_match('#^/[A-Za-z0-9_./?=&-]*$#', $next)) {
+            return $fallback;
+        }
+        return $next;
+    }
+    $prefix = $base . '/';
+    if (strncmp($next, $prefix, strlen($prefix)) !== 0 && $next !== $base) {
+        return $fallback;
     }
     return $next;
 }

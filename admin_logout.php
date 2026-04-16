@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-session_start();
-$_SESSION = [];
-session_destroy();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
-header('Location: /trytest/dashboard/');
+require_once __DIR__ . '/includes/admin_auth.php';
+trytest_admin_logout();
+
+header('Location: ' . trytest_url('dashboard/?mode=admin'));
 exit;

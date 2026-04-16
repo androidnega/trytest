@@ -3,9 +3,8 @@
 declare(strict_types=1);
 
 session_start();
-
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'admin123';
+require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/admin_auth.php';
 
 $error = '';
 $prompt = '';
@@ -37,12 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'login') {
         $user = trim((string) ($_POST['username'] ?? ''));
         $pass = (string) ($_POST['password'] ?? '');
-        if ($user === ADMIN_USER && $pass === ADMIN_PASS) {
-            $_SESSION['is_admin'] = true;
-            header('Location: /trytest/dashboard/generate_ai');
+        if (trytest_admin_count($db) < 1) {
+            $error = 'No administrator account yet. Create one from the admin dashboard.';
+        } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
+            header('Location: ' . trytest_url('dashboard/generate_ai'));
             exit;
+        } else {
+            $error = 'Invalid admin username or password.';
         }
-        $error = 'Invalid admin username or password.';
     } elseif (!empty($_SESSION['is_admin'])) {
         $topic = trim((string) ($_POST['topic'] ?? ''));
         $topicsRaw = trim((string) ($_POST['topics'] ?? ''));
@@ -90,7 +91,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Trytest — AI prompt</title>
-    <link rel="icon" type="image/svg+xml" href="/trytest/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -104,7 +105,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
                 <h1 class="text-2xl font-bold text-slate-900">Generate Questions (AI)</h1>
                 <p class="text-sm text-slate-500">Build a clean prompt, copy it, then paste AI JSON in the importer.</p>
             </div>
-            <a href="/trytest/dashboard/" class="text-sm text-indigo-600">Back to dashboard</a>
+            <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
@@ -146,7 +147,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
                         <p class="text-sm text-slate-600">Copy prompt -> paste into ChatGPT/Gemini -> copy JSON response -> import with JSON importer.</p>
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" id="copyPromptBtn" class="rounded bg-slate-800 px-3 py-2 text-sm text-white">Copy prompt</button>
-                            <a href="/trytest/dashboard/import_json" class="inline-block bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm">Go to JSON Import</a>
+                            <a href="<?php echo htmlspecialchars(trytest_url('dashboard/import_json'), ENT_QUOTES, 'UTF-8'); ?>" class="inline-block bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm">Go to JSON Import</a>
                         </div>
                         <textarea readonly id="promptBox" class="w-full h-72 p-3 border border-slate-300 rounded-lg font-mono text-sm bg-white"><?php echo htmlspecialchars($prompt, ENT_QUOTES, 'UTF-8'); ?></textarea>
                     </div>

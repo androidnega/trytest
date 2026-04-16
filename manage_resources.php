@@ -6,7 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: /trytest/dashboard/?mode=admin');
+    header('Location: ' . trytest_url('dashboard/?mode=admin'));
     exit;
 }
 
@@ -97,9 +97,9 @@ $deptOptions = $db->query(
         <div class="rounded-2xl border border-slate-200 bg-white p-5">
             <div class="flex items-center justify-between gap-3">
                 <h1 class="text-xl font-bold text-slate-900">Student PDF materials</h1>
-                <a href="/trytest/dashboard/manage_admin" class="text-sm text-indigo-600">Back to manager</a>
+                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
             </div>
-            <p class="mt-2 text-sm text-slate-500">Files are stored on this server only. Students see each item on their dashboard and can download if it matches their program and level. When <code class="rounded bg-slate-100 px-1">config/youtube.php</code> is fully configured, students must sign in with Google and be subscribed to your channel before each PDF download is allowed.</p>
+            <p class="mt-2 text-sm text-slate-500">Files are stored on this server only. Students see each item on their dashboard and can download if it matches their program and level. Optional: turn on the YouTube subscription gate under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_youtube'), ENT_QUOTES, 'UTF-8'); ?>">YouTube gate</a> (or leave it off for immediate downloads).</p>
             <?php if ($error !== ''): ?><div class="mt-3 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         </div>

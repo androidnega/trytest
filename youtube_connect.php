@@ -10,7 +10,7 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: /trytest/dashboard/');
+    header('Location: ' . trytest_url('dashboard/'));
     exit;
 }
 
@@ -21,7 +21,7 @@ if (!$settings['gate_active']) {
     exit;
 }
 
-$next = trytest_youtube_safe_next($_GET['next'] ?? '/trytest/dashboard/');
+$next = trytest_youtube_safe_next($_GET['next'] ?? trytest_url('dashboard/'));
 $state = bin2hex(random_bytes(16));
 $_SESSION['oauth_youtube_state'] = $state;
 $_SESSION['oauth_youtube_next'] = $next;

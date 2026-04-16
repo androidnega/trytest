@@ -2,5 +2,7 @@
 
 declare(strict_types=1);
 
-header('Location: /trytest/dashboard/', true, 302);
+require_once __DIR__ . '/includes/trytest_urls.php';
+
+header('Location: ' . trytest_url('dashboard/'), true, 302);
 exit;

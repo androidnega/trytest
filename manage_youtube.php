@@ -7,7 +7,7 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: /trytest/dashboard/?mode=admin');
+    header('Location: ' . trytest_url('dashboard/?mode=admin'));
     exit;
 }
 
@@ -18,7 +18,7 @@ $row = [
     'gate_enabled' => 0,
     'client_id' => '',
     'client_secret' => '',
-    'redirect_uri' => 'http://localhost/trytest/youtube_oauth_callback',
+    'redirect_uri' => trytest_absolute_url('youtube_oauth_callback'),
     'channel_id' => '',
 ];
 $st = $db->query('SELECT gate_enabled, client_id, client_secret, redirect_uri, channel_id FROM youtube_app_settings WHERE id = 1');
@@ -95,7 +95,7 @@ $effective = trytest_youtube_settings();
                     <h1 class="text-xl font-bold text-slate-900">YouTube API &amp; PDF downloads</h1>
                     <p class="mt-1 text-sm text-slate-500">Control whether students must verify a YouTube subscription before downloading PDF materials.</p>
                 </div>
-                <a href="/trytest/dashboard/manage_admin" class="text-sm font-medium text-indigo-600 hover:underline">← Manager</a>
+                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm font-medium text-indigo-600 hover:underline">← Manager</a>
             </div>
             <?php if ($error !== ''): ?>
                 <div class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -148,13 +148,13 @@ $effective = trytest_youtube_settings();
 
                 <div>
                     <label class="mb-1 block text-xs font-medium text-slate-600">Authorized redirect URI</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-xs" type="url" name="redirect_uri" value="<?php echo htmlspecialchars((string) ($row['redirect_uri'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="http://localhost/trytest/youtube_oauth_callback">
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs" type="url" name="redirect_uri" value="<?php echo htmlspecialchars((string) ($row['redirect_uri'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo htmlspecialchars(trytest_absolute_url('youtube_oauth_callback'), ENT_QUOTES, 'UTF-8'); ?>">
                     <p class="mt-1 text-[11px] text-slate-500">Must match exactly what you entered in Google Cloud → OAuth client → Authorized redirect URIs.</p>
                 </div>
 
                 <div>
                     <label class="mb-1 block text-xs font-medium text-slate-600">Channel ID (UC…)</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono text-xs" type="text" name="channel_id" value="<?php echo htmlspecialchars((string) ($row['channel_id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="UCyYeRB-3ppYddJzb5vlF0nQ">
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs" type="text" name="channel_id" value="<?php echo htmlspecialchars((string) ($row['channel_id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="UCxxxxxxxxxxxxxxxxxxxxxxxxxx">
                     <p class="mt-1 text-[11px] text-slate-500">From your channel URL: youtube.com/channel/<strong>UC…</strong> — not the @handle URL.</p>
                 </div>
 

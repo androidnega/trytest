@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require __DIR__ . '/config/db.php';
-
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'admin123';
+require_once __DIR__ . '/includes/admin_auth.php';
 
 $error = '';
 $message = '';
@@ -16,17 +14,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'login') {
         $user = trim((string) ($_POST['username'] ?? ''));
         $pass = (string) ($_POST['password'] ?? '');
-        if ($user === ADMIN_USER && $pass === ADMIN_PASS) {
-            $_SESSION['is_admin'] = true;
-            header('Location: /trytest/dashboard/clear_data');
+        if (trytest_admin_count($db) < 1) {
+            $error = 'No administrator account yet. Open ' . trytest_url('dashboard/?mode=admin') . ' to create one.';
+        } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
+            header('Location: ' . trytest_url('dashboard/clear_data'));
             exit;
+        } else {
+            $error = 'Invalid admin username or password.';
         }
-        $error = 'Invalid admin username or password.';
     } elseif (!empty($_SESSION['is_admin']) && $action === 'clear') {
         try {
             $db->beginTransaction();
             $db->exec('DELETE FROM scores');
             $db->exec('DELETE FROM questions');
+            $db->exec('DELETE FROM quiz_courses');
             $db->exec('DELETE FROM quizzes');
             $db->commit();
             $message = 'System data has been reset.';
@@ -47,7 +48,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Reset data</title>
-    <link rel="icon" type="image/svg+xml" href="/trytest/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-white min-h-screen p-4">
@@ -55,7 +56,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
         <div class="bg-white rounded-2xl shadow p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-2xl font-bold text-slate-900">Clear System Data</h1>
-                <a href="/trytest/dashboard/" class="text-sm text-indigo-600">Back to dashboard</a>
+                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
             </div>
             <p class="text-sm text-slate-500">This deletes quizzes, questions, and scores.</p>
 

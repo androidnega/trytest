@@ -53,8 +53,8 @@ $yt = trytest_youtube_settings();
 if (!empty($yt['gate_active'])) {
     $uid = (int) $_SESSION['user_id'];
     if (!trytest_youtube_download_allowed($db, $uid, $yt)) {
-        $back = '/trytest/download_resource?id=' . $id;
-        header('Location: /trytest/youtube_connect?next=' . rawurlencode($back));
+        $back = trytest_url('download_resource?id=' . $id);
+        header('Location: ' . trytest_url('youtube_connect?next=' . rawurlencode($back)));
         exit;
     }
 }

@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
                 $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
                     ->execute([(int) $user['id']]);
-                header('Location: /trytest/dashboard/');
+                header('Location: ' . trytest_url('dashboard/'));
                 exit;
             }
         }
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'logout_user') {
         unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department']);
-        header('Location: /trytest/dashboard/?out=1');
+        header('Location: ' . trytest_url('dashboard/?out=1'));
         exit;
     }
 }
@@ -284,9 +284,9 @@ if ($isUserLoggedIn) {
 }
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
-$dashboardUrl = '/trytest/dashboard/';
-$quizUrlBase = '/trytest/quiz';
-$downloadResourceBase = '/trytest/download_resource';
+$dashboardUrl = trytest_url('dashboard/');
+$quizUrlBase = trytest_url('quiz');
+$downloadResourceBase = trytest_url('download_resource');
 $youtubePdfGateActive = trytest_youtube_settings()['gate_active'];
 if (!$isUserLoggedIn) {
     $studentDocuments = [];
@@ -298,7 +298,7 @@ if (!$isUserLoggedIn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest</title>
-    <link rel="icon" type="image/svg+xml" href="/trytest/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">

@@ -6,7 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: /trytest/dashboard/?mode=admin');
+    header('Location: ' . trytest_url('dashboard/?mode=admin'));
     exit;
 }
 
@@ -164,7 +164,7 @@ if ($selectedQuizId > 0) {
         <div class="rounded-2xl border border-slate-200 bg-white p-5">
             <div class="flex items-center justify-between gap-3">
                 <h1 class="text-xl font-bold text-slate-900">Questions</h1>
-                <a href="/trytest/dashboard/manage_admin" class="text-sm text-indigo-600">Back to manager</a>
+                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
             </div>
             <?php if ($error !== ''): ?><div class="mt-3 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
@@ -216,7 +216,7 @@ if ($selectedQuizId > 0) {
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <button class="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white">Accept All Pending</button>
                     </form>
-                    <a href="/trytest/dashboard/manage_questions?quiz_id=<?php echo (int) $selectedQuizId; ?>&export=txt" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download .txt</a>
+                    <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_questions?quiz_id=<?php echo (int) $selectedQuizId; ?>&export=txt'), ENT_QUOTES, 'UTF-8'); ?>" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download .txt</a>
                     <button type="button" id="downloadPdfBtn" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download PDF</button>
                 </div>
             </section>

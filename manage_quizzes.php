@@ -7,7 +7,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: /trytest/dashboard/?mode=admin');
+    header('Location: ' . trytest_url('dashboard/?mode=admin'));
     exit;
 }
 
@@ -161,7 +161,7 @@ foreach ($questionRows as $row) {
         <div class="rounded-2xl border border-slate-200 bg-white p-5">
             <div class="flex items-center justify-between gap-3">
                 <h1 class="text-xl font-bold text-slate-900">Quizzes</h1>
-                <a href="/trytest/dashboard/manage_admin" class="text-sm text-indigo-600">Back to manager</a>
+                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
             </div>
             <?php if ($error !== ''): ?><div class="mt-3 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
@@ -212,7 +212,7 @@ foreach ($questionRows as $row) {
                                 <div class="flex items-center gap-2 shrink-0">
                                     <button type="button" class="text-indigo-600 text-xs quiz-toggle" data-target="quiz-<?php echo $quizId; ?>">View Q&A</button>
                                     <a
-                                        href="/trytest/dashboard/manage_quizzes?export=txt&quiz_id=<?php echo $quizId; ?>"
+                                        href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_quizzes?export=txt&quiz_id=<?php echo $quizId; ?>'), ENT_QUOTES, 'UTF-8'); ?>"
                                         class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100"
                                         title="Download TXT"
                                         aria-label="Download TXT"

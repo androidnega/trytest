@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../includes/trytest_urls.php';
+
 $dataDir = dirname(__DIR__) . '/data';
 $dbFile = $dataDir . '/quiz.sqlite';
 
@@ -183,6 +185,15 @@ if (!$hasQuizStartsAt) {
 if (!$hasQuizEndsAt) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN quiz_ends_at TEXT');
 }
+
+$db->exec('
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
 
 $userColsYt = $db->query('PRAGMA table_info(users)')->fetchAll();
 $hasYoutubeRefresh = false;
