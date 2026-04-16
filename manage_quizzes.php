@@ -7,7 +7,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 
 if (empty($_SESSION['is_admin'])) {
-    trytest_redirect(trytest_home_with_query(['mode' => 'admin']));
+    trytest_redirect(trytest_url('admin'));
 }
 
 $error = '';

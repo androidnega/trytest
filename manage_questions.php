@@ -6,7 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 
 if (empty($_SESSION['is_admin'])) {
-    trytest_redirect(trytest_home_with_query(['mode' => 'admin']));
+    trytest_redirect(trytest_url('admin'));
 }
 
 $error = '';

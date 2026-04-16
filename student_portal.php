@@ -313,7 +313,8 @@ else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">
         <div class="min-h-[100dvh] rounded-none border-0 bg-white p-4 pb-8 md:min-h-0 md:rounded-2xl md:border md:border-slate-200 md:p-6 md:pb-6">
             <h1 class="text-2xl font-bold text-slate-900 mb-1 text-center md:text-left">Trytest</h1>
-            <p class="text-slate-600 mb-5 text-center md:text-left">Sign in with your index number.</p>
+            <p class="text-slate-600 mb-1 text-center md:text-left">Sign in with your index number.</p>
+            <p class="mb-5 text-center text-xs text-slate-500 md:text-left">Teachers / admins: <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('admin'), ENT_QUOTES, 'UTF-8'); ?>">Administrator sign in</a></p>
 
             <?php if ($error !== ''): ?>
                 <div class="mb-4 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>

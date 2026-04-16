@@ -178,6 +178,19 @@ function trytest_is_app_root_request(): bool
 }
 
 /**
+ * True when the request is exactly the student/admin app hub path (/dashboard), not a subpage.
+ * Respects base_path for subfolder installs.
+ */
+function trytest_is_dashboard_root_request(): bool
+{
+    $p = rtrim(trytest_request_path(), '/') ?: '/';
+    $b = trytest_base_path();
+    $dash = $b === '' ? '/dashboard' : $b . '/dashboard';
+    $dash = rtrim($dash, '/') ?: '/';
+    return $p === $dash;
+}
+
+/**
  * URL path prefix, e.g. '/trytest' or '' when the app is at the site root.
  */
 function trytest_base_path(): string
@@ -252,7 +265,7 @@ function trytest_home_url(): string
 }
 
 /**
- * Homepage with query string (e.g. `?mode=admin`, `?out=1`).
+ * Homepage with query string (e.g. `?out=1`). Admin sign-in lives at /admin.
  *
  * @param array<string, string|int|float|bool|null> $params
  */
