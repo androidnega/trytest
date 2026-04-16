@@ -34,6 +34,42 @@ if (!$settings['gate_active']) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'confirm_hybrid') {
+    $csrf = (string) ($_POST['csrf'] ?? '');
+    $expectedCsrf = (string) ($_SESSION['oauth_youtube_hybrid_csrf'] ?? '');
+    if ($csrf === '' || $expectedCsrf === '' || !hash_equals($expectedCsrf, $csrf)) {
+        trytest_youtube_callback_page('Invalid form', '<p>Please start the download again from your dashboard.</p>', trytest_home_url(), 'Back to dashboard');
+        exit;
+    }
+    if (empty($_POST['subscribe_ack'])) {
+        trytest_youtube_callback_page(
+            'Confirmation required',
+            '<p>Please check the box to confirm you subscribed to the channel.</p>',
+            trytest_home_url(),
+            'Back to dashboard'
+        );
+        exit;
+    }
+    $need = trytest_youtube_fallback_code();
+    if ($need !== '') {
+        $entered = trim((string) ($_POST['video_code'] ?? ''));
+        if ($entered === '' || strcasecmp($entered, $need) !== 0) {
+            trytest_youtube_callback_page(
+                'Invalid code',
+                '<p>The video code does not match. Check the video description or ask your instructor.</p>',
+                trytest_home_url(),
+                'Back to dashboard'
+            );
+            exit;
+        }
+    }
+    trytest_youtube_mark_session_verified();
+    $next = trytest_youtube_safe_next((string) ($_SESSION['oauth_youtube_hybrid_next'] ?? trytest_home_url()));
+    unset($_SESSION['oauth_youtube_hybrid_next'], $_SESSION['oauth_youtube_hybrid_csrf']);
+    header('Location: ' . $next);
+    exit;
+}
+
 $err = isset($_GET['error']) ? (string) $_GET['error'] : '';
 if ($err !== '') {
     trytest_youtube_callback_page(
@@ -78,17 +114,12 @@ if ($token === null || empty($token['access_token'])) {
 $access = (string) $token['access_token'];
 $refresh = trim((string) ($token['refresh_token'] ?? ''));
 
-if (!trytest_youtube_user_subscribed_to_channel($access, $settings['channel_id'])) {
-    $ch = rawurlencode($settings['channel_id']);
-    $subUrl = 'https://www.youtube.com/channel/' . $ch . '?sub_confirmation=1';
-    trytest_youtube_callback_page(
-        'Subscribe to continue',
-        '<p class="mb-3">Your Google account is connected, but we do not see an active subscription to the course channel yet.</p>'
-            . '<p class="mb-3">Open YouTube, subscribe, then return here and try your download again.</p>'
-            . '<p><a class="font-semibold text-indigo-600 underline" href="' . htmlspecialchars($subUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open channel on YouTube</a></p>',
-        trytest_url('youtube_connect?next=' . rawurlencode($next)),
-        'I subscribed — verify again'
-    );
+$subStatus = trytest_youtube_subscription_status($access, $settings['channel_id']);
+if ($subStatus !== 'yes') {
+    $note = $subStatus === 'unknown'
+        ? 'The YouTube API could not confirm your subscription right now (network, limits, or privacy settings).'
+        : 'We do not see an active subscription to this channel for the Google account you signed in with.';
+    trytest_youtube_hybrid_confirmation_page($settings, $next, $note);
     exit;
 }
 
@@ -96,13 +127,14 @@ if ($refresh === '') {
     trytest_youtube_callback_page(
         'No refresh token',
         '<p>Google did not return a refresh token. In Google Cloud OAuth client, revoke Trytest access for this Google account, then try again (we request offline access).</p>',
-        trytest_url('youtube_connect?next=' . rawurlencode($next)),
+        trytest_url('youtube_login?next=' . rawurlencode($next)),
         'Try again'
     );
     exit;
 }
 
 $db->prepare('UPDATE users SET youtube_refresh_token = ? WHERE id = ?')->execute([$refresh, $uid]);
+trytest_youtube_mark_session_verified();
 
 header('Location: ' . $next);
 exit;

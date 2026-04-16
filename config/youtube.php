@@ -20,9 +20,8 @@ declare(strict_types=1);
  *
  * 3) OAuth 2.0 Client ID (type: Web application)
  *    - Create credentials → OAuth client ID → Web application
- *    - Authorized redirect URI must match YOUTUBE_OAUTH_REDIRECT_URI exactly, e.g.:
- *      http://localhost/trytest/youtube_oauth_callback
- *      https://yourdomain.com/trytest/youtube_oauth_callback
+ *    - Authorized redirect URI must match the value in Admin → YouTube, `config/google.php`, or
+ *      `YOUTUBE_OAUTH_REDIRECT_URI` / `GOOGLE_REDIRECT_URI` exactly (https, correct path, no trailing slash).
  *
  * 4) Your YouTube channel ID (starts with UC)
  *    - YouTube Studio → Settings → Channel → Advanced settings → Channel ID
@@ -35,8 +34,8 @@ declare(strict_types=1);
 return [
     'client_id' => getenv('YOUTUBE_OAUTH_CLIENT_ID') ?: '',
     'client_secret' => getenv('YOUTUBE_OAUTH_CLIENT_SECRET') ?: '',
-    /** Must match the redirect URI registered in Google Cloud exactly */
-    'redirect_uri' => getenv('YOUTUBE_OAUTH_REDIRECT_URI') ?: 'http://localhost/trytest/youtube_oauth_callback',
+    /** Must match the redirect URI registered in Google Cloud exactly (often set only on the server). */
+    'redirect_uri' => getenv('YOUTUBE_OAUTH_REDIRECT_URI') !== false ? (string) getenv('YOUTUBE_OAUTH_REDIRECT_URI') : '',
     /** Your channel ID (UC…) — API checks the signed-in user is subscribed to THIS channel */
     'channel_id' => getenv('YOUTUBE_CHANNEL_ID') ?: '',
 ];

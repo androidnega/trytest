@@ -2,8 +2,22 @@
 
 declare(strict_types=1);
 
+function trytest_youtube_ensure_google_php(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $gp = __DIR__ . '/../config/google.php';
+    if (is_file($gp)) {
+        require_once $gp;
+    }
+}
+
 /**
  * Load merged settings: database row (admin UI) overrides file/env fallbacks.
+ * Optional `config/google.php` fills any remaining blanks (production-friendly).
  *
  * @return array{
  *   client_id:string,
@@ -17,6 +31,8 @@ declare(strict_types=1);
  */
 function trytest_youtube_settings(): array
 {
+    trytest_youtube_ensure_google_php();
+
     $path = __DIR__ . '/../config/youtube.php';
     $file = is_file($path) ? require $path : [];
     $fClient = trim((string) ($file['client_id'] ?? ''));
@@ -53,6 +69,19 @@ function trytest_youtube_settings(): array
     $clientSecret = $dSecret !== '' ? $dSecret : $fSecret;
     $redirectUri = $dRedirect !== '' ? $dRedirect : $fRedirect;
     $channelId = $dChannel !== '' ? $dChannel : $fChannel;
+
+    if ($clientId === '' && defined('GOOGLE_CLIENT_ID')) {
+        $clientId = trim((string) GOOGLE_CLIENT_ID);
+    }
+    if ($clientSecret === '' && defined('GOOGLE_CLIENT_SECRET')) {
+        $clientSecret = trim((string) GOOGLE_CLIENT_SECRET);
+    }
+    if ($redirectUri === '' && defined('GOOGLE_REDIRECT_URI')) {
+        $redirectUri = trim((string) GOOGLE_REDIRECT_URI);
+    }
+    if ($channelId === '' && defined('YOUTUBE_CHANNEL_ID')) {
+        $channelId = trim((string) YOUTUBE_CHANNEL_ID);
+    }
 
     $credentialsComplete = $clientId !== '' && $clientSecret !== '' && $redirectUri !== '' && $channelId !== '';
     $gateActive = $rowGate && $credentialsComplete;
@@ -93,6 +122,108 @@ function trytest_youtube_safe_next(?string $next): string
         return $fallback;
     }
     return $next;
+}
+
+function trytest_youtube_session_ttl(): int
+{
+    return 86400 * 7;
+}
+
+function trytest_youtube_session_verified(): bool
+{
+    if (empty($_SESSION['youtube_verified'])) {
+        return false;
+    }
+    $at = (int) ($_SESSION['youtube_verified_at'] ?? 0);
+    if ($at < 1 || (time() - $at) > trytest_youtube_session_ttl()) {
+        trytest_youtube_clear_session_verified();
+        return false;
+    }
+    return true;
+}
+
+function trytest_youtube_mark_session_verified(): void
+{
+    $_SESSION['youtube_verified'] = true;
+    $_SESSION['youtube_verified_at'] = time();
+}
+
+function trytest_youtube_clear_session_verified(): void
+{
+    unset($_SESSION['youtube_verified'], $_SESSION['youtube_verified_at'], $_SESSION['oauth_youtube_hybrid_next'], $_SESSION['oauth_youtube_hybrid_csrf']);
+}
+
+function trytest_youtube_fallback_code(): string
+{
+    trytest_youtube_ensure_google_php();
+    if (defined('YOUTUBE_FALLBACK_CODE')) {
+        return trim((string) YOUTUBE_FALLBACK_CODE);
+    }
+    return '';
+}
+
+/**
+ * @return 'yes'|'no'|'unknown'
+ */
+function trytest_youtube_subscription_status(string $accessToken, string $channelId): string
+{
+    $q = http_build_query([
+        'part' => 'id',
+        'mine' => 'true',
+        'forChannelId' => $channelId,
+    ], '', '&', PHP_QUERY_RFC3986);
+    $url = 'https://www.googleapis.com/youtube/v3/subscriptions?' . $q;
+    $json = trytest_youtube_http_get_json($url, $accessToken);
+    if ($json === null) {
+        return 'unknown';
+    }
+    if (!empty($json['error'])) {
+        return 'unknown';
+    }
+    $items = $json['items'] ?? [];
+    if (is_array($items) && count($items) > 0) {
+        return 'yes';
+    }
+    return 'no';
+}
+
+/**
+ * HTML page: manual subscribe confirmation when API says “no” or is unavailable.
+ *
+ * @param array<string, mixed> $settings
+ */
+function trytest_youtube_hybrid_confirmation_page(array $settings, string $next, string $apiNote): void
+{
+    $csrf = bin2hex(random_bytes(16));
+    $_SESSION['oauth_youtube_hybrid_next'] = $next;
+    $_SESSION['oauth_youtube_hybrid_csrf'] = $csrf;
+    $postUrl = trytest_url('youtube_oauth_callback');
+    $ch = rawurlencode($settings['channel_id']);
+    $subUrl = 'https://www.youtube.com/channel/' . $ch . '?sub_confirmation=1';
+    $needCode = trytest_youtube_fallback_code();
+    $title = 'Confirm subscription';
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'
+        . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
+        . '</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-slate-50 min-h-screen p-6">'
+        . '<div class="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">'
+        . '<h1 class="text-lg font-bold text-slate-900">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>'
+        . '<p class="mt-3 text-sm text-slate-600">' . htmlspecialchars($apiNote, ENT_QUOTES, 'UTF-8') . '</p>'
+        . '<p class="mt-3 text-sm text-slate-600">Open the channel on YouTube and subscribe if you have not yet.</p>'
+        . '<p class="mt-2 text-sm"><a class="font-semibold text-indigo-600 underline" href="' . htmlspecialchars($subUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open channel on YouTube</a></p>'
+        . '<form class="mt-6 space-y-4" method="post" action="' . htmlspecialchars($postUrl, ENT_QUOTES, 'UTF-8') . '">'
+        . '<input type="hidden" name="action" value="confirm_hybrid">'
+        . '<input type="hidden" name="csrf" value="' . htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') . '">'
+        . '<label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="subscribe_ack" value="1" class="mt-1">'
+        . '<span>I have subscribed to this channel.</span></label>';
+    if ($needCode !== '') {
+        echo '<div><label class="block text-sm font-medium text-slate-700">Video code</label>'
+            . '<input type="text" name="video_code" autocomplete="off" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the code from the video"></div>';
+    }
+    echo '<button type="submit" class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Continue to downloads</button>'
+        . '</form>'
+        . '<p class="mt-4 text-xs text-slate-500">If the YouTube API cannot see your subscription (privacy or limits), this step still lets you continue after you confirm.</p>'
+        . '</div></body></html>';
 }
 
 /**
@@ -154,18 +285,7 @@ function trytest_youtube_refresh_access_token(string $refreshToken, array $setti
 
 function trytest_youtube_user_subscribed_to_channel(string $accessToken, string $channelId): bool
 {
-    $q = http_build_query([
-        'part' => 'id',
-        'mine' => 'true',
-        'forChannelId' => $channelId,
-    ], '', '&', PHP_QUERY_RFC3986);
-    $url = 'https://www.googleapis.com/youtube/v3/subscriptions?' . $q;
-    $json = trytest_youtube_http_get_json($url, $accessToken);
-    if ($json === null) {
-        return false;
-    }
-    $items = $json['items'] ?? [];
-    return is_array($items) && count($items) > 0;
+    return trytest_youtube_subscription_status($accessToken, $channelId) === 'yes';
 }
 
 function trytest_youtube_clear_user_tokens(PDO $db, int $userId): void
@@ -179,6 +299,9 @@ function trytest_youtube_clear_user_tokens(PDO $db, int $userId): void
 function trytest_youtube_download_allowed(PDO $db, int $userId, array $settings): bool
 {
     if (empty($settings['gate_active'])) {
+        return true;
+    }
+    if (trytest_youtube_session_verified()) {
         return true;
     }
     $stmt = $db->prepare('SELECT youtube_refresh_token FROM users WHERE id = ?');
@@ -196,5 +319,6 @@ function trytest_youtube_download_allowed(PDO $db, int $userId, array $settings)
     if (!$ok) {
         return false;
     }
+    trytest_youtube_mark_session_verified();
     return true;
 }

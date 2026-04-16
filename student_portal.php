@@ -158,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'logout_user') {
+        trytest_youtube_clear_session_verified();
         unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department']);
         header('Location: ' . trytest_home_with_query(['out' => '1']));
         exit;
