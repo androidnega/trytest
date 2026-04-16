@@ -46,10 +46,11 @@ function trytest_is_local_dev_host(): bool
 }
 
 /**
- * If production uses root URLs but the browser still requests /trytest/..., 301 to /...
- * Skipped on local dev (where /trytest is the real mount) and when base_path is non-empty.
+ * When the app is mounted at the site root (base_path ""), /trytest is not a URL prefix
+ * on this host — respond 404 with no redirect. Skipped on local dev (subfolder installs)
+ * and when base_path is non-empty (intentional subfolder deploy).
  */
-function trytest_redirect_legacy_trytest_prefix(): void
+function trytest_reject_trytest_prefix_when_at_root(): void
 {
     if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
         return;
@@ -70,14 +71,9 @@ function trytest_redirect_legacy_trytest_prefix(): void
     if ($path !== '/trytest' && !str_starts_with($path, '/trytest/')) {
         return;
     }
-    $tail = $path === '/trytest' ? '/' : (substr($path, strlen('/trytest')) ?: '/');
-    if ($tail === '' || $tail[0] !== '/') {
-        $tail = '/' . ltrim($tail, '/');
-    }
-    $qs = isset($_SERVER['QUERY_STRING']) && (string) $_SERVER['QUERY_STRING'] !== ''
-        ? '?' . (string) $_SERVER['QUERY_STRING']
-        : '';
-    header('Location: ' . $tail . $qs, true, 301);
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Not Found';
     exit;
 }
 
@@ -175,7 +171,7 @@ function trytest_absolute_url(string $path = ''): string
     return trytest_request_origin() . trytest_url($path);
 }
 
-/** Site entry (student/admin router): `/` at domain root, or `/trytest` in a subfolder install. */
+/** Site entry (student/admin router): `/` at domain root, or the configured base path in a subfolder install. */
 function trytest_home_url(): string
 {
     return trytest_url('');
@@ -196,4 +192,4 @@ function trytest_home_with_query(array $params): string
     return rtrim($h, '/') . '/?' . $q;
 }
 
-trytest_redirect_legacy_trytest_prefix();
+trytest_reject_trytest_prefix_when_at_root();

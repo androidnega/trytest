@@ -37,4 +37,4 @@ header('Content-Type: text/plain; charset=utf-8');
 echo "OK — database ready.\n";
 echo '- Students: open ' . trytest_home_url() . "\n";
 echo '- Admin: open ' . trytest_home_with_query(['mode' => 'admin']) . " — on first visit, create the administrator account (no default password).\n";
-echo 'URLs use no .php suffix. base_path auto: /trytest only on localhost/LAN/.local; production hosts always root. SetEnv TRYTEST_WEB_BASE to override. Legacy /trytest/... on production 301s to /... . mod_rewrite + AllowOverride required for extensionless paths.' . "\n";
+echo 'URLs use no .php suffix. base_path auto: subfolder only on localhost/LAN/.local; production is site root. SetEnv TRYTEST_WEB_BASE to override. On root installs, /trytest/... is not served (404). mod_rewrite + AllowOverride required for extensionless paths.' . "\n";

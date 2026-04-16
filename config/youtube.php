@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * YouTube subscription gate for PDF downloads — optional file / env fallback.
  *
- * Prefer the admin UI: /trytest/dashboard/manage_youtube (toggle + OAuth fields stored in the database).
+ * Prefer the admin UI: /dashboard/manage_youtube (toggle + OAuth fields stored in the database).
  * Values here are used only when the matching database field is empty.
  *
  * WHAT YOU MUST PROVIDE (one-time setup in Google Cloud + YouTube):
