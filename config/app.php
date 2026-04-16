@@ -5,8 +5,8 @@ declare(strict_types=1);
 /**
  * Public URL path prefix for this installation (no trailing slash).
  *
- * - XAMPP typical: document root is htdocs and app is in htdocs/tryTest → use '/trytest'
- * - Subdomain at domain root (e.g. https://trytest.manuelcode.info/dashboard/) → use ''
+ * - Subdomain / production (e.g. https://trytest.manuelcode.info/) → use '' (homepage is site root).
+ * - XAMPP subfolder (http://localhost/trytest/...) → use '/trytest'
  *
  * Override with environment variable TRYTEST_WEB_BASE (empty string allowed).
  */
@@ -17,8 +17,8 @@ if ($env !== false) {
 }
 
 return [
-    // Local XAMPP (htdocs/tryTest → http://localhost/trytest/...): keep '/trytest'.
-    // Live site at subdomain root (https://trytest.example.com/dashboard/): use ''.
-    // Prefer server env: SetEnv TRYTEST_WEB_BASE ""  (empty = root install).
-    'base_path' => '/trytest',
+    // '' = https://trytest.example.com/ is the app homepage (recommended for trytest.manuelcode.info).
+    // '/trytest' = http://localhost/trytest/ when the project lives under htdocs/tryTest.
+    // Override: SetEnv TRYTEST_WEB_BASE /trytest
+    'base_path' => '',
 ];

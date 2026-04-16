@@ -6,7 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_url('dashboard/?mode=admin'));
+    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
     exit;
 }
 
@@ -216,7 +216,7 @@ if ($selectedQuizId > 0) {
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <button class="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white">Accept All Pending</button>
                     </form>
-                    <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_questions?quiz_id=<?php echo (int) $selectedQuizId; ?>&export=txt'), ENT_QUOTES, 'UTF-8'); ?>" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download .txt</a>
+                    <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_questions?quiz_id=' . (int) $selectedQuizId . '&export=txt'), ENT_QUOTES, 'UTF-8'); ?>" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download .txt</a>
                     <button type="button" id="downloadPdfBtn" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Download PDF</button>
                 </div>
             </section>

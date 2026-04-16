@@ -24,13 +24,13 @@ function trytest_youtube_callback_page(string $title, string $bodyHtml, string $
 }
 
 if (empty($_SESSION['user_id'])) {
-    trytest_youtube_callback_page('Sign in required', '<p>Please sign in to Trytest first, then try downloading again.</p>', trytest_url('dashboard/'), 'Back to dashboard');
+    trytest_youtube_callback_page('Sign in required', '<p>Please sign in to Trytest first, then try downloading again.</p>', trytest_home_url(), 'Back to dashboard');
     exit;
 }
 
 $settings = trytest_youtube_settings();
 if (!$settings['gate_active']) {
-    header('Location: ' . trytest_url('dashboard/'));
+    header('Location: ' . trytest_home_url());
     exit;
 }
 
@@ -39,7 +39,7 @@ if ($err !== '') {
     trytest_youtube_callback_page(
         'YouTube sign-in cancelled',
         '<p>We could not verify your Google account. PDF downloads stay locked until you complete sign-in and subscribe to the channel.</p>',
-        trytest_url('dashboard/'),
+        trytest_home_url(),
         'Back to dashboard'
     );
     exit;
@@ -47,18 +47,18 @@ if ($err !== '') {
 
 $state = (string) ($_GET['state'] ?? '');
 $expected = (string) ($_SESSION['oauth_youtube_state'] ?? '');
-$next = trytest_youtube_safe_next((string) ($_SESSION['oauth_youtube_next'] ?? trytest_url('dashboard/')));
+$next = trytest_youtube_safe_next((string) ($_SESSION['oauth_youtube_next'] ?? trytest_home_url()));
 $uid = (int) ($_SESSION['oauth_youtube_uid'] ?? 0);
 unset($_SESSION['oauth_youtube_state'], $_SESSION['oauth_youtube_next'], $_SESSION['oauth_youtube_uid']);
 
 if ($state === '' || $expected === '' || !hash_equals($expected, $state) || $uid !== (int) $_SESSION['user_id']) {
-    trytest_youtube_callback_page('Invalid session', '<p>Please try the download again from your dashboard.</p>', trytest_url('dashboard/'), 'Back to dashboard');
+    trytest_youtube_callback_page('Invalid session', '<p>Please try the download again from your dashboard.</p>', trytest_home_url(), 'Back to dashboard');
     exit;
 }
 
 $code = (string) ($_GET['code'] ?? '');
 if ($code === '') {
-    trytest_youtube_callback_page('Missing code', '<p>Google did not return an authorization code. Try again.</p>', trytest_url('dashboard/'), 'Back to dashboard');
+    trytest_youtube_callback_page('Missing code', '<p>Google did not return an authorization code. Try again.</p>', trytest_home_url(), 'Back to dashboard');
     exit;
 }
 
@@ -71,7 +71,7 @@ $token = trytest_youtube_http_post_form('https://oauth2.googleapis.com/token', [
 ]);
 
 if ($token === null || empty($token['access_token'])) {
-    trytest_youtube_callback_page('Token error', '<p>Could not exchange the authorization code. Check client ID, secret, and redirect URI in <code>config/youtube.php</code>.</p>', trytest_url('dashboard/'), 'Back to dashboard');
+    trytest_youtube_callback_page('Token error', '<p>Could not exchange the authorization code. Check client ID, secret, and redirect URI in <code>config/youtube.php</code>.</p>', trytest_home_url(), 'Back to dashboard');
     exit;
 }
 

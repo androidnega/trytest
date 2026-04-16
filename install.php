@@ -35,6 +35,6 @@ if ($count === 0) {
 
 header('Content-Type: text/plain; charset=utf-8');
 echo "OK — database ready.\n";
-echo '- Students: open ' . trytest_url('dashboard/') . "\n";
-echo '- Admin: open ' . trytest_url('dashboard/?mode=admin') . " — on first visit, create the administrator account (no default password).\n";
-echo 'URLs use no .php suffix. Set TRYTEST_WEB_BASE to empty when the app is at your domain root (e.g. https://trytest.example.com/). Ensure mod_rewrite and AllowOverride allow .htaccess.' . "\n";
+echo '- Students: open ' . trytest_home_url() . "\n";
+echo '- Admin: open ' . trytest_home_with_query(['mode' => 'admin']) . " — on first visit, create the administrator account (no default password).\n";
+echo 'URLs use no .php suffix. Homepage is site root (e.g. https://trytest.example.com/). For XAMPP under /trytest/, set config/app.php base_path to /trytest or SetEnv TRYTEST_WEB_BASE /trytest. Ensure mod_rewrite and AllowOverride allow .htaccess.' . "\n";

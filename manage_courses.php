@@ -6,7 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_url('dashboard/?mode=admin'));
+    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
     exit;
 }
 

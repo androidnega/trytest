@@ -5,7 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
-$dashboardUrl = trytest_url('dashboard/');
+$dashboardUrl = trytest_home_url();
 
 $error = '';
 $message = '';

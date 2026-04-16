@@ -7,7 +7,7 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_url('dashboard/?mode=admin'));
+    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
     exit;
 }
 

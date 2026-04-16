@@ -9,7 +9,7 @@ require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_url('dashboard/?mode=admin'));
+    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
     exit;
 }
 
@@ -41,7 +41,7 @@ $ytLabel = $yt['gate_active'] ? 'On' : 'Off';
                 <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
                     <a href="<?php echo htmlspecialchars(trytest_url('dashboard/change_admin_password'), ENT_QUOTES, 'UTF-8'); ?>" class="font-medium text-slate-600 hover:text-slate-900 hover:underline">Password</a>
                     <span class="text-slate-300" aria-hidden="true">·</span>
-                    <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="font-medium text-indigo-600 hover:underline">← Dashboard</a>
+                    <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="font-medium text-indigo-600 hover:underline">← Dashboard</a>
                 </div>
             </div>
         </div>

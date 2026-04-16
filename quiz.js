@@ -9,7 +9,14 @@
     }
     function absTrytestPath(path) {
         var b = trytestWebPrefix();
-        path = String(path || '').replace(/^\//, '');
+        path = String(path || '');
+        if (path.charAt(0) === '?') {
+            if (!b) {
+                return '/' + path;
+            }
+            return b + path;
+        }
+        path = path.replace(/^\//, '');
         if (!b) {
             return '/' + path;
         }
@@ -435,7 +442,7 @@
 
     function saveScore() {
         if (!quizId || orderedIds.length < 1) return;
-        var doneUrl = absTrytestPath('dashboard/?done=' + encodeURIComponent(String(quizId)));
+        var doneUrl = absTrytestPath('?done=' + encodeURIComponent(String(quizId)));
         fetch(absTrytestPath('save_score'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

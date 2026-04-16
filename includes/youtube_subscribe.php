@@ -70,7 +70,7 @@ function trytest_youtube_settings(): array
 
 function trytest_youtube_safe_next(?string $next): string
 {
-    $fallback = trytest_url('dashboard/');
+    $fallback = trytest_home_url();
     $next = trim((string) $next);
     if ($next === '' || $next[0] !== '/') {
         return $fallback;

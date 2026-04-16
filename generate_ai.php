@@ -105,7 +105,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
                 <h1 class="text-2xl font-bold text-slate-900">Generate Questions (AI)</h1>
                 <p class="text-sm text-slate-500">Build a clean prompt, copy it, then paste AI JSON in the importer.</p>
             </div>
-            <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
+            <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">

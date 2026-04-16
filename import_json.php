@@ -184,7 +184,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
                 <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs and import in one clean step.</p>
             </div>
-            <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
+            <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">

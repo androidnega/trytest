@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = trim((string) ($_POST['username'] ?? ''));
         $pass = (string) ($_POST['password'] ?? '');
         if (trytest_admin_count($db) < 1) {
-            $error = 'No administrator account yet. Open ' . trytest_url('dashboard/?mode=admin') . ' to create one.';
+            $error = 'No administrator account yet. Open ' . trytest_home_with_query(['mode' => 'admin']) . ' to create one.';
         } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
             header('Location: ' . trytest_url('dashboard/clear_data'));
             exit;
@@ -56,7 +56,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
         <div class="bg-white rounded-2xl shadow p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-2xl font-bold text-slate-900">Clear System Data</h1>
-                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
+                <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
             </div>
             <p class="text-sm text-slate-500">This deletes quizzes, questions, and scores.</p>
 

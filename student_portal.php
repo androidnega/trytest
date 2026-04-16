@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
                 $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
                     ->execute([(int) $user['id']]);
-                header('Location: ' . trytest_url('dashboard/'));
+                header('Location: ' . trytest_home_url());
                 exit;
             }
         }
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'logout_user') {
         unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department']);
-        header('Location: ' . trytest_url('dashboard/?out=1'));
+        header('Location: ' . trytest_home_with_query(['out' => '1']));
         exit;
     }
 }
@@ -284,7 +284,7 @@ if ($isUserLoggedIn) {
 }
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
-$dashboardUrl = trytest_url('dashboard/');
+$dashboardUrl = trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
 $downloadResourceBase = trytest_url('download_resource');
 $youtubePdfGateActive = trytest_youtube_settings()['gate_active'];

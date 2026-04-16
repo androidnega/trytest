@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($setupErr !== '') {
             $error = $setupErr;
         } elseif (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_url('dashboard/'));
+            header('Location: ' . trytest_home_url());
             exit;
         } else {
             $error = 'Account was created but sign-in failed. Try logging in.';
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = trim((string) ($_POST['username'] ?? ''));
         $pass = (string) ($_POST['password'] ?? '');
         if (trytest_admin_attempt_login($db, $user, $pass)) {
-            header('Location: ' . trytest_url('dashboard/'));
+            header('Location: ' . trytest_home_url());
             exit;
         }
         $error = 'Invalid admin username or password.';
@@ -131,7 +131,7 @@ $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
             <?php else: ?>
                 <p class="mt-4 text-xs text-slate-500">Signed in as <span class="font-medium text-slate-700"><?php echo htmlspecialchars((string) ($_SESSION['admin_username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span> · <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/change_admin_password'), ENT_QUOTES, 'UTF-8'); ?>">Change password</a></p>
             <?php endif; ?>
-            <p class="mt-3 text-center text-sm text-slate-500"><a href="<?php echo htmlspecialchars(trytest_url('dashboard/'), ENT_QUOTES, 'UTF-8'); ?>" class="text-indigo-600 hover:underline">Student sign in</a></p>
+            <p class="mt-3 text-center text-sm text-slate-500"><a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-indigo-600 hover:underline">Student sign in</a></p>
         </div>
 
         <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">

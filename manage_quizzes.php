@@ -7,7 +7,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 
 if (empty($_SESSION['is_admin'])) {
-    header('Location: ' . trytest_url('dashboard/?mode=admin'));
+    header('Location: ' . trytest_home_with_query(['mode' => 'admin']));
     exit;
 }
 
@@ -212,7 +212,7 @@ foreach ($questionRows as $row) {
                                 <div class="flex items-center gap-2 shrink-0">
                                     <button type="button" class="text-indigo-600 text-xs quiz-toggle" data-target="quiz-<?php echo $quizId; ?>">View Q&A</button>
                                     <a
-                                        href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_quizzes?export=txt&quiz_id=<?php echo $quizId; ?>'), ENT_QUOTES, 'UTF-8'); ?>"
+                                        href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_quizzes?export=txt&quiz_id=' . (int) $quizId), ENT_QUOTES, 'UTF-8'); ?>"
                                         class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100"
                                         title="Download TXT"
                                         aria-label="Download TXT"

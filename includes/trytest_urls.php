@@ -12,7 +12,7 @@ function trytest_base_path(): string
         return $cached;
     }
     $file = __DIR__ . '/../config/app.php';
-    $default = '/trytest';
+    $default = '';
     if (!is_file($file)) {
         $cached = $default;
         return $cached;
@@ -56,4 +56,25 @@ function trytest_request_origin(): string
 function trytest_absolute_url(string $path = ''): string
 {
     return trytest_request_origin() . trytest_url($path);
+}
+
+/** Site entry (student/admin router): `/` at domain root, or `/trytest` in a subfolder install. */
+function trytest_home_url(): string
+{
+    return trytest_url('');
+}
+
+/**
+ * Homepage with query string (e.g. `?mode=admin`, `?out=1`).
+ *
+ * @param array<string, string|int|float|bool|null> $params
+ */
+function trytest_home_with_query(array $params): string
+{
+    $q = http_build_query($params);
+    $h = trytest_home_url();
+    if ($h === '/') {
+        return '/?' . $q;
+    }
+    return rtrim($h, '/') . '/?' . $q;
 }
