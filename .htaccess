@@ -3,6 +3,9 @@
 </IfModule>
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # If extensionless URLs 404 while the app lives in a subfolder (e.g. public_html/trytest),
+    # uncomment and set the folder URL path (leading slash, no trailing slash):
+    # RewriteBase /trytest
 
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]

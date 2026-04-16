@@ -3,6 +3,26 @@
 declare(strict_types=1);
 
 /**
+ * URL path from web root to this app's folder (e.g. '/trytest') or '' at site root.
+ */
+function trytest_detect_base_path(): string
+{
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath((string) $_SERVER['DOCUMENT_ROOT']) : false;
+    $appRoot = realpath(__DIR__ . '/..');
+    if ($docRoot === false || $appRoot === false) {
+        return '';
+    }
+    $doc = str_replace('\\', '/', $docRoot);
+    $root = str_replace('\\', '/', $appRoot);
+    if (!str_starts_with($root, $doc)) {
+        return '';
+    }
+    $rel = substr($root, strlen($doc));
+    $rel = trim($rel, '/');
+    return $rel === '' ? '' : '/' . $rel;
+}
+
+/**
  * URL path prefix, e.g. '/trytest' or '' when the app is at the site root.
  */
 function trytest_base_path(): string
@@ -11,16 +31,25 @@ function trytest_base_path(): string
     if ($cached !== null) {
         return $cached;
     }
+    $env = getenv('TRYTEST_WEB_BASE');
+    if ($env !== false) {
+        $base = trim((string) $env, '/');
+        $cached = $base === '' ? '' : '/' . $base;
+        return $cached;
+    }
     $file = __DIR__ . '/../config/app.php';
-    $default = '';
     if (!is_file($file)) {
-        $cached = $default;
+        $cached = trytest_detect_base_path();
         return $cached;
     }
     /** @var array{base_path?: string} $cfg */
     $cfg = require $file;
-    $p = isset($cfg['base_path']) ? trim((string) $cfg['base_path']) : $default;
-    $p = rtrim($p, '/');
+    $raw = isset($cfg['base_path']) ? trim((string) $cfg['base_path']) : 'auto';
+    if (strtolower($raw) === 'auto') {
+        $cached = trytest_detect_base_path();
+        return $cached;
+    }
+    $p = rtrim($raw, '/');
     if ($p === '') {
         $cached = '';
         return $cached;

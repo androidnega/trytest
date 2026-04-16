@@ -5,20 +5,14 @@ declare(strict_types=1);
 /**
  * Public URL path prefix for this installation (no trailing slash).
  *
- * - Subdomain / production (e.g. https://trytest.manuelcode.info/) → use '' (homepage is site root).
- * - XAMPP subfolder (http://localhost/trytest/...) → use '/trytest'
+ * - `auto` (default): derive from DOCUMENT_ROOT vs project root (works for both
+ *   subdomain docroot installs and XAMPP `htdocs/tryTest` → `/trytest` URLs).
+ * - `''` : force site root (e.g. you know the vhost docroot is this app folder).
+ * - `/trytest` : force a subfolder prefix.
  *
- * Override with environment variable TRYTEST_WEB_BASE (empty string allowed).
+ * Server override (Apache): SetEnv TRYTEST_WEB_BASE /trytest  or SetEnv TRYTEST_WEB_BASE ""
+ * (handled in includes/trytest_urls.php, not here).
  */
-$env = getenv('TRYTEST_WEB_BASE');
-if ($env !== false) {
-    $base = trim($env, '/');
-    return ['base_path' => $base === '' ? '' : '/' . $base];
-}
-
 return [
-    // '' = https://trytest.example.com/ is the app homepage (recommended for trytest.manuelcode.info).
-    // '/trytest' = http://localhost/trytest/ when the project lives under htdocs/tryTest.
-    // Override: SetEnv TRYTEST_WEB_BASE /trytest
-    'base_path' => '',
+    'base_path' => 'auto',
 ];

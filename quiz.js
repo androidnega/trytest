@@ -4,7 +4,7 @@
     const durationSeconds = Number(cfg.durationSeconds || 0);
 
     function trytestWebPrefix() {
-        var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '/trytest';
+        var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
         return b.replace(/\/+$/, '');
     }
     function absTrytestPath(path) {
