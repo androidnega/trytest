@@ -208,6 +208,7 @@ $navClass = static function (bool $on): string {
                                         <div
                                             class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-left trytest-quiz-card"
                                             data-quiz-id="<?php echo $qid; ?>"
+                                            data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
                                             data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
                                             data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
                                         >
@@ -229,7 +230,7 @@ $navClass = static function (bool $on): string {
                                                     <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
                                                 <?php endif; ?>
                                             </div>
-                                            <p class="trytest-quiz-countdown mt-2 hidden min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base" role="status" aria-live="polite"></p>
+                                            <div class="trytest-quiz-countdown mt-2 hidden min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base" role="status" aria-live="polite"></div>
                                         </div>
                                     <?php endforeach; ?>
                                     <?php if (empty($course['quizzes'])): ?>
@@ -380,8 +381,22 @@ $navClass = static function (bool $on): string {
                 return;
             }
             if (s && now >= s && (!e || now <= e)) {
-                el.className = countdownBase() + 'border-emerald-300 bg-emerald-100 text-emerald-950';
-                el.textContent = 'Open now';
+                el.className =
+                    countdownBase() +
+                    'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80';
+                var playHref = card.getAttribute('data-quiz-href') || '';
+                el.textContent = '';
+                if (playHref) {
+                    var link = document.createElement('a');
+                    link.href = playHref;
+                    link.className =
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-lg py-1.5 text-lg font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600 sm:text-2xl';
+                    link.setAttribute('aria-label', 'Start quiz');
+                    link.textContent = 'Start now';
+                    el.appendChild(link);
+                } else {
+                    el.textContent = 'Start now';
+                }
                 return;
             }
             el.textContent = '';
