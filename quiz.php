@@ -173,22 +173,46 @@ if ($durationSec > 0) {
             100% { transform: scale(1); }
         }
         .success-pop { animation: success-pop 0.45s ease-out; }
-        @keyframes wrong-flash {
-            0%, 100% { opacity: 0; }
-            40% { opacity: 1; }
+        @keyframes quiz-card-wrong-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.28); }
         }
-        #wrongFlash {
-            pointer-events: none;
-            position: fixed;
+        #quizCard.quiz-card--wrong {
+            animation: quiz-card-wrong-pulse 0.36s ease-out 2;
+            border-color: rgb(248 113 113);
+        }
+        @keyframes quiz-card-correct-glow {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            45% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.4); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        #quizCard.quiz-card--correct {
+            animation: quiz-card-correct-glow 0.65s ease-out;
+            border-color: rgb(52 211 153);
+            background-color: rgb(236 253 245);
+        }
+        .quiz-card-emoji-layer {
+            position: absolute;
             inset: 0;
-            z-index: 50;
-            background: rgba(245, 34, 45, 0.35);
+            pointer-events: none;
+            z-index: 15;
+            overflow: visible;
+        }
+        .quiz-fly-emoji {
+            position: absolute;
+            font-size: clamp(1.1rem, 4vw, 1.65rem);
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            animation: quiz-emoji-fly 1.35s ease-out forwards;
+        }
+        @keyframes quiz-emoji-fly {
+            0% { transform: translate(-50%, -50%) scale(0.15); opacity: 0; }
+            12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.85) rotate(var(--rot, 12deg)); opacity: 0; }
         }
     </style>
 </head>
 <body class="min-h-screen bg-white text-slate-900 pb-6">
-
-<div id="wrongFlash" class="hidden" aria-hidden="true"></div>
 
 <div class="sticky top-0 z-30 border-b border-slate-200 bg-white backdrop-blur">
     <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
@@ -229,7 +253,7 @@ if ($durationSec > 0) {
         </div>
     </div>
 
-    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm" id="quizCard">
+    <div class="relative overflow-visible rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-300" id="quizCard">
         <div id="questionBox"></div>
     </div>
 </main>

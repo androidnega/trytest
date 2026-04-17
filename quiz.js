@@ -24,8 +24,8 @@
     }
 
     const questionBox = document.getElementById('questionBox');
+    const quizCard = document.getElementById('quizCard');
     const progressLabel = document.getElementById('progressLabel');
-    const wrongFlash = document.getElementById('wrongFlash');
     const scoreValue = document.getElementById('scoreValue');
     const totalValue = document.getElementById('totalValue');
     const progressBar = document.getElementById('progressBar');
@@ -39,6 +39,7 @@
     let locked = false;
     let remainingSeconds = durationSeconds;
     let timerHandle = null;
+    let quizClockStarted = false;
 
     function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -123,16 +124,82 @@
         }, 1000);
     }
 
-    function triggerWrongFlash() {
-        if (!wrongFlash) return;
-        wrongFlash.classList.remove('hidden');
-        wrongFlash.style.animation = 'none';
-        void wrongFlash.offsetWidth;
-        wrongFlash.style.animation = 'wrong-flash 0.35s ease-out';
+    /** Countdown begins when the first question is on screen (not during loading). */
+    function maybeStartQuizTimer() {
+        if (quizClockStarted) return;
+        quizClockStarted = true;
+        if (remainingSeconds <= 0) {
+            if (timerLabel) timerLabel.textContent = 'No limit';
+            return;
+        }
+        startTimer();
+    }
+
+    function setFrozenTimerLabel() {
+        if (!timerLabel) return;
+        if (durationSeconds <= 0) {
+            timerLabel.textContent = 'No limit';
+            return;
+        }
+        timerLabel.textContent = formatClock(durationSeconds);
+    }
+
+    function triggerCardWrongFeedback() {
+        if (!quizCard) return;
+        quizCard.classList.remove('quiz-card--wrong');
+        void quizCard.offsetWidth;
+        quizCard.classList.add('quiz-card--wrong');
         setTimeout(function () {
-            wrongFlash.classList.add('hidden');
-            wrongFlash.style.animation = 'none';
-        }, 400);
+            quizCard.classList.remove('quiz-card--wrong');
+        }, 800);
+    }
+
+    function triggerCardCorrectFeedback() {
+        if (!quizCard) return;
+        quizCard.classList.remove('quiz-card--correct');
+        void quizCard.offsetWidth;
+        quizCard.classList.add('quiz-card--correct');
+        spawnCelebrationEmojis();
+        setTimeout(function () {
+            quizCard.classList.remove('quiz-card--correct');
+        }, 700);
+    }
+
+    function spawnCelebrationEmojis() {
+        if (!quizCard) return;
+        var layer = quizCard.querySelector('.quiz-card-emoji-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.className = 'quiz-card-emoji-layer';
+            layer.setAttribute('aria-hidden', 'true');
+            quizCard.appendChild(layer);
+        }
+        var faces = ['😀', '😊', '🙂', '😄', '🌟'];
+        var n = 12;
+        for (var i = 0; i < n; i++) {
+            var el = document.createElement('span');
+            el.className = 'quiz-fly-emoji';
+            el.textContent = faces[i % faces.length];
+            var lx = 12 + Math.random() * 76;
+            var ly = 15 + Math.random() * 45;
+            el.style.left = lx + '%';
+            el.style.top = ly + '%';
+            var angle = Math.random() * Math.PI * 2;
+            var dist = 55 + Math.random() * 95;
+            var dx = Math.round(Math.cos(angle) * dist);
+            var dy = Math.round(Math.sin(angle) * dist) - 25;
+            var rot = Math.round((Math.random() - 0.5) * 40);
+            el.style.setProperty('--dx', dx + 'px');
+            el.style.setProperty('--dy', dy + 'px');
+            el.style.setProperty('--rot', rot + 'deg');
+            el.style.animationDelay = i * 0.04 + 's';
+            layer.appendChild(el);
+            (function (node) {
+                setTimeout(function () {
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                }, 1600);
+            })(el);
+        }
     }
 
     function escapeHtml(s) {
@@ -252,7 +319,7 @@
         const safeQuestion = escapeHtml(questionRaw);
         const inlineInput =
             '<input type="text" id="fillInput" autocomplete="off" ' +
-            'class="inline-block align-middle border-b-2 border-slate-400 bg-white px-2 py-1 mx-1 w-32 text-center text-slate-800 focus:border-[#2C6A7D] focus:outline-none transition-all" ' +
+            'class="inline-block align-middle border-b-2 border-slate-400 bg-white px-2 py-1 mx-1 w-32 text-center text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-0 transition-all" ' +
             'placeholder="answer">';
         const questionWithBlank = safeQuestion.includes('___')
             ? safeQuestion.replace('___', inlineInput)
@@ -269,6 +336,12 @@
     function showLoadedQuestion(q) {
         locked = false;
         setProgress();
+        maybeStartQuizTimer();
+        if (quizCard) {
+            var oldLayer = quizCard.querySelector('.quiz-card-emoji-layer');
+            if (oldLayer) oldLayer.remove();
+            quizCard.classList.remove('quiz-card--wrong', 'quiz-card--correct');
+        }
 
         const type = (q.question_type || q.type || 'mcq').toLowerCase();
         const title =
@@ -345,7 +418,7 @@
         if (document.getElementById('nextBtn')) return;
         questionBox.insertAdjacentHTML(
             'beforeend',
-            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-2xl bg-[#2C6A7D] p-3.5 text-sm font-bold text-white shadow-lg">Continue</button>'
+            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-2xl border-2 border-slate-800 bg-slate-900 p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800">Continue</button>'
         );
         const nextBtn = document.getElementById('nextBtn');
         if (nextBtn) {
@@ -363,17 +436,19 @@
 
         if (ok) {
             btn.className =
-                'option w-full rounded-2xl border border-[#2C6A7D] bg-[#2C6A7D] p-4 text-left text-base font-semibold text-white success-pop';
-            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block" aria-hidden="true">✓</span>');
+                'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white success-pop shadow-sm';
+            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
             score++;
             setScoreDisplay();
+            triggerCardCorrectFeedback();
         } else {
             btn.className =
-                'option w-full rounded-2xl border border-[#E50914] bg-[#E50914] p-4 text-left text-base font-semibold text-white';
+                'option w-full rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-left text-base font-semibold text-white shadow-sm';
+            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">❌</span>');
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
-            triggerWrongFlash();
+            triggerCardWrongFeedback();
             highlightCorrectMcq(correct);
         }
 
@@ -385,7 +460,10 @@
             const val = b.getAttribute('data-option') || '';
             if (normalize(val) === normalize(correct)) {
                 b.className =
-                    'option w-full rounded-2xl border border-[#2C6A7D] bg-[#2C6A7D] p-4 text-left text-base font-semibold text-white';
+                    'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white shadow-sm';
+                if (!b.textContent.includes('✅')) {
+                    b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
+                }
             }
         });
     }
@@ -398,20 +476,23 @@
         const ok = isCorrectAnswer(selected, correct);
 
         if (ok) {
-            input.classList.add('ring-2', 'ring-[#2C6A7D]', 'border-[#2C6A7D]');
+            input.classList.remove('ring-red-500', 'border-red-500');
+            input.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
             submit.className =
-                'w-full rounded-2xl bg-[#2C6A7D] p-4 text-base font-semibold text-white success-pop';
-            submit.textContent = 'Correct ✓';
+                'w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-base font-semibold text-white success-pop shadow-sm';
+            submit.innerHTML = 'Correct <span aria-hidden="true">✅</span>';
             score++;
             setScoreDisplay();
+            triggerCardCorrectFeedback();
         } else {
-            input.classList.add('ring-2', 'ring-[#E50914]', 'border-[#E50914]');
-            submit.className = 'w-full rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white';
-            submit.textContent = 'Wrong';
+            input.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+            submit.className =
+                'w-full rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-base font-semibold text-white shadow-sm';
+            submit.innerHTML = 'Wrong <span aria-hidden="true">❌</span>';
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
-            triggerWrongFlash();
+            triggerCardWrongFeedback();
         }
 
         renderNextButton();
@@ -473,7 +554,8 @@
         setScoreDisplay();
         setStatus('Starting', 'ok');
         remainingSeconds = durationSeconds;
-        startTimer();
+        quizClockStarted = false;
+        setFrozenTimerLabel();
 
         loadQuestionIds()
             .then(function (ids) {

@@ -80,9 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Selected course does not exist.';
             } else {
                 $level = (string) ($course['level'] ?? '');
+                $durationCreate = isset($_POST['duration_minutes']) ? max(0, (int) $_POST['duration_minutes']) : 0;
+                $durationCreateSql = $durationCreate > 0 ? $durationCreate : null;
                 $db->prepare(
-                    'INSERT INTO quizzes (title, level, course_id, quiz_starts_at, quiz_ends_at) VALUES (?, ?, ?, ?, ?)'
-                )->execute([$title, $level, $courseId, $startsSql, $endsSql]);
+                    'INSERT INTO quizzes (title, level, course_id, quiz_starts_at, quiz_ends_at, duration_minutes) VALUES (?, ?, ?, ?, ?, ?)'
+                )->execute([$title, $level, $courseId, $startsSql, $endsSql, $durationCreateSql]);
                 $quizId = (int) $db->lastInsertId();
                 $db->prepare('INSERT OR IGNORE INTO quiz_courses (quiz_id, course_id) VALUES (?, ?)')->execute([$quizId, $courseId]);
                 $message = 'Quiz created for level ' . $level . '.';
@@ -98,8 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($startsSql !== null && $endsSql !== null && strtotime($endsSql) < strtotime($startsSql)) {
             $error = 'Quiz end must be on or after quiz start.';
         } else {
-            $db->prepare('UPDATE quizzes SET quiz_starts_at = ?, quiz_ends_at = ? WHERE id = ?')->execute([$startsSql, $endsSql, $id]);
-            $message = 'Quiz schedule updated.';
+            $durationUp = isset($_POST['duration_minutes']) ? max(0, (int) $_POST['duration_minutes']) : 0;
+            $durationUpSql = $durationUp > 0 ? $durationUp : null;
+            $db->prepare('UPDATE quizzes SET quiz_starts_at = ?, quiz_ends_at = ?, duration_minutes = ? WHERE id = ?')->execute([$startsSql, $endsSql, $durationUpSql, $id]);
+            $message = 'Quiz schedule and time limit updated.';
         }
     }
     if ($action === 'delete_quiz') {
@@ -125,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $courses = $db->query('SELECT id, code, title, level, department FROM courses ORDER BY id DESC')->fetchAll();
 $quizzes = $db->query(
-    'SELECT q.id, q.title, q.level, q.quiz_starts_at, q.quiz_ends_at, c.code AS course_code, c.title AS course_title
+    'SELECT q.id, q.title, q.level, q.quiz_starts_at, q.quiz_ends_at, q.duration_minutes, c.code AS course_code, c.title AS course_title
      FROM quizzes q
      LEFT JOIN courses c ON c.id = q.course_id
      ORDER BY q.id DESC'
@@ -193,6 +197,10 @@ foreach ($questionRows as $row) {
                         </div>
                     </div>
                     <p class="text-[11px] text-slate-500">Leave both empty for always-on access. Students see countdowns on their dashboard.</p>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Student time limit <span class="text-slate-400 font-normal">(minutes, optional)</span></label>
+                        <input class="w-full border rounded-lg px-3 py-2" type="number" name="duration_minutes" min="0" step="1" placeholder="0 = no limit; timer starts when they see Q1">
+                    </div>
                     <button class="w-full bg-emerald-600 text-white rounded-lg py-2 font-medium">Add Quiz</button>
                 </form>
             </section>
@@ -249,7 +257,16 @@ foreach ($questionRows as $row) {
                                         <input class="w-full border rounded px-2 py-1.5 text-xs" type="datetime-local" name="quiz_ends_at" value="<?php echo htmlspecialchars(trytest_sql_datetime_to_datetime_local(isset($quiz['quiz_ends_at']) ? (string) $quiz['quiz_ends_at'] : ''), ENT_QUOTES, 'UTF-8'); ?>">
                                     </div>
                                 </div>
-                                <button type="submit" class="text-xs font-medium text-indigo-600 hover:underline">Save schedule</button>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">Time limit (min)</label>
+                                    <?php
+                                    $dmVal = isset($quiz['duration_minutes']) && $quiz['duration_minutes'] !== null && (int) $quiz['duration_minutes'] > 0
+                                        ? (int) $quiz['duration_minutes']
+                                        : '';
+                                    ?>
+                                    <input class="w-full border rounded px-2 py-1.5 text-xs" type="number" name="duration_minutes" min="0" step="1" value="<?php echo $dmVal !== '' ? (int) $dmVal : ''; ?>" placeholder="0 = none">
+                                </div>
+                                <button type="submit" class="text-xs font-medium text-indigo-600 hover:underline">Save schedule &amp; time limit</button>
                             </form>
                             <div id="quiz-<?php echo $quizId; ?>" class="mt-2 hidden space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
                                 <?php if ($quizQuestions): ?>
