@@ -18,6 +18,8 @@ declare(strict_types=1);
 /** @var list<array<string,mixed>> $recentAttempts */
 /** @var list<array<string,mixed>> $levelLeaderboardRows */
 /** @var list<array<string,mixed>> $departmentOptions */
+/** @var bool $needsDepartmentSetup */
+/** @var string $departmentUpdateError */
 /** @var array<string,mixed>|null $doneBlock */
 
 $h = static function (string $s): string {
@@ -28,6 +30,8 @@ $tabHome = $activeTab === 'home';
 $tabRank = $activeTab === 'rank';
 $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
+$needsDepartmentSetup = !empty($needsDepartmentSetup);
+$departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $downloadsNavBadge = '';
 if ($downloadsBadgeCount > 0) {
@@ -87,6 +91,28 @@ $navClass = static function (bool $on): string {
     </header>
 
     <main class="mx-auto w-full max-w-5xl px-4 pt-4">
+        <?php if ($needsDepartmentSetup): ?>
+            <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm" role="region" aria-labelledby="dept-setup-title">
+                <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950">Choose your program</h2>
+                <p class="mt-1 text-xs text-amber-900/90">Your account has no program set yet. Pick the one that matches you so quizzes and downloads line up with your class.</p>
+                <?php if ($departmentUpdateError !== ''): ?>
+                    <p class="mt-2 rounded-lg bg-red-100 px-3 py-2 text-xs font-medium text-red-800"><?php echo $h($departmentUpdateError); ?></p>
+                <?php endif; ?>
+                <form method="post" action="<?php echo $h($dashboardUrl); ?>" class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                    <input type="hidden" name="action" value="update_student_department">
+                    <label class="block min-w-0 flex-1 text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-amber-950/80">Program / department</span>
+                        <select name="department" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="">Select…</option>
+                            <?php foreach ($departmentOptions as $depOpt): ?>
+                                <option value="<?php echo $h((string) ($depOpt['value'] ?? '')); ?>"><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <button type="submit" class="w-full shrink-0 rounded-lg bg-[#2C6A7D] px-5 py-2 text-sm font-bold text-white hover:bg-[#24586a] sm:w-auto">Save program</button>
+                </form>
+            </section>
+        <?php endif; ?>
         <?php if (is_array($doneBlock) && !empty($doneBlock['quiz_id'])): ?>
             <?php $acc = $doneBlock['total'] > 0 ? (int) round(100 * (int) $doneBlock['score'] / (int) $doneBlock['total']) : 0; ?>
             <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
@@ -99,7 +125,13 @@ $navClass = static function (bool $on): string {
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
                     <p class="text-center text-sm font-semibold text-[#2C6A7D]">Your rank on this quiz: #<?php echo (int) $doneBlock['rank']; ?></p>
                 <?php endif; ?>
-                <a href="<?php echo $h($dashboardUrl); ?>" class="mt-4 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
+                <?php if (!empty($doneBlock['can_retry'])): ?>
+                    <p class="mt-3 text-center text-xs leading-snug text-slate-600">You can <strong class="text-slate-800">take this quiz again</strong> while it stays open. Each round is saved; the leaderboard uses your best score.</p>
+                    <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($doneBlock['quiz_id'] ?? 0); ?>" class="mt-3 block w-full rounded-xl border-2 border-[#2C6A7D] bg-white py-3 text-center text-sm font-bold text-[#2C6A7D] shadow-sm hover:bg-cyan-50/80">Try again</a>
+                <?php else: ?>
+                    <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts.</p>
+                <?php endif; ?>
+                <a href="<?php echo $h($dashboardUrl); ?>" class="mt-3 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
             </section>
 
             <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-4">
@@ -185,6 +217,9 @@ $navClass = static function (bool $on): string {
                                                         <?php echo $h($qtitle); ?>
                                                     </a>
                                                     <p class="mt-1 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions · n/' . (string) $qc); ?></p>
+                                                    <?php if ($canPlay && !empty($qz['user_has_attempt'])): ?>
+                                                        <p class="mt-0.5 text-[9px] font-semibold leading-tight text-[#2C6A7D]">You have completed this before — tap the title to retry.</p>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <?php if ($canPlay): ?>
                                                     <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>

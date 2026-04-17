@@ -34,6 +34,7 @@ function trytest_generate_student_password(): string
 }
 
 $error = '';
+$departmentUpdateError = '';
 $message = '';
 $generatedPassword = '';
 $enteredIndex = '';
@@ -56,6 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'update_student_department' && !empty($_SESSION['user_id'])) {
+        $uid = (int) $_SESSION['user_id'];
+        $deptRaw = (string) ($_POST['department'] ?? '');
+        if ($departmentOptions === []) {
+            trytest_redirect(trytest_url('dashboard'));
+        }
+        $resolvedDept = trytest_resolve_department_for_save($deptRaw, $departmentOptions);
+        if ($resolvedDept === null) {
+            $departmentUpdateError = 'Choose your program from the list, then save.';
+        } else {
+            $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $uid]);
+            $_SESSION['user_department'] = $resolvedDept;
+            trytest_redirect(trytest_url('dashboard'));
+        }
+    }
 
     if ($action === 'check_index') {
         $indexNumber = strtoupper(trim((string) ($_POST['index_number'] ?? '')));
@@ -123,19 +140,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($indexNumber === '' || $level === '') {
             $error = 'Index number and level are required.';
         } else {
-            $exists = $db->prepare('SELECT id FROM users WHERE index_number = ?');
-            $exists->execute([$indexNumber]);
-            if ($exists->fetch()) {
-                $error = 'Account already exists. Use password login.';
-                $loginMode = 'existing';
+            $resolvedDept = trytest_resolve_department_for_save($department, $departmentOptions);
+            if ($departmentOptions !== [] && $resolvedDept === null) {
+                $error = 'Please choose your program / department from the list.';
             } else {
-                $plainPassword = trytest_generate_student_password();
-                $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
-                $db->prepare('INSERT INTO users (index_number, level, password_hash, department) VALUES (?, ?, ?, ?)')
-                    ->execute([$indexNumber, $level, $passwordHash, $department]);
-                $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
-                $generatedPassword = $plainPassword;
-                $loginMode = 'index';
+                $departmentToSave = (string) $resolvedDept;
+                $exists = $db->prepare('SELECT id FROM users WHERE index_number = ?');
+                $exists->execute([$indexNumber]);
+                if ($exists->fetch()) {
+                    $error = 'Account already exists. Use password login.';
+                    $loginMode = 'existing';
+                } else {
+                    $plainPassword = trytest_generate_student_password();
+                    $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
+                    $db->prepare('INSERT INTO users (index_number, level, password_hash, department) VALUES (?, ?, ?, ?)')
+                        ->execute([$indexNumber, $level, $passwordHash, $departmentToSave]);
+                    $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
+                    $generatedPassword = $plainPassword;
+                    $loginMode = 'index';
+                }
             }
         }
     }
@@ -250,6 +273,23 @@ if ($isUserLoggedIn) {
         $coursesWithQuizzes[] = array_merge($course, ['quizzes' => $quizStmt->fetchAll()]);
     }
 
+    $attemptedQuizIds = [];
+    if ($userId > 0) {
+        $aq = $db->prepare('SELECT DISTINCT quiz_id FROM scores WHERE user_id = ?');
+        $aq->execute([$userId]);
+        foreach ($aq->fetchAll(PDO::FETCH_COLUMN) as $qid) {
+            $attemptedQuizIds[(int) $qid] = true;
+        }
+    }
+    foreach ($coursesWithQuizzes as $ci => $courseRow) {
+        $quizzes = $courseRow['quizzes'] ?? [];
+        foreach ($quizzes as $qi => $qz) {
+            $qid = (int) ($qz['id'] ?? 0);
+            $quizzes[$qi]['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
+        }
+        $coursesWithQuizzes[$ci]['quizzes'] = $quizzes;
+    }
+
     $recentStmt = $db->prepare(
         'SELECT s.quiz_id, s.score, s.total, s.created_at, q.title AS quiz_title
          FROM scores s
@@ -271,9 +311,17 @@ if ($isUserLoggedIn) {
         $lastStmt->execute([$doneQuizId, $userId]);
         $lastScore = $lastStmt->fetch();
         if ($lastScore) {
-            $tq = $db->prepare('SELECT title FROM quizzes WHERE id = ?');
+            $tq = $db->prepare('SELECT title, quiz_starts_at, quiz_ends_at FROM quizzes WHERE id = ?');
             $tq->execute([$doneQuizId]);
-            $quizTitleDone = (string) ($tq->fetchColumn() ?: 'Quiz');
+            $quizMeta = $tq->fetch(PDO::FETCH_ASSOC) ?: [];
+            $quizTitleDone = (string) ($quizMeta['title'] ?? 'Quiz');
+            $stDone = isset($quizMeta['quiz_starts_at']) ? trim((string) $quizMeta['quiz_starts_at']) : '';
+            $enDone = isset($quizMeta['quiz_ends_at']) ? trim((string) $quizMeta['quiz_ends_at']) : '';
+            $retryPhase = trytest_quiz_schedule_phase(
+                $stDone !== '' ? $stDone : null,
+                $enDone !== '' ? $enDone : null
+            );
+            $canRetryQuiz = ($retryPhase === 'open' || $retryPhase === 'unset');
             $boardRows = trytest_quiz_leaderboard($db, $doneQuizId, 40);
             $userRank = null;
             $rn = 1;
@@ -291,6 +339,7 @@ if ($isUserLoggedIn) {
                 'total' => (int) $lastScore['total'],
                 'rank' => $userRank,
                 'board' => $boardRows,
+                'can_retry' => $canRetryQuiz,
             ];
             $activeTab = 'home';
         }
@@ -327,6 +376,8 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
     $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
+    $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
+    $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">
@@ -418,15 +469,17 @@ else: ?>
                                         <option value="300">300</option>
                                         <option value="400">400</option>
                                     </select>
-                                    <label class="block text-left text-xs font-medium text-slate-600">Program / department <span class="text-slate-400">(optional)</span></label>
-                                    <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" name="department">
-                                        <option value="">Match any course program</option>
+                                    <label class="block text-left text-xs font-medium text-slate-600">Program / department<?php if ($departmentOptions): ?> <span class="text-red-600">*</span><?php else: ?> <span class="text-slate-400">(optional)</span><?php endif; ?></label>
+                                    <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" name="department" <?php echo $departmentOptions ? 'required' : ''; ?>>
+                                        <option value=""><?php echo $departmentOptions ? 'Select your program…' : 'Match any course program'; ?></option>
                                         <?php foreach ($departmentOptions as $depOpt): ?>
                                             <option value="<?php echo htmlspecialchars((string) ($depOpt['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($depOpt['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                     <?php if (!$departmentOptions): ?>
                                         <p class="text-xs text-slate-500">Your admin can add program names under Manager → Departments, or set a department on a course; until then, all courses for your level are shown.</p>
+                                    <?php else: ?>
+                                        <p class="text-xs text-slate-500">Required so quizzes and files match your program.</p>
                                     <?php endif; ?>
                                     <button class="w-full rounded-lg bg-indigo-600 py-2 font-medium text-white" type="submit">Create account</button>
                                 </form>
