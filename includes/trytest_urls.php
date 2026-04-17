@@ -153,14 +153,25 @@ function trytest_redirect_leaked_server_path_prefix(): void
 
 function trytest_request_path(): string
 {
-    $p = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
-    $p = '/' . trim(str_replace('\\', '/', (string) $p), '/');
+    $raw = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $orig = (string) ($_SERVER['HTTP_X_ORIGINAL_URL'] ?? '');
+    if ($orig !== '' && str_starts_with($orig, '/')) {
+        $raw = $orig;
+    }
+    $p = parse_url($raw, PHP_URL_PATH);
+    if (!is_string($p) || $p === '') {
+        $p = '/';
+    }
+    $p = '/' . trim(str_replace('\\', '/', $p), '/');
     return $p === '//' ? '/' : $p;
 }
 
 /** True when the request targets the public homepage (not /dashboard, /quiz, etc.). */
 function trytest_is_app_root_request(): bool
 {
+    if (trytest_is_admin_entry_request()) {
+        return false;
+    }
     $p = trytest_request_path();
     if ($p === '/index.php') {
         return true;
@@ -192,6 +203,7 @@ function trytest_is_dashboard_root_request(): bool
 
 /**
  * True when the request is the admin sign-in URL (/admin), respecting base_path.
+ * Also true while running admin_login.php (rewritten from /admin on some stacks).
  */
 function trytest_is_admin_entry_request(): bool
 {
@@ -199,7 +211,14 @@ function trytest_is_admin_entry_request(): bool
     $b = trytest_base_path();
     $admin = $b === '' ? '/admin' : $b . '/admin';
     $admin = rtrim($admin, '/') ?: '/';
-    return $p === $admin;
+    if ($p === $admin || $p === $admin . '/index.php') {
+        return true;
+    }
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($script !== '' && str_ends_with($script, 'admin_login.php')) {
+        return true;
+    }
+    return false;
 }
 
 /**

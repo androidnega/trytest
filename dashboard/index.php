@@ -13,6 +13,9 @@ if (trytest_is_admin_entry_request()) {
     if (!empty($_SESSION['is_admin'])) {
         trytest_redirect(trytest_url('dashboard'), 302);
     }
+    if (!empty($_SESSION['user_id'])) {
+        trytest_redirect(trytest_url('dashboard'), 302);
+    }
     require dirname(__DIR__) . '/dashboard.php';
     exit;
 }
