@@ -367,19 +367,20 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
     }
     require_once __DIR__ . '/trytest_urls.php';
     if (trytest_youtube_download_allowed($settings)) {
-        return '<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">'
+        return '<div id="trytest-downloads-yt-gate" class="scroll-mt-24 mb-4">'
+            . '<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">'
             . '<p class="font-bold text-emerald-950">Downloads unlocked for this session</p>'
-            . '<p class="mt-1 text-xs leading-snug text-emerald-800/95">You can use <strong>Download</strong> on any file below. This lasts about a week on this device.</p></div>';
+            . '<p class="mt-1 text-xs leading-snug text-emerald-800/95">You can use the <strong>Download</strong> buttons on each file below. This lasts about a week on this device.</p></div></div>';
     }
     $ch = trim((string) ($settings['channel_id'] ?? ''));
     $action = htmlspecialchars($formActionUrl, ENT_QUOTES, 'UTF-8');
     $ytUrl = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
     $codeConfigured = trim((string) ($settings['pdf_unlock_code'] ?? '')) !== '';
     $err = trim($gateError);
-    $out = '<div class="mb-4 rounded-xl border-2 border-red-300 bg-gradient-to-b from-red-50 via-white to-amber-50 p-4 shadow-md ring-1 ring-red-100">';
-    $out .= '<p class="text-center text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube · activate downloads</p>';
-    $out .= '<h2 class="mt-2 text-center text-base font-bold leading-snug text-slate-900">Subscribe on YouTube, then confirm here</h2>';
-    $out .= '<p class="mt-1.5 text-center text-xs text-slate-600">Until you do, PDF downloads stay locked. Same step as when you open a file — you can unlock once here for every document.</p>';
+    $out = '<div id="trytest-downloads-yt-gate" class="scroll-mt-24 mb-4 rounded-xl border-2 border-red-300 bg-gradient-to-b from-red-50 via-white to-amber-50 p-4 shadow-md ring-1 ring-red-100">';
+    $out .= '<p class="text-center text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube · subscribe first</p>';
+    $out .= '<h2 class="mt-2 text-center text-base font-bold leading-snug text-slate-900">Subscribe on YouTube, then unlock downloads</h2>';
+    $out .= '<p class="mt-1.5 text-center text-xs text-slate-600">The <strong>Download</strong> buttons on your files stay off until you finish the steps here. Open the channel, subscribe if you want to support the work, then tap the green unlock button.</p>';
     if ($err !== '') {
         $out .= '<p class="mt-3 rounded-lg bg-red-100 px-3 py-2 text-center text-xs font-medium text-red-900">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
     }
@@ -408,6 +409,31 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
     $out .= '</div>';
 
     return $out;
+}
+
+/**
+ * Thank-you strip after a completed quiz (dashboard) when a channel is configured.
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ */
+function trytest_youtube_quiz_complete_subscribe_html(array $settings): string
+{
+    $ch = trim((string) ($settings['channel_id'] ?? ''));
+    if ($ch === '') {
+        return '';
+    }
+    $u = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
+    $label = !empty($settings['gate_active'])
+        ? 'Subscribe for more quizzes, PDFs, and updates.'
+        : 'Subscribe on YouTube for more quizzes and updates.';
+
+    return '<div class="rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 via-white to-amber-50 px-4 py-4 text-center shadow-sm ring-1 ring-red-100/80">'
+        . '<p class="text-xs font-bold uppercase tracking-wider text-red-600">Thank you</p>'
+        . '<p class="mt-1 text-sm font-semibold text-slate-900">Show some love — subscribe to my YouTube channel</p>'
+        . '<p class="mt-1 text-xs leading-relaxed text-slate-600">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</p>'
+        . '<a href="' . $u . '" target="_blank" rel="noopener" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">'
+        . '<span aria-hidden="true">▶</span> Open YouTube &amp; subscribe</a>'
+        . '</div>';
 }
 
 /**

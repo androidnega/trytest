@@ -21,6 +21,7 @@ declare(strict_types=1);
 /** @var bool $needsDepartmentSetup */
 /** @var string $departmentUpdateError */
 /** @var array<string,mixed>|null $doneBlock */
+/** @var string $quizDoneYoutubeHtml */
 
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -32,6 +33,7 @@ $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
 $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
+$quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $downloadsNavBadge = '';
 if ($downloadsBadgeCount > 0) {
@@ -124,6 +126,9 @@ $navClass = static function (bool $on): string {
                 <p class="mt-3 text-center text-sm text-slate-600">Accuracy <?php echo $acc; ?>%</p>
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
                     <p class="text-center text-sm font-semibold text-[#2C6A7D]">Your rank on this quiz: #<?php echo (int) $doneBlock['rank']; ?></p>
+                <?php endif; ?>
+                <?php if ($quizDoneYoutubeHtml !== ''): ?>
+                    <div class="mt-4"><?php echo $quizDoneYoutubeHtml; ?></div>
                 <?php endif; ?>
                 <?php if (!empty($doneBlock['can_retry'])): ?>
                     <p class="mt-3 text-center text-xs leading-snug text-slate-600">You can <strong class="text-slate-800">take this quiz again</strong> while it stays open. Each round is saved; the leaderboard uses your best score.</p>

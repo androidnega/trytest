@@ -79,6 +79,7 @@ $updSeen->execute([$userId]);
 $dashboardUrl = trytest_url('dashboard');
 $downloadResourceBase = trytest_url('download_resource');
 $ytActivationPanel = trytest_youtube_downloads_activation_panel_html($yt, trytest_url('downloads'), $ytGateErr);
+$downloadsLocked = !empty($yt['gate_active']) && !trytest_youtube_download_allowed($yt);
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -111,6 +112,8 @@ $h = static function (string $s): string {
     <main class="mx-auto max-w-lg px-4 py-4">
         <?php if ($ytActivationPanel !== ''): ?>
             <div class="text-left"><?php echo $ytActivationPanel; ?></div>
+        <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
+            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup so subscribe and download can work.</div>
         <?php endif; ?>
         <?php if (!$studentDocuments): ?>
             <p class="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">No files available.</p>
@@ -138,6 +141,12 @@ $h = static function (string $s): string {
                         <?php if ($eligible): ?>
                             <?php if (!empty($doc['downloaded'])): ?>
                                 <span class="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 py-1.5 text-center text-xs font-bold text-emerald-800">Downloaded</span>
+                            <?php elseif ($downloadsLocked): ?>
+                                <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50/90 px-2 py-2 text-center">
+                                    <p class="text-[11px] font-semibold text-amber-950">Subscribe first</p>
+                                    <p class="mt-0.5 text-[10px] leading-snug text-amber-900/90">Use the red <strong>YouTube</strong> block above, then your download buttons turn on.</p>
+                                    <a href="#trytest-downloads-yt-gate" class="mt-1.5 inline-block text-[10px] font-bold text-[#2C6A7D] underline decoration-2 underline-offset-2">Jump to subscribe</a>
+                                </div>
                             <?php else: ?>
                                 <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-2 block w-full rounded-lg bg-[#2C6A7D] py-1.5 text-center text-xs font-bold text-white hover:bg-[#24586a]">Download</a>
                             <?php endif; ?>
