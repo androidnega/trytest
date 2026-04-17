@@ -153,12 +153,7 @@ function trytest_redirect_leaked_server_path_prefix(): void
 
 function trytest_request_path(): string
 {
-    $raw = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-    $orig = (string) ($_SERVER['HTTP_X_ORIGINAL_URL'] ?? '');
-    if ($orig !== '' && str_starts_with($orig, '/')) {
-        $raw = $orig;
-    }
-    $p = parse_url($raw, PHP_URL_PATH);
+    $p = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
     if (!is_string($p) || $p === '') {
         $p = '/';
     }
