@@ -15,6 +15,71 @@ function trytest_youtube_ensure_google_php(): void
     }
 }
 
+/** True for env values like 1, true, yes, on (case-insensitive). */
+function trytest_youtube_truthy_env(string $name): bool
+{
+    $v = getenv($name);
+    if ($v === false) {
+        return false;
+    }
+    $v = strtolower(trim((string) $v));
+
+    return in_array($v, ['1', 'true', 'yes', 'on'], true);
+}
+
+/**
+ * @return list<string>
+ */
+function trytest_split_video_urls(string $raw): array
+{
+    $parts = preg_split('/\r\n|\r|\n/', $raw) ?: [];
+    $out = [];
+    foreach ($parts as $line) {
+        $u = trim((string) $line);
+        if ($u === '') {
+            continue;
+        }
+        if (!preg_match('#^https?://#i', $u)) {
+            continue;
+        }
+        $out[] = $u;
+    }
+    return array_values(array_unique($out));
+}
+
+function trytest_youtube_extract_video_id(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+    $p = parse_url($url);
+    if (!is_array($p)) {
+        return '';
+    }
+    $host = strtolower((string) ($p['host'] ?? ''));
+    $path = (string) ($p['path'] ?? '');
+    if (str_contains($host, 'youtu.be')) {
+        $id = trim($path, '/');
+        return preg_match('/^[A-Za-z0-9_-]{6,20}$/', $id) === 1 ? $id : '';
+    }
+    parse_str((string) ($p['query'] ?? ''), $q);
+    $v = trim((string) ($q['v'] ?? ''));
+    if ($v !== '' && preg_match('/^[A-Za-z0-9_-]{6,20}$/', $v) === 1) {
+        return $v;
+    }
+    if (preg_match('#/(embed|shorts)/([A-Za-z0-9_-]{6,20})#', $path, $m)) {
+        return (string) ($m[2] ?? '');
+    }
+    return '';
+}
+
+function trytest_youtube_embed_url(string $videoUrl): string
+{
+    $id = trytest_youtube_extract_video_id($videoUrl);
+    return $id === '' ? '' : ('https://www.youtube.com/embed/' . rawurlencode($id) . '?rel=0');
+}
+
 /**
  * Load merged settings: database row (admin UI) overrides file/env fallbacks.
  * Optional `config/google.php` fills any remaining blanks (production-friendly).
@@ -26,9 +91,11 @@ function trytest_youtube_ensure_google_php(): void
  *   channel_id:string,
  *   gate_enabled:bool,
  *   gate_active:bool,
+ *   pdf_gate_from_config:bool,
  *   credentials_complete:bool,
  *   oauth_gate_ready:bool,
- *   pdf_unlock_code:string
+ *   pdf_unlock_code:string,
+ *   ...
  * }
  */
 function trytest_youtube_settings(): array
@@ -48,12 +115,18 @@ function trytest_youtube_settings(): array
     $dRedirect = '';
     $dChannel = '';
     $dPdfCode = '';
+    $dDashboardVideosEnabled = false;
+    $dDashboardVideoUrls = '';
+    $dQuizAdEnabled = false;
+    $dQuizAdEveryN = 20;
+    $dQuizAdWatchSeconds = 20;
+    $dQuizAdVideoUrls = '';
 
     global $db;
     if (isset($db) && $db instanceof PDO) {
         try {
             $st = $db->query(
-                'SELECT gate_enabled, client_id, client_secret, redirect_uri, channel_id, pdf_unlock_code FROM youtube_app_settings WHERE id = 1'
+                'SELECT gate_enabled, client_id, client_secret, redirect_uri, channel_id, pdf_unlock_code, dashboard_videos_enabled, dashboard_video_urls, quiz_ad_enabled, quiz_ad_every_n, quiz_ad_watch_seconds, quiz_ad_video_urls FROM youtube_app_settings WHERE id = 1'
             );
             $r = $st ? $st->fetch(PDO::FETCH_ASSOC) : false;
             if (is_array($r)) {
@@ -63,6 +136,12 @@ function trytest_youtube_settings(): array
                 $dRedirect = trim((string) ($r['redirect_uri'] ?? ''));
                 $dChannel = trim((string) ($r['channel_id'] ?? ''));
                 $dPdfCode = trim((string) ($r['pdf_unlock_code'] ?? ''));
+                $dDashboardVideosEnabled = ((int) ($r['dashboard_videos_enabled'] ?? 0)) === 1;
+                $dDashboardVideoUrls = trim((string) ($r['dashboard_video_urls'] ?? ''));
+                $dQuizAdEnabled = ((int) ($r['quiz_ad_enabled'] ?? 0)) === 1;
+                $dQuizAdEveryN = max(1, (int) ($r['quiz_ad_every_n'] ?? 20));
+                $dQuizAdWatchSeconds = max(5, (int) ($r['quiz_ad_watch_seconds'] ?? 20));
+                $dQuizAdVideoUrls = trim((string) ($r['quiz_ad_video_urls'] ?? ''));
             }
         } catch (Throwable $e) {
             // table missing on very old DB — fall back to file only
@@ -92,8 +171,26 @@ function trytest_youtube_settings(): array
     if ($pdfUnlockCode === '' && defined('YOUTUBE_PDF_UNLOCK_CODE')) {
         $pdfUnlockCode = trim((string) YOUTUBE_PDF_UNLOCK_CODE);
     }
-    // Light PDF gate: on when admin toggles it (no OAuth required). OAuth remains optional for legacy API checks.
-    $gateActive = $rowGate;
+    // Light PDF gate: admin DB toggle, OR config/env when channel is known (covers env-only production installs).
+    $filePdfGate = !empty($file['pdf_gate_enabled']) || trytest_youtube_truthy_env('TRYTEST_YOUTUBE_PDF_GATE');
+    $pdfGateFromConfig = $filePdfGate && $channelId !== '';
+    $gateActive = $rowGate || $pdfGateFromConfig;
+    $dashboardVideosEnabled = $dDashboardVideosEnabled || !empty($file['dashboard_videos_enabled']) || trytest_youtube_truthy_env('TRYTEST_DASHBOARD_VIDEOS_ENABLED');
+    $dashboardVideoUrls = $dDashboardVideoUrls !== '' ? $dDashboardVideoUrls : trim((string) ($file['dashboard_video_urls'] ?? ''));
+    $quizAdEnabled = $dQuizAdEnabled || !empty($file['quiz_ad_enabled']) || trytest_youtube_truthy_env('TRYTEST_QUIZ_AD_ENABLED');
+    $quizAdEveryN = $dQuizAdEveryN > 0 ? $dQuizAdEveryN : (int) ($file['quiz_ad_every_n'] ?? 20);
+    $quizAdWatchSeconds = $dQuizAdWatchSeconds > 0 ? $dQuizAdWatchSeconds : (int) ($file['quiz_ad_watch_seconds'] ?? 20);
+    if ($quizAdEveryN < 1) {
+        $quizAdEveryN = 20;
+    }
+    if ($quizAdWatchSeconds < 5) {
+        $quizAdWatchSeconds = 20;
+    }
+    $quizAdVideoUrls = $dQuizAdVideoUrls !== '' ? $dQuizAdVideoUrls : trim((string) ($file['quiz_ad_video_urls'] ?? ''));
+    $dashboardVideos = trytest_split_video_urls($dashboardVideoUrls);
+    $quizAdVideos = trytest_split_video_urls($quizAdVideoUrls);
+    $quizAdEnabled = $quizAdEnabled && $quizAdVideos !== [];
+    $dashboardVideosEnabled = $dashboardVideosEnabled && $dashboardVideos !== [];
 
     return [
         'client_id' => $clientId,
@@ -103,8 +200,17 @@ function trytest_youtube_settings(): array
         'pdf_unlock_code' => $pdfUnlockCode,
         'gate_enabled' => $rowGate,
         'gate_active' => $gateActive,
+        'pdf_gate_from_config' => $pdfGateFromConfig,
         'credentials_complete' => $credentialsComplete,
         'oauth_gate_ready' => $rowGate && $credentialsComplete,
+        'dashboard_videos_enabled' => $dashboardVideosEnabled,
+        'dashboard_video_urls' => $dashboardVideoUrls,
+        'dashboard_videos' => $dashboardVideos,
+        'quiz_ad_enabled' => $quizAdEnabled,
+        'quiz_ad_every_n' => $quizAdEveryN,
+        'quiz_ad_watch_seconds' => $quizAdWatchSeconds,
+        'quiz_ad_video_urls' => $quizAdVideoUrls,
+        'quiz_ad_videos' => $quizAdVideos,
     ];
 }
 
@@ -412,6 +518,61 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
 }
 
 /**
+ * When the PDF gate is off but a channel is configured — still show subscribe support on Downloads.
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ */
+function trytest_youtube_downloads_soft_promo_html(array $settings): string
+{
+    if (!empty($settings['gate_active'])) {
+        return '';
+    }
+    $ch = trim((string) ($settings['channel_id'] ?? ''));
+    if ($ch === '') {
+        return '';
+    }
+    require_once __DIR__ . '/trytest_urls.php';
+    $u = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
+
+    return '<div class="mb-4 rounded-xl border border-red-100 bg-gradient-to-r from-red-50 to-amber-50 px-4 py-3 text-center shadow-sm ring-1 ring-red-100/80">'
+        . '<p class="text-xs font-semibold text-slate-900">Past papers &amp; weekly drops on YouTube</p>'
+        . '<p class="mt-1 text-[11px] text-slate-600">Subscribe so you do not miss new PDFs and quizzes.</p>'
+        . '<a href="' . $u . '" target="_blank" rel="noopener" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-red-700">'
+        . '<span aria-hidden="true">▶</span> Open channel &amp; subscribe</a></div>';
+}
+
+/**
+ * One-time-per-tab modal when PDFs are gated and this session is not unlocked yet.
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ */
+function trytest_youtube_downloads_locked_modal_html(array $settings): string
+{
+    if (empty($settings['gate_active']) || trytest_youtube_download_allowed($settings)) {
+        return '';
+    }
+    require_once __DIR__ . '/trytest_urls.php';
+    $ch = trim((string) ($settings['channel_id'] ?? ''));
+    $u = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
+    $openBtn = $ch !== ''
+        ? '<a href="' . $u . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube</a>'
+        : '';
+
+    return '<dialog id="trytestYtDlGatePop" class="max-w-[min(92vw,22rem)] rounded-2xl border-0 p-0 text-slate-900 shadow-2xl ring-1 ring-slate-200 backdrop:bg-black/40">'
+        . '<div class="border-b border-red-100 bg-gradient-to-r from-red-50 to-amber-50 px-4 py-3 text-center">'
+        . '<p class="text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube</p>'
+        . '<p class="mt-1 text-sm font-bold leading-snug">Subscribe first to unlock your downloads</p></div>'
+        . '<div class="space-y-3 px-4 py-4 text-center text-xs text-slate-600">'
+        . '<p>Use the big card on this page, or open the channel here — then tap <strong class="text-emerald-800">I have subscribed — unlock downloads</strong>.</p>'
+        . $openBtn
+        . '<button type="button" id="trytestYtDlGatePopClose" class="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">View page</button></div></dialog>'
+        . '<script>(function(){var d=document.getElementById("trytestYtDlGatePop");var c=document.getElementById("trytestYtDlGatePopClose");if(!d)return;function close(){try{d.close();}catch(e){}}'
+        . 'if(c)c.addEventListener("click",function(){close();try{document.getElementById("trytest-downloads-yt-gate")&&document.getElementById("trytest-downloads-yt-gate").scrollIntoView({behavior:"smooth",block:"start"});}catch(e2){}});'
+        . 'try{if(sessionStorage.getItem("trytest_yt_dl_pop")==="1")return;}catch(e3){}'
+        . 'try{if(typeof d.showModal==="function"){d.showModal();sessionStorage.setItem("trytest_yt_dl_pop","1");}}catch(e4){}})();</script>';
+}
+
+/**
  * Thank-you strip after a completed quiz (dashboard) when a channel is configured.
  *
  * @param array<string, mixed> $settings trytest_youtube_settings()
@@ -450,6 +611,67 @@ function trytest_youtube_promo_banner_html(array $settings): string
     return '<div class="rounded-xl bg-gradient-to-r from-red-50 to-amber-50 px-3 py-2 text-center text-[11px] font-medium text-slate-800 ring-1 ring-red-100">'
         . 'Past papers &amp; weekly PDF drops — <a class="font-bold text-red-700 underline decoration-red-300 underline-offset-2" href="'
         . $u . '" target="_blank" rel="noopener">subscribe on YouTube</a></div>';
+}
+
+/**
+ * Student dashboard YouTube gallery block.
+ *
+ * @param array<string,mixed> $settings
+ */
+function trytest_youtube_dashboard_videos_html(array $settings): string
+{
+    if (empty($settings['dashboard_videos_enabled'])) {
+        return '';
+    }
+    $videos = $settings['dashboard_videos'] ?? [];
+    if (!is_array($videos) || $videos === []) {
+        return '';
+    }
+    $cards = '';
+    foreach ($videos as $idx => $u) {
+        $url = trim((string) $u);
+        $embed = trytest_youtube_embed_url($url);
+        if ($embed === '') {
+            continue;
+        }
+        $cards .= '<article class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">'
+            . '<div class="aspect-video w-full bg-slate-100">'
+            . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Trytest video ' . (int) ($idx + 1) . '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+            . '</div>'
+            . '<div class="px-3 py-2 text-right"><a class="text-xs font-semibold text-red-600 hover:underline" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>'
+            . '</article>';
+    }
+    if ($cards === '') {
+        return '';
+    }
+    return '<section class="mb-6 rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 via-white to-amber-50 p-3 sm:p-4">'
+        . '<div class="mb-3 flex items-center justify-between gap-2"><h2 class="text-sm font-bold text-slate-900">Watch videos</h2><span class="text-[10px] font-semibold uppercase tracking-wide text-red-600">YouTube</span></div>'
+        . '<div class="grid grid-cols-1 gap-3 md:grid-cols-2">' . $cards . '</div>'
+        . '</section>';
+}
+
+/**
+ * @param array<string,mixed> $settings
+ * @return array{enabled:bool,every:int,watch_seconds:int,videos:list<string>}
+ */
+function trytest_youtube_quiz_ad_config(array $settings): array
+{
+    $videos = [];
+    foreach ((array) ($settings['quiz_ad_videos'] ?? []) as $u) {
+        $s = trim((string) $u);
+        if ($s !== '') {
+            $videos[] = $s;
+        }
+    }
+    $enabled = !empty($settings['quiz_ad_enabled']) && $videos !== [];
+    $every = max(1, (int) ($settings['quiz_ad_every_n'] ?? 20));
+    $watchSeconds = max(5, (int) ($settings['quiz_ad_watch_seconds'] ?? 20));
+    return [
+        'enabled' => $enabled,
+        'every' => $every,
+        'watch_seconds' => $watchSeconds,
+        'videos' => $videos,
+    ];
 }
 
 /**

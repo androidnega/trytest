@@ -351,10 +351,12 @@ if ($isUserLoggedIn) {
 
 $downloadsBadgeCount = $downloadsBadgeCount ?? 0;
 
+$ytSettings = trytest_youtube_settings();
 $quizDoneYoutubeHtml = '';
 if (is_array($doneBlock) && !empty($doneBlock['quiz_id'])) {
-    $quizDoneYoutubeHtml = trytest_youtube_quiz_complete_subscribe_html(trytest_youtube_settings());
+    $quizDoneYoutubeHtml = trytest_youtube_quiz_complete_subscribe_html($ytSettings);
 }
+$dashboardYoutubeVideosHtml = trytest_youtube_dashboard_videos_html($ytSettings);
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
@@ -384,6 +386,7 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
+    $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">

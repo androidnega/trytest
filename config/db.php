@@ -215,6 +215,13 @@ CREATE TABLE IF NOT EXISTS youtube_app_settings (
     client_secret TEXT NOT NULL DEFAULT \'\',
     redirect_uri TEXT NOT NULL DEFAULT \'\',
     channel_id TEXT NOT NULL DEFAULT \'\',
+    pdf_unlock_code TEXT NOT NULL DEFAULT \'\',
+    dashboard_videos_enabled INTEGER NOT NULL DEFAULT 0,
+    dashboard_video_urls TEXT NOT NULL DEFAULT \'\',
+    quiz_ad_enabled INTEGER NOT NULL DEFAULT 0,
+    quiz_ad_every_n INTEGER NOT NULL DEFAULT 20,
+    quiz_ad_watch_seconds INTEGER NOT NULL DEFAULT 20,
+    quiz_ad_video_urls TEXT NOT NULL DEFAULT \'\',
     updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
 );
 ');
@@ -222,14 +229,56 @@ $db->exec('INSERT OR IGNORE INTO youtube_app_settings (id, gate_enabled) VALUES 
 
 $ytCols = $db->query('PRAGMA table_info(youtube_app_settings)')->fetchAll();
 $hasYtPdfCode = false;
+$hasDashboardVideosEnabled = false;
+$hasDashboardVideoUrls = false;
+$hasQuizAdEnabled = false;
+$hasQuizAdEveryN = false;
+$hasQuizAdWatchSeconds = false;
+$hasQuizAdVideoUrls = false;
 foreach ($ytCols as $column) {
-    if (($column['name'] ?? '') === 'pdf_unlock_code') {
+    $n = (string) ($column['name'] ?? '');
+    if ($n === 'pdf_unlock_code') {
         $hasYtPdfCode = true;
-        break;
+    }
+    if ($n === 'dashboard_videos_enabled') {
+        $hasDashboardVideosEnabled = true;
+    }
+    if ($n === 'dashboard_video_urls') {
+        $hasDashboardVideoUrls = true;
+    }
+    if ($n === 'quiz_ad_enabled') {
+        $hasQuizAdEnabled = true;
+    }
+    if ($n === 'quiz_ad_every_n') {
+        $hasQuizAdEveryN = true;
+    }
+    if ($n === 'quiz_ad_watch_seconds') {
+        $hasQuizAdWatchSeconds = true;
+    }
+    if ($n === 'quiz_ad_video_urls') {
+        $hasQuizAdVideoUrls = true;
     }
 }
 if (!$hasYtPdfCode) {
     $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN pdf_unlock_code TEXT NOT NULL DEFAULT \'\'');
+}
+if (!$hasDashboardVideosEnabled) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN dashboard_videos_enabled INTEGER NOT NULL DEFAULT 0');
+}
+if (!$hasDashboardVideoUrls) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN dashboard_video_urls TEXT NOT NULL DEFAULT \'\'');
+}
+if (!$hasQuizAdEnabled) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN quiz_ad_enabled INTEGER NOT NULL DEFAULT 0');
+}
+if (!$hasQuizAdEveryN) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN quiz_ad_every_n INTEGER NOT NULL DEFAULT 20');
+}
+if (!$hasQuizAdWatchSeconds) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN quiz_ad_watch_seconds INTEGER NOT NULL DEFAULT 20');
+}
+if (!$hasQuizAdVideoUrls) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN quiz_ad_video_urls TEXT NOT NULL DEFAULT \'\'');
 }
 
 $db->exec('

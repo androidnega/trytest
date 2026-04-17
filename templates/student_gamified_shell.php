@@ -22,6 +22,7 @@ declare(strict_types=1);
 /** @var string $departmentUpdateError */
 /** @var array<string,mixed>|null $doneBlock */
 /** @var string $quizDoneYoutubeHtml */
+/** @var string $dashboardYoutubeVideosHtml */
 
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -34,6 +35,7 @@ $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
 $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
 $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
+$dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $downloadsNavBadge = '';
 if ($downloadsBadgeCount > 0) {
@@ -146,6 +148,9 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
+            <?php if ($dashboardYoutubeVideosHtml !== ''): ?>
+                <?php echo $dashboardYoutubeVideosHtml; ?>
+            <?php endif; ?>
             <div class="mb-4 grid grid-cols-2 gap-2">
                 <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>

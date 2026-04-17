@@ -3,6 +3,10 @@
     const quizId = cfg.quizId;
     const userId = Number(cfg.userId || 0);
     const durationSeconds = Number(cfg.durationSeconds || 0);
+    const quizAdEnabled = !!cfg.quizAdEnabled;
+    const quizAdEvery = Math.max(1, Number(cfg.quizAdEvery || 20));
+    const quizAdWatchSeconds = Math.max(5, Number(cfg.quizAdWatchSeconds || 20));
+    const quizAdVideos = Array.isArray(cfg.quizAdVideos) ? cfg.quizAdVideos.map(String).filter(Boolean) : [];
 
     function trytestWebPrefix() {
         var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
@@ -39,6 +43,7 @@
         try {
             var o = JSON.parse(raw);
             if (!o || o.v !== 1 || !Array.isArray(o.orderedIds)) return null;
+            if (!Array.isArray(o.adBreaksSeen)) o.adBreaksSeen = [];
             return o;
         } catch (e) {
             return null;
@@ -77,6 +82,9 @@
             rem = Math.min(rem, durationSeconds);
         }
         remainingSeconds = rem;
+        adBreaksSeen = saved.adBreaksSeen
+            .map(function (x) { return parseInt(String(x), 10); })
+            .filter(function (x) { return !isNaN(x) && x > 0; });
         quizClockStarted = false;
         setScoreDisplay();
         if (totalValue) totalValue.textContent = String(orderedIds.length);
@@ -97,6 +105,7 @@
                     score: score,
                     remainingSeconds: remainingSeconds,
                     durationSeconds: durationSeconds,
+                    adBreaksSeen: adBreaksSeen,
                 })
             );
         } catch (e) {}
@@ -119,6 +128,8 @@
     let remainingSeconds = durationSeconds;
     let timerHandle = null;
     let quizClockStarted = false;
+    /** @type {number[]} */
+    let adBreaksSeen = [];
 
     function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -389,6 +400,102 @@
         });
     }
 
+    function youtubeEmbedUrl(rawUrl) {
+        var u = String(rawUrl || '').trim();
+        if (!u) return '';
+        try {
+            var parsed = new URL(u);
+            var host = (parsed.hostname || '').toLowerCase();
+            var id = '';
+            if (host.indexOf('youtu.be') !== -1) {
+                id = parsed.pathname.replace(/^\/+/, '').split('/')[0] || '';
+            } else {
+                id = parsed.searchParams.get('v') || '';
+                if (!id) {
+                    var m = parsed.pathname.match(/\/(embed|shorts)\/([A-Za-z0-9_-]{6,20})/);
+                    if (m && m[2]) id = m[2];
+                }
+            }
+            if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return '';
+            return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?rel=0&autoplay=1';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function hasSeenAdBreak(index) {
+        return adBreaksSeen.indexOf(index) !== -1;
+    }
+
+    function markAdBreakSeen(index) {
+        if (index < 1 || hasSeenAdBreak(index)) return;
+        adBreaksSeen.push(index);
+        saveQuizResume();
+    }
+
+    function shouldShowAdBreak() {
+        if (!quizAdEnabled || quizAdVideos.length === 0) return false;
+        if (currentIndex < 1 || currentIndex >= orderedIds.length) return false;
+        if (currentIndex % quizAdEvery !== 0) return false;
+        var breakIndex = Math.floor(currentIndex / quizAdEvery);
+        return !hasSeenAdBreak(breakIndex);
+    }
+
+    function renderAdInterstitial(done) {
+        var breakIndex = Math.floor(currentIndex / quizAdEvery);
+        var chosen = quizAdVideos[(breakIndex - 1) % quizAdVideos.length] || '';
+        var embed = youtubeEmbedUrl(chosen);
+        if (!embed) {
+            markAdBreakSeen(breakIndex);
+            done();
+            return;
+        }
+        var wait = Math.max(1, Math.floor(quizAdWatchSeconds));
+        setStatus('Watch required', 'ok');
+        questionBox.innerHTML =
+            '<div class="space-y-3">' +
+            '<p class="text-[11px] font-semibold uppercase tracking-wide text-red-600">Video break</p>' +
+            '<h2 class="text-lg font-bold text-slate-900">Watch this video to continue</h2>' +
+            '<p class="text-sm text-slate-600">You reached question ' +
+            currentIndex +
+            '. Continue unlocks in <span id="adCountdown" class="font-bold text-slate-900">' +
+            wait +
+            's</span>.</p>' +
+            '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-black">' +
+            '<div class="aspect-video w-full"><iframe class="h-full w-full" src="' +
+            escapeAttr(embed) +
+            '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' +
+            '</div>' +
+            '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white">Continue in ' +
+            wait +
+            's</button>' +
+            '</div>';
+        var countdownEl = document.getElementById('adCountdown');
+        var btn = document.getElementById('adContinueBtn');
+        var t = wait;
+        var unlockTimer = setInterval(function () {
+            t--;
+            if (countdownEl) countdownEl.textContent = String(Math.max(0, t)) + 's';
+            if (!btn) return;
+            if (t > 0) {
+                btn.textContent = 'Continue in ' + t + 's';
+                return;
+            }
+            clearInterval(unlockTimer);
+            btn.disabled = false;
+            btn.className = 'w-full rounded-2xl bg-[#E50914] p-3 text-sm font-bold text-white';
+            btn.textContent = 'Continue quiz';
+        }, 1000);
+        if (btn) {
+            btn.addEventListener('click', function () {
+                if (btn.disabled) return;
+                clearInterval(unlockTimer);
+                markAdBreakSeen(breakIndex);
+                done();
+            });
+        }
+    }
+
     function loadQuestionIds() {
         return fetchJson(apiUrl({ quiz_id: String(quizId) })).then(function (data) {
             if (!data.ok || !Array.isArray(data.ids)) {
@@ -513,6 +620,12 @@
 
         if (currentIndex >= orderedIds.length) {
             endQuiz();
+            return;
+        }
+        if (shouldShowAdBreak()) {
+            renderAdInterstitial(function () {
+                showQuestionAtCurrentIndex();
+            });
             return;
         }
 
@@ -728,6 +841,7 @@
                 orderedIds = shuffleInPlace(ids.slice());
                 currentIndex = 0;
                 score = 0;
+                adBreaksSeen = [];
                 setScoreDisplay();
                 if (totalValue) totalValue.textContent = String(orderedIds.length);
                 showQuestionAtCurrentIndex();

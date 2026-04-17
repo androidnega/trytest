@@ -59,6 +59,12 @@ if ($questionId < 1) {
     );
     $stmt->execute([$quizId]);
     $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    for ($i = count($ids) - 1; $i > 0; $i--) {
+        $j = random_int(0, $i);
+        $tmp = $ids[$i];
+        $ids[$i] = $ids[$j];
+        $ids[$j] = $tmp;
+    }
     echo json_encode(['ok' => true, 'ids' => $ids], JSON_THROW_ON_ERROR);
     exit;
 }

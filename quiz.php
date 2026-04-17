@@ -44,7 +44,9 @@ if ($quizLevel !== '' && $quizLevel !== $userLevel) {
 }
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
-$ytBanner = trytest_youtube_promo_banner_html(trytest_youtube_settings());
+$ytSettings = trytest_youtube_settings();
+$ytBanner = trytest_youtube_promo_banner_html($ytSettings);
+$quizAdConfig = trytest_youtube_quiz_ad_config($ytSettings);
 
 $startsRaw = isset($quizRow['quiz_starts_at']) ? trim((string) $quizRow['quiz_starts_at']) : '';
 $endsRaw = isset($quizRow['quiz_ends_at']) ? trim((string) $quizRow['quiz_ends_at']) : '';
@@ -323,7 +325,11 @@ if ($durationSec > 0) {
 window.QUIZ_CONFIG = {
     quizId: <?php echo json_encode($quizId, JSON_THROW_ON_ERROR); ?>,
     userId: <?php echo json_encode((int) ($_SESSION['user_id'] ?? 0), JSON_THROW_ON_ERROR); ?>,
-    durationSeconds: <?php echo json_encode($effectiveDurationSeconds, JSON_THROW_ON_ERROR); ?>
+    durationSeconds: <?php echo json_encode($effectiveDurationSeconds, JSON_THROW_ON_ERROR); ?>,
+    quizAdEnabled: <?php echo json_encode((bool) ($quizAdConfig['enabled'] ?? false), JSON_THROW_ON_ERROR); ?>,
+    quizAdEvery: <?php echo json_encode((int) ($quizAdConfig['every'] ?? 20), JSON_THROW_ON_ERROR); ?>,
+    quizAdWatchSeconds: <?php echo json_encode((int) ($quizAdConfig['watch_seconds'] ?? 20), JSON_THROW_ON_ERROR); ?>,
+    quizAdVideos: <?php echo json_encode((array) ($quizAdConfig['videos'] ?? []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
