@@ -210,6 +210,67 @@ if ($durationSec > 0) {
             12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.85) rotate(var(--rot, 12deg)); opacity: 0; }
         }
+        .quiz-fly-emoji--sparkle {
+            font-size: clamp(0.95rem, 3.5vw, 1.35rem);
+            filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.95));
+            animation: quiz-sparkle-twirl 1.15s ease-out forwards;
+        }
+        @keyframes quiz-sparkle-twirl {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-40deg); opacity: 0; }
+            18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(12deg); }
+            100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.5) rotate(var(--rot, 180deg)); opacity: 0; }
+        }
+        .quiz-fly-sparkle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: -3px;
+            margin-top: -3px;
+            background: radial-gradient(circle at 30% 30%, #fff 0%, #fef9c3 35%, #facc15 65%, transparent 88%);
+            box-shadow:
+                0 0 4px 1px rgba(254, 240, 138, 0.95),
+                0 0 10px 3px rgba(250, 204, 21, 0.55),
+                0 0 16px 5px rgba(255, 255, 255, 0.35);
+            animation: quiz-sparkle-particle 1.05s ease-out forwards;
+        }
+        .quiz-fly-sparkle--diamond {
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: linear-gradient(135deg, #fff 0%, #fde047 50%, #f59e0b 100%);
+            box-shadow: 0 0 6px 2px rgba(253, 224, 71, 0.85);
+        }
+        @keyframes quiz-sparkle-particle {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { transform: translate(calc(-50% + var(--sx, 0px)), calc(-50% + var(--sy, 0px))) scale(0.2); opacity: 0; }
+        }
+        .quiz-card-shimmer {
+            position: absolute;
+            inset: -3px;
+            border-radius: 1.5rem;
+            pointer-events: none;
+            z-index: 12;
+            overflow: hidden;
+            background: conic-gradient(
+                from 0deg at 50% 50%,
+                transparent 0deg,
+                rgba(255, 255, 255, 0.55) 25deg,
+                transparent 55deg,
+                rgba(254, 240, 138, 0.4) 90deg,
+                transparent 120deg,
+                rgba(255, 255, 255, 0.45) 160deg,
+                transparent 200deg
+            );
+            animation: quiz-shimmer-spin 0.85s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes quiz-shimmer-spin {
+            0% { transform: rotate(-30deg) scale(0.85); opacity: 0; }
+            12% { opacity: 0.95; }
+            100% { transform: rotate(220deg) scale(1.15); opacity: 0; }
+        }
     </style>
 </head>
 <body class="min-h-screen bg-white text-slate-900 pb-6">

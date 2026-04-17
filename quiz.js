@@ -159,14 +159,16 @@
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;
         quizCard.classList.add('quiz-card--correct');
+        spawnCelebrationShimmer();
+        spawnCelebrationSparkles();
         spawnCelebrationEmojis();
         setTimeout(function () {
             quizCard.classList.remove('quiz-card--correct');
         }, 700);
     }
 
-    function spawnCelebrationEmojis() {
-        if (!quizCard) return;
+    function ensureFxLayer() {
+        if (!quizCard) return null;
         var layer = quizCard.querySelector('.quiz-card-emoji-layer');
         if (!layer) {
             layer = document.createElement('div');
@@ -174,6 +176,66 @@
             layer.setAttribute('aria-hidden', 'true');
             quizCard.appendChild(layer);
         }
+        return layer;
+    }
+
+    function spawnCelebrationShimmer() {
+        if (!quizCard) return;
+        var sh = document.createElement('div');
+        sh.className = 'quiz-card-shimmer';
+        sh.setAttribute('aria-hidden', 'true');
+        quizCard.appendChild(sh);
+        setTimeout(function () {
+            if (sh.parentNode) sh.parentNode.removeChild(sh);
+        }, 900);
+    }
+
+    function spawnCelebrationSparkles() {
+        var layer = ensureFxLayer();
+        if (!layer) return;
+        var i;
+        for (i = 0; i < 26; i++) {
+            var el = document.createElement('span');
+            el.className = 'quiz-fly-sparkle' + (Math.random() > 0.62 ? ' quiz-fly-sparkle--diamond' : '');
+            el.style.left = 10 + Math.random() * 80 + '%';
+            el.style.top = 12 + Math.random() * 55 + '%';
+            var ang = Math.random() * Math.PI * 2;
+            var dist = 48 + Math.random() * 110;
+            el.style.setProperty('--sx', Math.round(Math.cos(ang) * dist) + 'px');
+            el.style.setProperty('--sy', Math.round(Math.sin(ang) * dist - 18) + 'px');
+            el.style.animationDelay = i * 0.022 + 's';
+            layer.appendChild(el);
+            (function (node) {
+                setTimeout(function () {
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                }, 1300);
+            })(el);
+        }
+        var glyphs = ['✨', '💫', '⭐', '✨', '🌟', '✦'];
+        for (i = 0; i < 10; i++) {
+            var g = document.createElement('span');
+            g.className = 'quiz-fly-emoji quiz-fly-emoji--sparkle';
+            g.textContent = glyphs[i % glyphs.length];
+            g.style.left = 18 + Math.random() * 64 + '%';
+            g.style.top = 18 + Math.random() * 48 + '%';
+            ang = Math.random() * Math.PI * 2;
+            dist = 60 + Math.random() * 90;
+            g.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
+            g.style.setProperty('--dy', (Math.round(Math.sin(ang) * dist) - 22) + 'px');
+            g.style.setProperty('--rot', Math.round(80 + Math.random() * 200) + 'deg');
+            g.style.animationDelay = i * 0.035 + 's';
+            layer.appendChild(g);
+            (function (node) {
+                setTimeout(function () {
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                }, 1500);
+            })(g);
+        }
+    }
+
+    function spawnCelebrationEmojis() {
+        var layer = ensureFxLayer();
+        if (!layer) return;
         var faces = ['😀', '😊', '🙂', '😄', '🌟'];
         var n = 12;
         for (var i = 0; i < n; i++) {
