@@ -40,6 +40,76 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
     return $ud !== '' && strcasecmp($ud, $dd) === 0;
 }
 
+/**
+ * SQL WHERE fragment for student_documents rows this student may see (same rules as trytest_student_document_eligible).
+ *
+ * @return array{sql:string,params:list<string>}
+ */
+function trytest_student_documents_visibility_sql(string $tableAlias, string $userLevel, string $userDepartment): array
+{
+    $a = preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableAlias) === 1 ? $tableAlias : 'd';
+    $ul = trim($userLevel);
+    $ud = trim($userDepartment);
+    $sql = '(TRIM(COALESCE(' . $a . '.level, \'\')) = \'\' OR TRIM(COALESCE(' . $a . '.level, \'\')) = ?)'
+        . ' AND (TRIM(COALESCE(' . $a . '.department, \'\')) = \'\''
+        . ' OR (? != \'\' AND LOWER(TRIM(COALESCE(' . $a . '.department, \'\'))) = LOWER(?)))';
+
+    return ['sql' => $sql, 'params' => [$ul, $ud, $ud]];
+}
+
+/**
+ * Courses and quizzes for the student dashboard / quizzes hub (level + department scoped).
+ *
+ * @return list<array<string,mixed>>
+ */
+function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string $userLevel, string $userDepartment): array
+{
+    $coursesWithQuizzes = [];
+    $userDepartment = trim($userDepartment);
+    $userLevel = trim($userLevel);
+    if ($userDepartment === '') {
+        return [];
+    }
+
+    $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
+        WHERE c.level = ?
+          AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+        ORDER BY c.code ASC';
+    $courseStmt = $db->prepare($courseSql);
+    $courseStmt->execute([$userLevel, $userDepartment]);
+    $courses = $courseStmt->fetchAll();
+
+    $attemptedQuizIds = [];
+    if ($userId > 0) {
+        $aq = $db->prepare('SELECT DISTINCT quiz_id FROM scores WHERE user_id = ?');
+        $aq->execute([$userId]);
+        foreach ($aq->fetchAll(PDO::FETCH_COLUMN) as $qid) {
+            $attemptedQuizIds[(int) $qid] = true;
+        }
+    }
+
+    foreach ($courses as $course) {
+        $quizStmt = $db->prepare(
+            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at,
+             (SELECT COUNT(*) FROM questions qn WHERE qn.quiz_id = q.id AND qn.status = ?) AS question_count
+             FROM quizzes q
+             LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
+             WHERE (q.course_id = ? OR qc.course_id = ?)
+               AND (q.level IS NULL OR q.level = ?)
+             ORDER BY q.id DESC'
+        );
+        $quizStmt->execute(['approved', (int) $course['id'], (int) $course['id'], $userLevel]);
+        $quizzes = $quizStmt->fetchAll();
+        foreach ($quizzes as $qi => $qz) {
+            $qid = (int) ($qz['id'] ?? 0);
+            $quizzes[$qi]['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
+        }
+        $coursesWithQuizzes[] = array_merge($course, ['quizzes' => $quizzes]);
+    }
+
+    return $coursesWithQuizzes;
+}
+
 function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 0): string
 {
     $mix = $seed . "\0#" . (string) max(0, $userId);
@@ -390,37 +460,14 @@ function trytest_student_downloads_pending_count(PDO $db, int $userId, string $u
     if ($userId < 1) {
         return 0;
     }
-    $stmt = $db->query('SELECT id, department, level FROM student_documents');
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $eligibleIds = [];
-    foreach ($rows as $d) {
-        $dd = trim((string) ($d['department'] ?? ''));
-        $dl = trim((string) ($d['level'] ?? ''));
-        if (!trytest_student_document_eligible($userDepartment, $userLevel, $dd, $dl)) {
-            continue;
-        }
-        $eligibleIds[] = (int) ($d['id'] ?? 0);
-    }
-    $eligibleIds = array_values(array_filter($eligibleIds, static fn (int $id): bool => $id > 0));
-    if ($eligibleIds === []) {
-        return 0;
-    }
-    $placeholders = implode(',', array_fill(0, count($eligibleIds), '?'));
-    $chk = $db->prepare(
-        'SELECT document_id FROM student_document_downloads WHERE user_id = ? AND document_id IN (' . $placeholders . ')'
-    );
-    $chk->execute(array_merge([$userId], $eligibleIds));
-    $done = [];
-    foreach ($chk->fetchAll(PDO::FETCH_COLUMN) as $di) {
-        $done[(int) $di] = true;
-    }
-    $c = 0;
-    foreach ($eligibleIds as $id) {
-        if (empty($done[$id])) {
-            $c++;
-        }
-    }
-    return $c;
+    $vis = trytest_student_documents_visibility_sql('d', $userLevel, $userDepartment);
+    $sql = 'SELECT COUNT(*) FROM student_documents d'
+        . ' LEFT JOIN student_document_downloads x ON x.document_id = d.id AND x.user_id = ?'
+        . ' WHERE ' . $vis['sql'] . ' AND x.document_id IS NULL';
+    $stmt = $db->prepare($sql);
+    $stmt->execute(array_merge([$userId], $vis['params']));
+
+    return (int) $stmt->fetchColumn();
 }
 
 /**

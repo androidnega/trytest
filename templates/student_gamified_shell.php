@@ -3,9 +3,7 @@
 declare(strict_types=1);
 
 /** @var string $dashboardUrl */
-/** @var string $quizUrlBase */
 /** @var string $downloadsPageUrl */
-/** @var string $quizSchedulesPollUrl */
 /** @var int $downloadsBadgeCount */
 /** @var int $userId */
 /** @var string $userIndex */
@@ -15,8 +13,9 @@ declare(strict_types=1);
 /** @var int $totalPoints */
 /** @var string $activeTab */
 /** @var list<array<string,mixed>> $coursesWithQuizzes */
-/** @var list<array<string,mixed>> $recentAttempts */
 /** @var list<array<string,mixed>> $levelLeaderboardRows */
+/** @var string $quizzesPageUrl */
+/** @var bool $dashboardHasVideos */
 /** @var list<array<string,mixed>> $departmentOptions */
 /** @var bool $needsDepartmentSetup */
 /** @var string $departmentUpdateError */
@@ -24,8 +23,6 @@ declare(strict_types=1);
 /** @var string $quizDoneYoutubeHtml */
 /** @var string $dashboardYoutubeVideosHtml */
 /** @var array<string,mixed>|null $doneComparison */
-/** @var string $dashboardMotivation */
-
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -54,7 +51,8 @@ $totalQuizCards = 0;
 foreach ($coursesWithQuizzes as $courseRow) {
     $totalQuizCards += count((array) ($courseRow['quizzes'] ?? []));
 }
-$quizGridColsClass = ($totalQuizCards > 1 && ($totalQuizCards % 2) === 0) ? 'sm:grid-cols-2' : 'sm:grid-cols-1';
+$quizzesPageUrl = trim((string) ($quizzesPageUrl ?? ''));
+$dashboardHasVideos = !empty($dashboardHasVideos);
 
 $navClass = static function (bool $on): string {
     return $on
@@ -96,7 +94,10 @@ $navClass = static function (bool $on): string {
         <div class="mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex">
             <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
-            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative whitespace-nowrap text-slate-500 hover:text-slate-700">Downloads<?php echo $downloadsNavBadge; ?></a>
+            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                <a href="<?php echo $h($quizzesPageUrl); ?>" class="whitespace-nowrap text-slate-500 hover:text-slate-700">Quizzes</a>
+            <?php endif; ?>
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative whitespace-nowrap text-slate-500 hover:text-slate-700">Files<?php echo $downloadsNavBadge; ?></a>
         </div>
     </header>
 
@@ -153,7 +154,7 @@ $navClass = static function (bool $on): string {
                 <?php if (empty($doneBlock['can_retry'])): ?>
                     <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts.</p>
                 <?php else: ?>
-                    <p class="mt-3 text-center text-xs text-slate-500">To retake this quiz later, use the course card below. Starting again resets your previous points for this quiz.</p>
+                    <p class="mt-3 text-center text-xs text-slate-500">To retake later, open <strong>Quizzes</strong> from the home screen. Starting again resets your previous points for this quiz.</p>
                 <?php endif; ?>
                 <a href="<?php echo $h($dashboardUrl); ?>" class="mt-3 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
             </section>
@@ -165,109 +166,42 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
-            <section class="mb-4 rounded-xl border border-slate-200 bg-sky-50 px-4 py-3">
-                <p class="text-sm font-semibold text-slate-900">Level <?php echo $h($userLevel); ?> focus</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-700"><?php echo $h($dashboardMotivation); ?></p>
+            <section class="mb-6" aria-label="Quick links">
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-amber-200/80 hover:shadow-md">
+                        <span class="text-2xl leading-none" aria-hidden="true">🏆</span>
+                        <span class="mt-2 text-sm font-bold text-slate-900">Leaderboard</span>
+                        <span class="mt-0.5 text-[11px] text-slate-500">Level ranks</span>
+                    </a>
+                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#2C6A7D]/25 hover:shadow-md">
+                        <?php if ($downloadsBadgeCount > 0): ?>
+                            <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                        <?php endif; ?>
+                        <span class="text-2xl leading-none" aria-hidden="true">📥</span>
+                        <span class="mt-2 text-sm font-bold text-slate-900">Files</span>
+                        <span class="mt-0.5 text-[11px] text-slate-500">Downloads</span>
+                    </a>
+                    <?php if ($dashboardHasVideos): ?>
+                        <a href="#section-dashboard-videos" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-red-200/80 hover:shadow-md">
+                            <span class="text-2xl leading-none" aria-hidden="true">▶️</span>
+                            <span class="mt-2 text-sm font-bold text-slate-900">Videos</span>
+                            <span class="mt-0.5 text-[11px] text-slate-500">Watch</span>
+                        </a>
+                    <?php endif; ?>
+                    <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#E50914]/30 hover:shadow-md">
+                            <span class="text-2xl leading-none" aria-hidden="true">📝</span>
+                            <span class="mt-2 text-sm font-bold text-slate-900">Quizzes</span>
+                            <span class="mt-0.5 text-[11px] text-slate-500"><?php echo (int) $totalQuizCards; ?> available</span>
+                        </a>
+                    <?php endif; ?>
+                </div>
             </section>
-            <div class="mb-4 grid grid-cols-2 gap-2">
-                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-amber-50 p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
-                    <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>
-                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Rank</p>
-                </a>
-                <a href="#section-courses" class="rounded-xl bg-cyan-50 p-2.5 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200 sm:p-3">
-                    <span class="text-lg sm:text-xl" aria-hidden="true">📚</span>
-                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Courses</p>
-                </a>
-            </div>
             <?php if ($dashboardYoutubeVideosHtml !== ''): ?>
-                <?php echo $dashboardYoutubeVideosHtml; ?>
+                <div id="section-dashboard-videos" class="scroll-mt-24">
+                    <?php echo $dashboardYoutubeVideosHtml; ?>
+                </div>
             <?php endif; ?>
-
-            <?php if ($recentAttempts): ?>
-                <section class="mb-6">
-                    <div class="mb-2 flex flex-nowrap items-center justify-between gap-2">
-                        <h2 class="shrink-0 text-sm font-bold">Recent</h2>
-                        <a class="shrink-0 whitespace-nowrap text-xs font-medium text-[#2C6A7D]" href="<?php echo $h($dashboardUrl); ?>?tab=rank">Ranks →</a>
-                    </div>
-                    <div class="grid grid-cols-1 gap-2 <?php echo $quizGridColsClass; ?>">
-                        <?php foreach (array_slice($recentAttempts, 0, 5) as $att): ?>
-                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($att['quiz_id'] ?? 0); ?>" class="flex flex-nowrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left ring-1 ring-slate-100 transition hover:bg-slate-100/80">
-                                <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-medium"><?php echo $h((string) ($att['quiz_title'] ?? 'Quiz')); ?></p>
-                                    <p class="truncate text-[10px] text-slate-500"><?php echo $h((string) ($att['created_at'] ?? '')); ?></p>
-                                </div>
-                                <span class="shrink-0 whitespace-nowrap rounded-full bg-[#2C6A7D]/10 px-2 py-0.5 text-xs font-bold tabular-nums text-[#2C6A7D]"><?php echo (int) ($att['score'] ?? 0); ?>/<?php echo (int) ($att['total'] ?? 0); ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            <?php endif; ?>
-
-            <section id="section-courses" class="scroll-mt-20">
-                <h2 class="mb-3 text-sm font-bold">Courses</h2>
-                <?php if (!$coursesWithQuizzes): ?>
-                    <p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">No courses match your level<?php echo $userDepartment !== '' ? ' and program' : ''; ?> yet.</p>
-                <?php else: ?>
-                    <div class="space-y-2">
-                        <?php foreach ($coursesWithQuizzes as $course): ?>
-                            <?php $cd = trim((string) ($course['department'] ?? '')); ?>
-                            <?php foreach ($course['quizzes'] as $qz): ?>
-                                <?php
-                                $qid = (int) ($qz['id'] ?? 0);
-                                $qtitle = (string) ($qz['title'] ?? '');
-                                $qc = (int) ($qz['question_count'] ?? 0);
-                                $stRaw = isset($qz['quiz_starts_at']) ? trim((string) $qz['quiz_starts_at']) : '';
-                                $enRaw = isset($qz['quiz_ends_at']) ? trim((string) $qz['quiz_ends_at']) : '';
-                                $stTs = $stRaw !== '' ? strtotime($stRaw) : false;
-                                $enTs = $enRaw !== '' ? strtotime($enRaw) : false;
-                                $stSec = ($stTs !== false && $stTs > 0) ? (int) $stTs : '';
-                                $enSec = ($enTs !== false && $enTs > 0) ? (int) $enTs : '';
-                                $phase = trytest_quiz_schedule_phase(
-                                    $stRaw !== '' ? $stRaw : null,
-                                    $enRaw !== '' ? $enRaw : null
-                                );
-                                $canPlay = ($phase === 'open' || $phase === 'unset');
-                                $courseLabel = trim((string) ($course['code'] ?? '') . ' · ' . (string) ($course['title'] ?? ''));
-                                $quizCardBg = ['bg-slate-50', 'bg-blue-50', 'bg-emerald-50', 'bg-amber-50'][($qid > 0 ? $qid : 0) % 4];
-                                ?>
-                                <article
-                                    class="rounded-md border border-slate-200 <?php echo $h($quizCardBg); ?> px-2.5 py-2 shadow-sm trytest-quiz-card"
-                                    data-quiz-id="<?php echo $qid; ?>"
-                                    data-user-id="<?php echo (int) $userId; ?>"
-                                    data-user-has-attempt="<?php echo !empty($qz['user_has_attempt']) ? '1' : '0'; ?>"
-                                    data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
-                                    data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
-                                    data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
-                                >
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="min-w-0 flex-1">
-                                            <p class="truncate text-[9px] font-semibold uppercase tracking-wide text-[#2C6A7D]"><?php echo $h($courseLabel); ?></p>
-                                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block truncate text-[13px] font-semibold leading-snug <?php echo $canPlay ? 'text-slate-900 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
-                                                <?php echo $h($qtitle); ?>
-                                            </a>
-                                            <p class="mt-0.5 text-[9px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions'); ?></p>
-                                            <p class="trytest-quiz-progress mt-0.5 text-[9px] font-medium text-[#2C6A7D]" data-total="<?php echo $qc; ?>">
-                                                <?php echo !empty($qz['user_has_attempt']) ? 'Completed before' : 'Not started'; ?>
-                                            </p>
-                                        </div>
-                                        <?php if ($canPlay): ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold text-emerald-700">Open</span>
-                                        <?php elseif ($phase === 'before'): ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold text-amber-800">Soon</span>
-                                        <?php else: ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-500">Closed</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="trytest-quiz-countdown mt-1 hidden min-h-[1.6rem] w-full rounded-md border px-1.5 py-1 text-center text-[10px] font-black tabular-nums leading-tight tracking-tight sm:text-[11px]" role="status" aria-live="polite"></div>
-                                </article>
-                            <?php endforeach; ?>
-                            <?php if (empty($course['quizzes'])): ?>
-                                <p class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-400"><?php echo $h((string) ($course['code'] ?? '')); ?> has no quizzes yet.</p>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </section>
         <?php endif; ?>
 
         <?php if ($tabRank): ?>
@@ -321,190 +255,5 @@ $navClass = static function (bool $on): string {
         btn.setAttribute('aria-expanded', 'false');
     });
     menu.addEventListener('click', function (e) { e.stopPropagation(); });
-})();
-
-(function () {
-    function setQuizResumeProgress() {
-        document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
-            var quizId = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
-            var userIdVal = parseInt(card.getAttribute('data-user-id') || '0', 10);
-            var el = card.querySelector('.trytest-quiz-progress');
-            if (!el || !quizId || !userIdVal) return;
-            var fallback = el.textContent || 'Not started';
-            var key = 'trytest_quiz_resume_v1_' + String(userIdVal) + '_' + String(quizId);
-            try {
-                var raw = localStorage.getItem(key);
-                if (!raw) {
-                    el.textContent = fallback;
-                    return;
-                }
-                var payload = JSON.parse(raw);
-                if (!payload || payload.v !== 1 || !Array.isArray(payload.orderedIds)) {
-                    el.textContent = fallback;
-                    return;
-                }
-                var total = payload.orderedIds.length || parseInt(el.getAttribute('data-total') || '0', 10) || 0;
-                var idx = parseInt(String(payload.currentIndex || 0), 10);
-                if (isNaN(idx) || idx < 0) idx = 0;
-                if (total > 0 && idx > total) idx = total;
-                if (total > 0 && idx > 0 && idx < total) {
-                    var pct = Math.round((idx / total) * 100);
-                    el.textContent = 'In progress: ' + idx + '/' + total + ' (' + pct + '%)';
-                    return;
-                }
-                el.textContent = fallback;
-            } catch (e) {
-                el.textContent = fallback;
-            }
-        });
-    }
-
-    function pad2(n) { return String(n).padStart(2, '0'); }
-    function formatMinSec(ms) {
-        if (ms <= 0) return '0:00';
-        var totalSec = Math.floor(ms / 1000);
-        var m = Math.floor(totalSec / 60);
-        var sec = totalSec % 60;
-        return String(m) + ':' + pad2(sec);
-    }
-    function countdownBase() {
-        return 'trytest-quiz-countdown mt-1 min-h-[1.6rem] w-full rounded-md border px-1.5 py-1 text-center text-[10px] font-black tabular-nums leading-tight tracking-tight sm:text-[11px] ';
-    }
-    function cardTimes(card) {
-        var sRaw = card.getAttribute('data-quiz-start') || '';
-        var eRaw = card.getAttribute('data-quiz-end') || '';
-        var s = sRaw ? parseInt(sRaw, 10) * 1000 : 0;
-        var e = eRaw ? parseInt(eRaw, 10) * 1000 : 0;
-        return { s: s, e: e };
-    }
-    function phaseKey(now, s, e) {
-        if (!s && !e) return 'unset';
-        if (s && now < s) return 'before';
-        if (e && now >= e) return 'after';
-        return 'open';
-    }
-    function setQuizBadge(badge, key) {
-        if (!badge) return;
-        var base = 'trytest-quiz-badge shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ';
-        if (key === 'before') {
-            badge.className = base + 'bg-amber-50 text-amber-800';
-            badge.textContent = 'Soon';
-        } else if (key === 'after') {
-            badge.className = base + 'bg-slate-100 text-slate-500';
-            badge.textContent = 'Closed';
-        } else {
-            badge.className = base + 'bg-emerald-50 text-emerald-700';
-            badge.textContent = 'Open';
-        }
-    }
-    function tick() {
-        var now = Date.now();
-        document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
-            var t = cardTimes(card);
-            var s = t.s;
-            var e = t.e;
-            var pk = phaseKey(now, s, e);
-            var canPlay = pk === 'open' || pk === 'unset';
-            var badge = card.querySelector('.trytest-quiz-badge');
-            var title = card.querySelector('.trytest-quiz-title');
-            if (pk === 'unset') {
-                setQuizBadge(badge, 'open');
-            } else {
-                setQuizBadge(badge, pk);
-            }
-            if (title) {
-                if (canPlay) {
-                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D]';
-                } else {
-                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug pointer-events-none cursor-default text-slate-600';
-                }
-            }
-            var el = card.querySelector('.trytest-quiz-countdown');
-            if (!el) return;
-            if (!s && !e) {
-                el.textContent = '';
-                el.className = countdownBase() + 'hidden';
-                return;
-            }
-            if (s && now < s) {
-                el.className = countdownBase() + 'border-amber-300 bg-amber-100 text-amber-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-amber-800/90">Opens in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(s - now) + '</span>';
-                return;
-            }
-            if (e && now < e) {
-                el.className = countdownBase() + 'border-sky-400 bg-sky-100 text-sky-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-sky-900/90">Closes in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(e - now) + '</span>';
-                return;
-            }
-            if (e && now >= e) {
-                el.className = countdownBase() + 'border-slate-300 bg-slate-200 text-slate-700';
-                el.textContent = 'Ended';
-                return;
-            }
-            if (s && now >= s && (!e || now <= e)) {
-                el.className =
-                    countdownBase() +
-                    'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80';
-                var playHref = card.getAttribute('data-quiz-href') || '';
-                var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
-                var playLabel = hasAttempt ? 'Retake (resets points)' : 'Start now';
-                el.textContent = '';
-                if (playHref) {
-                    var link = document.createElement('a');
-                    link.href = playHref;
-                    link.className =
-                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600';
-                    link.setAttribute('aria-label', 'Start quiz');
-                    link.textContent = playLabel;
-                    el.appendChild(link);
-                } else {
-                    el.textContent = playLabel;
-                }
-                return;
-            }
-            el.textContent = '';
-            el.className = countdownBase() + 'hidden';
-        });
-    }
-    tick();
-    setQuizResumeProgress();
-    setInterval(tick, 1000);
-
-    var pollUrl = <?php echo json_encode($quizSchedulesPollUrl ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
-    if (pollUrl) {
-        function mergeSchedules(data) {
-            if (!data || !data.ok || !data.quizzes) return;
-            var map = {};
-            data.quizzes.forEach(function (q) {
-                var id = parseInt(q.quiz_id, 10);
-                if (!id) return;
-                map[id] = q;
-            });
-            document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
-                var id = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
-                var row = map[id];
-                if (!row) return;
-                if (row.start != null) {
-                    card.setAttribute('data-quiz-start', String(row.start));
-                } else {
-                    card.setAttribute('data-quiz-start', '');
-                }
-                if (row.end != null) {
-                    card.setAttribute('data-quiz-end', String(row.end));
-                } else {
-                    card.setAttribute('data-quiz-end', '');
-                }
-            });
-            tick();
-        }
-        function pollOnce() {
-            fetch(pollUrl, { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(mergeSchedules)
-                .catch(function () {});
-        }
-        setTimeout(pollOnce, 4000);
-        setInterval(pollOnce, 45000);
-    }
 })();
 </script>

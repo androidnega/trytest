@@ -253,11 +253,9 @@ if ($isUserLoggedIn) {
 
 $coursesWithQuizzes = [];
 $totalPoints = 0;
-$recentAttempts = [];
 $levelLeaderboardRows = [];
 $doneBlock = null;
 $doneComparison = null;
-$dashboardMotivation = '';
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
     $activeTab = 'home';
@@ -271,58 +269,7 @@ if ($isUserLoggedIn) {
     $ptsStmt->execute([$userId]);
     $totalPoints = (int) $ptsStmt->fetchColumn();
 
-    $courses = [];
-    if ($userDepartment !== '') {
-        $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
-            WHERE c.level = ?
-              AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
-            ORDER BY c.code ASC';
-        $courseStmt = $db->prepare($courseSql);
-        $courseStmt->execute([$userLevel, $userDepartment]);
-        $courses = $courseStmt->fetchAll();
-    }
-
-    foreach ($courses as $course) {
-        $quizStmt = $db->prepare(
-            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at,
-             (SELECT COUNT(*) FROM questions qn WHERE qn.quiz_id = q.id AND qn.status = ?) AS question_count
-             FROM quizzes q
-             LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
-             WHERE (q.course_id = ? OR qc.course_id = ?)
-               AND (q.level IS NULL OR q.level = ?)
-             ORDER BY q.id DESC'
-        );
-        $quizStmt->execute(['approved', (int) $course['id'], (int) $course['id'], $userLevel]);
-        $coursesWithQuizzes[] = array_merge($course, ['quizzes' => $quizStmt->fetchAll()]);
-    }
-
-    $attemptedQuizIds = [];
-    if ($userId > 0) {
-        $aq = $db->prepare('SELECT DISTINCT quiz_id FROM scores WHERE user_id = ?');
-        $aq->execute([$userId]);
-        foreach ($aq->fetchAll(PDO::FETCH_COLUMN) as $qid) {
-            $attemptedQuizIds[(int) $qid] = true;
-        }
-    }
-    foreach ($coursesWithQuizzes as $ci => $courseRow) {
-        $quizzes = $courseRow['quizzes'] ?? [];
-        foreach ($quizzes as $qi => $qz) {
-            $qid = (int) ($qz['id'] ?? 0);
-            $quizzes[$qi]['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
-        }
-        $coursesWithQuizzes[$ci]['quizzes'] = $quizzes;
-    }
-
-    $recentStmt = $db->prepare(
-        'SELECT s.quiz_id, s.score, s.total, s.created_at, q.title AS quiz_title
-         FROM scores s
-         INNER JOIN quizzes q ON q.id = s.quiz_id
-         WHERE s.user_id = ?
-         ORDER BY s.id DESC
-         LIMIT 15'
-    );
-    $recentStmt->execute([$userId]);
-    $recentAttempts = $recentStmt->fetchAll();
+    $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
 
     $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment, 40);
 
@@ -389,21 +336,6 @@ if ($isUserLoggedIn) {
     }
 
     $downloadsBadgeCount = trytest_student_downloads_pending_count($db, $userId, $userDepartment, $userLevel);
-
-    $motivationBits = [
-        '100' => 'Keep building your foundations; every quiz sharpens your basics.',
-        '200' => 'You are in the core stage now. Stay consistent and your exam confidence will rise.',
-        '300' => 'This is your specialization stretch. Push a little further on every attempt.',
-        '400' => 'Final lap energy: revise smart, practice often, and finish strong.',
-    ];
-    $wish = [
-        'Wishing you success in your upcoming exams.',
-        'Stay calm and focused - you are getting better each day.',
-        'Keep practicing; your consistency is your advantage.',
-    ];
-    $dashboardMotivation = ($motivationBits[$userLevel] ?? 'Keep practicing and stay exam-ready.')
-        . ' '
-        . $wish[array_rand($wish)];
 }
 
 $downloadsBadgeCount = $downloadsBadgeCount ?? 0;
@@ -414,11 +346,13 @@ if (is_array($doneBlock) && !empty($doneBlock['quiz_id'])) {
     $quizDoneYoutubeHtml = trytest_youtube_quiz_complete_subscribe_html($ytSettings);
 }
 $dashboardYoutubeVideosHtml = trytest_youtube_dashboard_videos_html($ytSettings);
+$dashboardHasVideos = $isUserLoggedIn && trim((string) ($dashboardYoutubeVideosHtml ?? '')) !== '';
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
 $downloadsPageUrl = trytest_url('downloads');
+$quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 ?>
@@ -440,12 +374,12 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
     $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
+    $quizzesPageUrl = (string) ($quizzesPageUrl ?? '');
     $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
-    $dashboardMotivation = (string) ($dashboardMotivation ?? '');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">

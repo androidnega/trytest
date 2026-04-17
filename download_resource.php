@@ -17,6 +17,19 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
+$userId = (int) $_SESSION['user_id'];
+$uSync = $db->prepare('SELECT level, department FROM users WHERE id = ?');
+$uSync->execute([$userId]);
+$uRow = $uSync->fetch(PDO::FETCH_ASSOC);
+if (!$uRow) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Sign in required.';
+    exit;
+}
+$_SESSION['user_level'] = trim((string) ($uRow['level'] ?? ''));
+$_SESSION['user_department'] = trim((string) ($uRow['department'] ?? ''));
+
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($id < 1) {
     http_response_code(400);
@@ -82,7 +95,7 @@ if (!preg_match('/\.pdf$/i', $downloadName)) {
     $downloadName .= '.pdf';
 }
 
-trytest_record_document_download($db, (int) $_SESSION['user_id'], $id);
+trytest_record_document_download($db, $userId, $id);
 
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="' . str_replace(['"', "\r", "\n"], '', $downloadName) . '"');

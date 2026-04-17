@@ -40,34 +40,30 @@ if (!empty($yt['gate_active']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST')
 $seenRaw = trim((string) ($syncRow['downloads_last_seen_at'] ?? ''));
 $seenForNew = $seenRaw !== '' ? $seenRaw : null;
 
+$vis = trytest_student_documents_visibility_sql('d', $userLevel, $userDepartment);
 $docStmt = $db->prepare(
-    'SELECT d.id, d.title, d.department, d.level, d.created_at,
+    'SELECT d.id, d.title, d.created_at,
         CASE WHEN x.document_id IS NOT NULL THEN 1 ELSE 0 END AS downloaded
      FROM student_documents d
      LEFT JOIN student_document_downloads x ON x.document_id = d.id AND x.user_id = ?
+     WHERE ' . $vis['sql'] . '
      ORDER BY d.id DESC'
 );
-$docStmt->execute([$userId]);
+$docStmt->execute(array_merge([$userId], $vis['params']));
 $docRows = $docStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $studentDocuments = [];
 $pendingEligible = 0;
 foreach ($docRows as $d) {
-    $dd = trim((string) ($d['department'] ?? ''));
-    $dl = trim((string) ($d['level'] ?? ''));
-    $eligible = trytest_student_document_eligible($userDepartment, $userLevel, $dd, $dl);
     $downloaded = !empty($d['downloaded']);
     $createdAt = trim((string) ($d['created_at'] ?? ''));
-    $isNew = $eligible && $seenForNew !== null && $createdAt !== '' && $createdAt > $seenForNew;
-    if ($eligible && !$downloaded) {
+    $isNew = $seenForNew !== null && $createdAt !== '' && $createdAt > $seenForNew;
+    if (!$downloaded) {
         $pendingEligible++;
     }
     $studentDocuments[] = [
         'id' => (int) ($d['id'] ?? 0),
         'title' => (string) ($d['title'] ?? ''),
-        'department' => $dd,
-        'level' => $dl,
-        'eligible' => $eligible,
         'downloaded' => $downloaded,
         'is_new' => $isNew,
     ];
@@ -91,7 +87,7 @@ $h = static function (string $s): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Downloads · Trytest</title>
+    <title>Files · Trytest</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo $h(trytest_url('favicon.svg')); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,64 +95,60 @@ $h = static function (string $s): string {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }</style>
 </head>
-<body class="min-h-screen bg-white text-slate-900">
-    <header class="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-2.5">
-        <div class="mx-auto flex max-w-lg items-center gap-3">
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+    <header class="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
             <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 text-sm font-semibold text-[#2C6A7D] hover:underline">← Home</a>
             <div class="flex min-w-0 flex-1 items-center justify-end gap-2">
-                <h1 class="min-w-0 flex-1 truncate text-base font-bold <?php echo $pendingEligible > 0 ? 'pr-1' : ''; ?>">Downloads</h1>
+                <h1 class="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-slate-900">Your files</h1>
                 <?php if ($pendingEligible > 0): ?>
-                    <span class="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-[#E50914] px-1.5 text-[10px] font-extrabold leading-none text-white" title="Files you have not downloaded yet"><?php echo $pendingEligible > 9 ? '9+' : (string) $pendingEligible; ?></span>
+                    <span class="inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-full bg-[#E50914] px-1.5 text-[10px] font-extrabold leading-none text-white" title="Not downloaded yet"><?php echo $pendingEligible > 9 ? '9+' : (string) $pendingEligible; ?></span>
                 <?php endif; ?>
             </div>
         </div>
     </header>
-    <main class="mx-auto max-w-lg px-4 py-4">
+    <main class="mx-auto max-w-lg px-4 py-6">
         <?php if ($ytActivationPanel !== ''): ?>
-            <div class="text-left"><?php echo $ytActivationPanel; ?></div>
+            <div class="mb-6"><?php echo $ytActivationPanel; ?></div>
         <?php elseif ($ytSoftPromo !== ''): ?>
-            <div class="text-left"><?php echo $ytSoftPromo; ?></div>
+            <div class="mb-6"><?php echo $ytSoftPromo; ?></div>
         <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
-            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup so subscribe and download can work.</div>
+            <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup.</div>
         <?php endif; ?>
+
         <?php if (!$studentDocuments): ?>
-            <p class="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">No files available.</p>
+            <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
+                <p class="text-sm font-medium text-slate-700">No files for your program yet</p>
+                <p class="mt-2 text-xs leading-relaxed text-slate-500">When your teacher adds PDFs for your level and department, they will show up here.</p>
+            </div>
         <?php else: ?>
-            <ul class="space-y-2">
+            <ul class="space-y-3">
                 <?php foreach ($studentDocuments as $doc): ?>
-                    <?php
-                    $eligible = !empty($doc['eligible']);
-                    $dd = trim((string) ($doc['department'] ?? ''));
-                    $dl = trim((string) ($doc['level'] ?? ''));
-                    $scope = ($dd === '' ? 'Any program' : $dd) . ' · ' . ($dl === '' ? 'Any level' : ('Lv ' . $dl));
-                    ?>
-                    <li class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-                        <div class="flex items-start gap-2">
+                    <li class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="flex items-center gap-3 px-4 py-3.5">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C6A7D]/10 text-lg" aria-hidden="true">📄</span>
                             <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-1.5">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <p class="truncate text-sm font-semibold text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'PDF')); ?></p>
-                                    <?php if ($eligible && !empty($doc['is_new'])): ?>
-                                        <span class="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900">New</span>
+                                    <?php if (!empty($doc['is_new'])): ?>
+                                        <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900">New</span>
                                     <?php endif; ?>
                                 </div>
-                                <p class="mt-0.5 truncate text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
                             </div>
                         </div>
-                        <?php if ($eligible): ?>
+                        <div class="border-t border-slate-100 px-4 py-3">
                             <?php if (!empty($doc['downloaded'])): ?>
-                                <span class="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 py-1.5 text-center text-xs font-bold text-emerald-800">Downloaded</span>
+                                <span class="flex w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-bold text-emerald-800">Downloaded</span>
                             <?php elseif ($downloadsLocked): ?>
-                                <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50/90 px-2 py-2 text-center">
-                                    <p class="text-[11px] font-semibold text-amber-950">Subscribe first</p>
-                                    <p class="mt-0.5 text-[10px] leading-snug text-amber-900/90">Use the red <strong>YouTube</strong> block above, then your download buttons turn on.</p>
-                                    <a href="#trytest-downloads-yt-gate" class="mt-1.5 inline-block text-[10px] font-bold text-[#2C6A7D] underline decoration-2 underline-offset-2">Jump to subscribe</a>
+                                <div class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-center">
+                                    <p class="text-xs font-semibold text-amber-950">Subscribe first</p>
+                                    <p class="mt-1 text-[11px] leading-snug text-amber-900/90">Use the YouTube steps above, then downloads turn on.</p>
+                                    <a href="#trytest-downloads-yt-gate" class="mt-2 inline-block text-[11px] font-bold text-[#2C6A7D] underline underline-offset-2">Jump to unlock</a>
                                 </div>
                             <?php else: ?>
-                                <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-2 block w-full rounded-lg bg-[#2C6A7D] py-1.5 text-center text-xs font-bold text-white hover:bg-[#24586a]">Download</a>
+                                <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="block w-full rounded-xl bg-[#2C6A7D] py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#24586a]">Download</a>
                             <?php endif; ?>
-                        <?php else: ?>
-                            <p class="mt-2 rounded-md bg-slate-100 py-1 text-center text-[10px] text-slate-500">Not for your program / level</p>
-                        <?php endif; ?>
+                        </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
