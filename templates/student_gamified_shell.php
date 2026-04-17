@@ -48,6 +48,11 @@ if ($downloadsBadgeCount > 0) {
         . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
         . '">' . $h($dn) . '</span>';
 }
+$totalQuizCards = 0;
+foreach ($coursesWithQuizzes as $courseRow) {
+    $totalQuizCards += count((array) ($courseRow['quizzes'] ?? []));
+}
+$quizGridColsClass = ($totalQuizCards > 1 && ($totalQuizCards % 2) === 0) ? 'sm:grid-cols-2' : 'sm:grid-cols-1';
 
 $navClass = static function (bool $on): string {
     return $on
@@ -74,10 +79,8 @@ $navClass = static function (bool $on): string {
                         <p class="px-3 text-xs font-semibold text-slate-900">Profile</p>
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500"><?php echo $h($userIndex); ?></p>
                         <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600">
-                            <p class="text-slate-400">Level</p>
-                            <p class="-mt-0.5 font-medium text-slate-800"><?php echo $h($userLevel); ?></p>
-                            <p class="pt-1 text-slate-400">Points</p>
-                            <p class="-mt-0.5 font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></p>
+                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
+                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
@@ -169,7 +172,7 @@ $navClass = static function (bool $on): string {
                         <h2 class="shrink-0 text-sm font-bold">Recent</h2>
                         <a class="shrink-0 whitespace-nowrap text-xs font-medium text-[#2C6A7D]" href="<?php echo $h($dashboardUrl); ?>?tab=rank">Ranks →</a>
                     </div>
-                    <div class="space-y-2">
+                    <div class="grid grid-cols-1 gap-2 <?php echo $quizGridColsClass; ?>">
                         <?php foreach (array_slice($recentAttempts, 0, 5) as $att): ?>
                             <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($att['quiz_id'] ?? 0); ?>" class="flex flex-nowrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left ring-1 ring-slate-100 transition hover:bg-slate-100/80">
                                 <div class="min-w-0 flex-1">
