@@ -38,9 +38,13 @@ $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
 $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $downloadsNavBadge = '';
+$downloadsMenuBadge = '';
 if ($downloadsBadgeCount > 0) {
     $dn = $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount;
     $downloadsNavBadge = '<span class="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold leading-none text-white" aria-label="'
+        . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
+        . '">' . $h($dn) . '</span>';
+    $downloadsMenuBadge = '<span class="ml-2 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold leading-none text-white" aria-label="'
         . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
         . '">' . $h($dn) . '</span>';
 }
@@ -64,20 +68,18 @@ $navClass = static function (bool $on): string {
                 </div>
             </div>
             <div class="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
-                <div class="inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap rounded-full bg-[#2C6A7D]/10 px-2 py-1 text-[11px] font-bold tabular-nums text-[#2C6A7D] sm:px-3 sm:text-sm">
-                    <span class="font-semibold text-[#2C6A7D]/75">Pts</span>
-                    <span><?php echo (int) $totalPoints; ?></span>
-                </div>
                 <div class="relative shrink-0">
                     <button type="button" id="profileMenuBtn" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-700 hover:bg-slate-200 sm:h-10 sm:w-10" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
                     <div id="profileMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-2 shadow-lg" role="menu">
                         <p class="px-3 text-xs font-semibold text-slate-900">Profile</p>
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500"><?php echo $h($userIndex); ?></p>
                         <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600">
-                            <p class="flex justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
-                            <p class="flex justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
+                            <p class="text-slate-400">Level</p>
+                            <p class="-mt-0.5 font-medium text-slate-800"><?php echo $h($userLevel); ?></p>
+                            <p class="pt-1 text-slate-400">Points</p>
+                            <p class="-mt-0.5 font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></p>
                         </div>
-                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative block border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50">Downloads<?php echo $downloadsNavBadge; ?></a>
+                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
                             <button type="submit" class="w-full rounded-lg px-3 py-2 text-left text-sm text-[#E50914] hover:bg-red-50" role="menuitem">Log out</button>
@@ -208,7 +210,7 @@ $navClass = static function (bool $on): string {
                                 $courseLabel = trim((string) ($course['code'] ?? '') . ' · ' . (string) ($course['title'] ?? ''));
                                 ?>
                                 <article
-                                    class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm trytest-quiz-card"
+                                    class="rounded-md border border-slate-200 bg-white px-2.5 py-2 shadow-sm trytest-quiz-card"
                                     data-quiz-id="<?php echo $qid; ?>"
                                     data-user-id="<?php echo (int) $userId; ?>"
                                     data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
@@ -217,24 +219,24 @@ $navClass = static function (bool $on): string {
                                 >
                                     <div class="flex items-start justify-between gap-2">
                                         <div class="min-w-0 flex-1">
-                                            <p class="truncate text-[10px] font-semibold uppercase tracking-wide text-[#2C6A7D]"><?php echo $h($courseLabel); ?></p>
-                                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block truncate text-sm font-semibold leading-snug <?php echo $canPlay ? 'text-slate-900 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
+                                            <p class="truncate text-[9px] font-semibold uppercase tracking-wide text-[#2C6A7D]"><?php echo $h($courseLabel); ?></p>
+                                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block truncate text-[13px] font-semibold leading-snug <?php echo $canPlay ? 'text-slate-900 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
                                                 <?php echo $h($qtitle); ?>
                                             </a>
-                                            <p class="mt-0.5 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions'); ?></p>
-                                            <p class="trytest-quiz-progress mt-0.5 text-[10px] font-medium text-[#2C6A7D]" data-total="<?php echo $qc; ?>">
+                                            <p class="mt-0.5 text-[9px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions'); ?></p>
+                                            <p class="trytest-quiz-progress mt-0.5 text-[9px] font-medium text-[#2C6A7D]" data-total="<?php echo $qc; ?>">
                                                 <?php echo !empty($qz['user_has_attempt']) ? 'Completed before' : 'Not started'; ?>
                                             </p>
                                         </div>
                                         <?php if ($canPlay): ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-bold text-emerald-700">Open</span>
                                         <?php elseif ($phase === 'before'): ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">Soon</span>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold text-amber-800">Soon</span>
                                         <?php else: ?>
-                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold text-slate-500">Closed</span>
                                         <?php endif; ?>
                                     </div>
-                                    <div class="trytest-quiz-countdown mt-1.5 hidden min-h-[2rem] w-full rounded-lg border px-2 py-1.5 text-center text-xs font-black tabular-nums leading-tight tracking-tight sm:text-sm" role="status" aria-live="polite"></div>
+                                    <div class="trytest-quiz-countdown mt-1 hidden min-h-[1.6rem] w-full rounded-md border px-1.5 py-1 text-center text-[10px] font-black tabular-nums leading-tight tracking-tight sm:text-[11px]" role="status" aria-live="polite"></div>
                                 </article>
                             <?php endforeach; ?>
                             <?php if (empty($course['quizzes'])): ?>
@@ -344,7 +346,7 @@ $navClass = static function (bool $on): string {
         return String(m) + ':' + pad2(sec);
     }
     function countdownBase() {
-        return 'trytest-quiz-countdown mt-2 min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base ';
+        return 'trytest-quiz-countdown mt-1 min-h-[1.6rem] w-full rounded-md border px-1.5 py-1 text-center text-[10px] font-black tabular-nums leading-tight tracking-tight sm:text-[11px] ';
     }
     function cardTimes(card) {
         var sRaw = card.getAttribute('data-quiz-start') || '';
@@ -390,9 +392,9 @@ $navClass = static function (bool $on): string {
             }
             if (title) {
                 if (canPlay) {
-                    title.className = 'trytest-quiz-title block text-[11px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D]';
+                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D]';
                 } else {
-                    title.className = 'trytest-quiz-title block text-[11px] font-semibold leading-snug pointer-events-none cursor-default text-slate-600';
+                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug pointer-events-none cursor-default text-slate-600';
                 }
             }
             var el = card.querySelector('.trytest-quiz-countdown');
@@ -404,12 +406,12 @@ $navClass = static function (bool $on): string {
             }
             if (s && now < s) {
                 el.className = countdownBase() + 'border-amber-300 bg-amber-100 text-amber-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[10px] font-bold uppercase tracking-wide text-amber-800/90 sm:text-[11px]">Opens in</span><span class="mt-0.5 block text-lg sm:text-2xl">' + formatMinSec(s - now) + '</span>';
+                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-amber-800/90">Opens in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(s - now) + '</span>';
                 return;
             }
             if (e && now < e) {
                 el.className = countdownBase() + 'border-sky-400 bg-sky-100 text-sky-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[10px] font-bold uppercase tracking-wide text-sky-900/90 sm:text-[11px]">Closes in</span><span class="mt-0.5 block text-lg sm:text-2xl">' + formatMinSec(e - now) + '</span>';
+                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-sky-900/90">Closes in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(e - now) + '</span>';
                 return;
             }
             if (e && now >= e) {
@@ -427,7 +429,7 @@ $navClass = static function (bool $on): string {
                     var link = document.createElement('a');
                     link.href = playHref;
                     link.className =
-                        'trytest-quiz-start-link block w-full cursor-pointer rounded-lg py-1.5 text-lg font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600 sm:text-2xl';
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600';
                     link.setAttribute('aria-label', 'Start quiz');
                     link.textContent = 'Start now';
                     el.appendChild(link);
