@@ -68,9 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resolvedDept === null) {
             $departmentUpdateError = 'Choose your program from the list, then save.';
         } else {
-            $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $uid]);
-            $_SESSION['user_department'] = $resolvedDept;
-            trytest_redirect(trytest_url('dashboard'));
+            try {
+                $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $uid]);
+                $_SESSION['user_department'] = $resolvedDept;
+                trytest_redirect(trytest_url('dashboard'));
+            } catch (Throwable $e) {
+                $departmentUpdateError = 'Could not save your program now. Please try again shortly.';
+            }
         }
     }
 
@@ -90,10 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($storedHash === '') {
                     $plainPassword = trytest_generate_student_password();
                     $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
-                    $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
-                        ->execute([$passwordHash, (int) $user['id']]);
-                    $message = 'A new 4-digit Trytest password was created for you. Save it somewhere safe.';
-                    $generatedPassword = $plainPassword;
+                    try {
+                        $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                            ->execute([$passwordHash, (int) $user['id']]);
+                        $message = 'A new 4-digit Trytest password was created for you. Save it somewhere safe.';
+                        $generatedPassword = $plainPassword;
+                    } catch (Throwable $e) {
+                        $error = 'Could not create password now. Please try again shortly.';
+                        $loginMode = 'index';
+                    }
                 } else {
                     $loginMode = 'existing';
                     $existingUserLevel = (string) ($user['level'] ?? '');
@@ -124,8 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_index_number'] = $indexNumber;
                 $_SESSION['user_level'] = (string) $user['level'];
                 $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
-                $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
-                    ->execute([(int) $user['id']]);
+                try {
+                    $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
+                        ->execute([(int) $user['id']]);
+                } catch (Throwable $e) {
+                    // Login still succeeds even if analytics timestamp update fails.
+                }
                 trytest_redirect(trytest_student_post_login_redirect_url($db));
             }
         }
@@ -153,11 +166,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $plainPassword = trytest_generate_student_password();
                     $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
-                    $db->prepare('INSERT INTO users (index_number, level, password_hash, department) VALUES (?, ?, ?, ?)')
-                        ->execute([$indexNumber, $level, $passwordHash, $departmentToSave]);
-                    $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
-                    $generatedPassword = $plainPassword;
-                    $loginMode = 'index';
+                    try {
+                        $db->prepare('INSERT INTO users (index_number, level, password_hash, department) VALUES (?, ?, ?, ?)')
+                            ->execute([$indexNumber, $level, $passwordHash, $departmentToSave]);
+                        $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
+                        $generatedPassword = $plainPassword;
+                        $loginMode = 'index';
+                    } catch (Throwable $e) {
+                        $error = 'Could not create your account now. Please try again shortly.';
+                    }
                 }
             }
         }
@@ -178,11 +195,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $plainPassword = trytest_generate_student_password();
                 $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
-                $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
-                    ->execute([$passwordHash, (int) $user['id']]);
-                $message = 'New 4-digit Trytest password:';
-                $generatedPassword = $plainPassword;
-                $loginMode = 'index';
+                try {
+                    $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                        ->execute([$passwordHash, (int) $user['id']]);
+                    $message = 'New 4-digit Trytest password:';
+                    $generatedPassword = $plainPassword;
+                    $loginMode = 'index';
+                } catch (Throwable $e) {
+                    $error = 'Could not reset password now. Please try again shortly.';
+                }
             }
         }
     }
@@ -306,7 +327,7 @@ if ($isUserLoggedIn) {
     $doneQuizId = isset($_GET['done']) ? (int) $_GET['done'] : 0;
     if ($doneQuizId > 0) {
         $lastStmt = $db->prepare(
-            'SELECT score, total FROM scores WHERE quiz_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1'
+            'SELECT score, total FROM scores WHERE quiz_id = ? AND user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1'
         );
         $lastStmt->execute([$doneQuizId, $userId]);
         $lastScore = $lastStmt->fetch();

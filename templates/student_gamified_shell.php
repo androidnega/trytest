@@ -137,7 +137,7 @@ $navClass = static function (bool $on): string {
                     <div class="mt-4"><?php echo $quizDoneYoutubeHtml; ?></div>
                 <?php endif; ?>
                 <?php if (!empty($doneBlock['can_retry'])): ?>
-                    <p class="mt-3 text-center text-xs leading-snug text-slate-600">You can <strong class="text-slate-800">take this quiz again</strong> while it stays open. Each round is saved; the leaderboard uses your best score.</p>
+                    <p class="mt-3 text-center text-xs leading-snug text-slate-600">You can <strong class="text-slate-800">take this quiz again</strong> while it stays open. Your next attempt replaces your previous result for this quiz.</p>
                     <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($doneBlock['quiz_id'] ?? 0); ?>" class="mt-3 block w-full rounded-xl border-2 border-[#2C6A7D] bg-white py-3 text-center text-sm font-bold text-[#2C6A7D] shadow-sm hover:bg-cyan-50/80">Try again</a>
                 <?php else: ?>
                     <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts.</p>
@@ -216,6 +216,7 @@ $navClass = static function (bool $on): string {
                                     class="rounded-md border border-slate-200 bg-white px-2.5 py-2 shadow-sm trytest-quiz-card"
                                     data-quiz-id="<?php echo $qid; ?>"
                                     data-user-id="<?php echo (int) $userId; ?>"
+                                    data-user-has-attempt="<?php echo !empty($qz['user_has_attempt']) ? '1' : '0'; ?>"
                                     data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
                                     data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
                                     data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
@@ -427,6 +428,8 @@ $navClass = static function (bool $on): string {
                     countdownBase() +
                     'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80';
                 var playHref = card.getAttribute('data-quiz-href') || '';
+                var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
+                var playLabel = hasAttempt ? 'Start again' : 'Start now';
                 el.textContent = '';
                 if (playHref) {
                     var link = document.createElement('a');
@@ -434,10 +437,10 @@ $navClass = static function (bool $on): string {
                     link.className =
                         'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600';
                     link.setAttribute('aria-label', 'Start quiz');
-                    link.textContent = 'Start now';
+                    link.textContent = playLabel;
                     el.appendChild(link);
                 } else {
-                    el.textContent = 'Start now';
+                    el.textContent = playLabel;
                 }
                 return;
             }

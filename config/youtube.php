@@ -40,4 +40,10 @@ return [
     'channel_id' => getenv('YOUTUBE_CHANNEL_ID') ?: '',
     /** Optional: code you mention in a video; students can enter it on the PDF screen (no API). */
     'pdf_unlock_code' => getenv('YOUTUBE_PDF_UNLOCK_CODE') !== false ? trim((string) getenv('YOUTUBE_PDF_UNLOCK_CODE')) : '',
+    /**
+     * When true (and channel_id is non-empty), the YouTube / unlock flow applies even if the admin
+     * database toggle is off — useful on servers where only env/config is deployed.
+     * Same effect: set env TRYTEST_YOUTUBE_PDF_GATE=1 (with YOUTUBE_CHANNEL_ID set).
+     */
+    'pdf_gate_enabled' => false,
 ];

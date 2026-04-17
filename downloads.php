@@ -79,6 +79,8 @@ $updSeen->execute([$userId]);
 $dashboardUrl = trytest_url('dashboard');
 $downloadResourceBase = trytest_url('download_resource');
 $ytActivationPanel = trytest_youtube_downloads_activation_panel_html($yt, trytest_url('downloads'), $ytGateErr);
+$ytSoftPromo = trytest_youtube_downloads_soft_promo_html($yt);
+$ytLockedModal = trytest_youtube_downloads_locked_modal_html($yt);
 $downloadsLocked = !empty($yt['gate_active']) && !trytest_youtube_download_allowed($yt);
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -112,6 +114,8 @@ $h = static function (string $s): string {
     <main class="mx-auto max-w-lg px-4 py-4">
         <?php if ($ytActivationPanel !== ''): ?>
             <div class="text-left"><?php echo $ytActivationPanel; ?></div>
+        <?php elseif ($ytSoftPromo !== ''): ?>
+            <div class="text-left"><?php echo $ytSoftPromo; ?></div>
         <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
             <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup so subscribe and download can work.</div>
         <?php endif; ?>
@@ -156,6 +160,9 @@ $h = static function (string $s): string {
                     </li>
                 <?php endforeach; ?>
             </ul>
+        <?php endif; ?>
+        <?php if ($ytLockedModal !== ''): ?>
+            <?php echo $ytLockedModal; ?>
         <?php endif; ?>
     </main>
 </body>

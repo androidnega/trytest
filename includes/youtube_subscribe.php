@@ -492,7 +492,7 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
     }
     if ($ch !== '') {
         $out .= '<div class="mt-4 flex flex-col gap-2">'
-            . '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
+            . '<a id="trytestDownloadsOpenYtBtn" href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
             . '<p class="text-center text-[10px] text-slate-600">Opens in a new tab — subscribe, then use the button below.</p></div>';
     } else {
         $out .= '<p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900">Your teacher still needs to add the YouTube channel ID under Admin → YouTube gate.</p>';
@@ -506,12 +506,14 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
     }
     $out .= '<form method="post" action="' . $action . '" id="trytestDownloadsNudgeForm" class="mt-3">'
         . '<input type="hidden" name="pdf_gate_action" value="nudge_continue">'
-        . '<button type="button" id="trytestDownloadsContinueBtn" class="w-full rounded-xl border-2 border-emerald-600 bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700">I have subscribed — unlock downloads</button></form>';
+        . '<button type="button" id="trytestDownloadsContinueBtn" class="w-full rounded-xl border-2 border-emerald-300 bg-emerald-400/60 py-3 text-sm font-bold text-white/90 shadow-sm cursor-not-allowed opacity-70" aria-disabled="true">I have subscribed — unlock downloads</button></form>';
     $out .= '<p class="mt-2 text-center text-[10px] text-slate-500">No Google sign-in. We open YouTube first, then unlock this browser for PDFs.</p>';
     $uJson = json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP);
     $out .= '<script>(function(){var b=document.getElementById("trytestDownloadsContinueBtn");var f=document.getElementById("trytestDownloadsNudgeForm");'
-        . 'if(!b||!f)return;var u=' . $uJson . ';'
-        . 'b.addEventListener("click",function(){if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},2600);});})();</script>';
+        . 'if(!b||!f)return;var o=document.getElementById("trytestDownloadsOpenYtBtn");var u=' . $uJson . ';'
+        . 'function setReady(ready){if(ready){b.disabled=false;b.setAttribute("aria-disabled","false");b.className="w-full rounded-xl border-2 border-emerald-600 bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700";}else{b.disabled=true;b.setAttribute("aria-disabled","true");b.className="w-full rounded-xl border-2 border-emerald-300 bg-emerald-400/60 py-3 text-sm font-bold text-white/90 shadow-sm cursor-not-allowed opacity-70";}}'
+        . 'setReady(!u);if(o){o.addEventListener("click",function(){setTimeout(function(){setReady(true);},450);});}'
+        . 'b.addEventListener("click",function(){if(b.disabled)return;if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},800);});})();</script>';
     $out .= '</div>';
 
     return $out;
@@ -701,7 +703,7 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
     }
     if ($ch !== '') {
         echo '<div class="mt-5 flex flex-col gap-2">'
-            . '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
+            . '<a id="trytestPdfOpenYtBtn" href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
             . '<p class="text-center text-[10px] text-slate-500">Opens in a new tab — subscribe if you like the content.</p></div>';
     } else {
         echo '<p class="mt-4 text-center text-xs text-amber-800">Ask your teacher to add the YouTube channel ID in Admin → YouTube gate.</p>';
@@ -715,11 +717,13 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
     }
     echo '<form method="post" action="' . $postTarget . '" id="trytestPdfNudgeForm" class="mt-4">'
         . '<input type="hidden" name="pdf_gate_action" value="nudge_continue">'
-        . '<button type="button" id="trytestPdfContinueBtn" class="w-full rounded-xl border-2 border-slate-200 bg-white py-3 text-sm font-bold text-slate-800 hover:bg-slate-50">Continue to download</button></form>'
+        . '<button type="button" id="trytestPdfContinueBtn" class="w-full rounded-xl border-2 border-slate-300 bg-slate-200 py-3 text-sm font-bold text-slate-500 shadow-sm cursor-not-allowed opacity-70" aria-disabled="true">Continue to download</button></form>'
         . '<p class="mt-4 text-center text-[10px] text-slate-500">No Google sign-in. Optional code if your teacher shared one in a video.</p>'
         . '</div><script>(function(){var b=document.getElementById("trytestPdfContinueBtn");var f=document.getElementById("trytestPdfNudgeForm");'
-        . 'if(!b||!f)return;var u=' . json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) . ';'
-        . 'b.addEventListener("click",function(){if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},2600);});})();</script>'
+        . 'if(!b||!f)return;var o=document.getElementById("trytestPdfOpenYtBtn");var u=' . json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) . ';'
+        . 'function setReady(ready){if(ready){b.disabled=false;b.setAttribute("aria-disabled","false");b.className="w-full rounded-xl border-2 border-slate-200 bg-white py-3 text-sm font-bold text-slate-800 hover:bg-slate-50";}else{b.disabled=true;b.setAttribute("aria-disabled","true");b.className="w-full rounded-xl border-2 border-slate-300 bg-slate-200 py-3 text-sm font-bold text-slate-500 shadow-sm cursor-not-allowed opacity-70";}}'
+        . 'setReady(!u);if(o){o.addEventListener("click",function(){setTimeout(function(){setReady(true);},450);});}'
+        . 'b.addEventListener("click",function(){if(b.disabled)return;if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},800);});})();</script>'
         . '</body></html>';
 }
 

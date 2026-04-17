@@ -8,7 +8,7 @@ function trytest_student_display_name(string $indexNumber): string
     if ($t === '') {
         return 'Student';
     }
-    $parts = preg_split('/[\/\\]+/', $t) ?: [];
+    $parts = preg_split('/[\/\\\\]+/', $t) ?: [];
     $last = $parts ? (string) end($parts) : $t;
     $last = preg_replace('/[^A-Za-z0-9\-]/', '', $last) ?? $last;
     if ($last === '') {
