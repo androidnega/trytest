@@ -8,6 +8,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['user_id'])) {
     trytest_redirect(trytest_home_url());
@@ -26,6 +27,15 @@ $userDepartment = trim((string) ($syncRow['department'] ?? ''));
 $_SESSION['user_index_number'] = $userIndex;
 $_SESSION['user_level'] = $userLevel;
 $_SESSION['user_department'] = $userDepartment;
+
+$yt = trytest_youtube_settings();
+$ytGateErr = '';
+if (!empty($yt['gate_active']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $postGateErr = trytest_pdf_light_gate_process_unlock_post($yt, trytest_url('downloads'));
+    if ($postGateErr !== null && $postGateErr !== '') {
+        $ytGateErr = $postGateErr;
+    }
+}
 
 $seenRaw = trim((string) ($syncRow['downloads_last_seen_at'] ?? ''));
 $seenForNew = $seenRaw !== '' ? $seenRaw : null;
@@ -68,6 +78,7 @@ $updSeen->execute([$userId]);
 
 $dashboardUrl = trytest_url('dashboard');
 $downloadResourceBase = trytest_url('download_resource');
+$ytActivationPanel = trytest_youtube_downloads_activation_panel_html($yt, trytest_url('downloads'), $ytGateErr);
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -98,6 +109,9 @@ $h = static function (string $s): string {
         </div>
     </header>
     <main class="mx-auto max-w-lg px-4 py-4">
+        <?php if ($ytActivationPanel !== ''): ?>
+            <div class="text-left"><?php echo $ytActivationPanel; ?></div>
+        <?php endif; ?>
         <?php if (!$studentDocuments): ?>
             <p class="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">No files available.</p>
         <?php else: ?>

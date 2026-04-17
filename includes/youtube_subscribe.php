@@ -325,6 +325,92 @@ function trytest_pdf_light_gate_mark_ok(): void
 }
 
 /**
+ * Process POST for the light PDF gate (same fields as download_resource).
+ * On success, redirects to $successRedirect and exits.
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ * @return null|string null if this request was not a gate unlock POST; non-empty string = error message
+ */
+function trytest_pdf_light_gate_process_unlock_post(array $settings, string $successRedirect): ?string
+{
+    if (empty($settings['gate_active']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return null;
+    }
+    $act = (string) ($_POST['pdf_gate_action'] ?? '');
+    if ($act !== 'unlock_code' && $act !== 'nudge_continue') {
+        return null;
+    }
+    require_once __DIR__ . '/trytest_urls.php';
+    if ($act === 'unlock_code') {
+        $code = trim((string) ($_POST['unlock_code'] ?? ''));
+        $expect = trim((string) ($settings['pdf_unlock_code'] ?? ''));
+        if ($expect !== '' && strcasecmp($code, $expect) === 0) {
+            trytest_pdf_light_gate_mark_ok();
+            trytest_redirect($successRedirect);
+        }
+
+        return $expect === '' ? 'No video code is set yet — use Continue below.' : 'That code does not match the one in the video.';
+    }
+    trytest_pdf_light_gate_mark_ok();
+    trytest_redirect($successRedirect);
+}
+
+/**
+ * Prominent call-to-action on the Downloads page when the PDF gate is on.
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ */
+function trytest_youtube_downloads_activation_panel_html(array $settings, string $formActionUrl, string $gateError): string
+{
+    if (empty($settings['gate_active'])) {
+        return '';
+    }
+    require_once __DIR__ . '/trytest_urls.php';
+    if (trytest_youtube_download_allowed($settings)) {
+        return '<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">'
+            . '<p class="font-bold text-emerald-950">Downloads unlocked for this session</p>'
+            . '<p class="mt-1 text-xs leading-snug text-emerald-800/95">You can use <strong>Download</strong> on any file below. This lasts about a week on this device.</p></div>';
+    }
+    $ch = trim((string) ($settings['channel_id'] ?? ''));
+    $action = htmlspecialchars($formActionUrl, ENT_QUOTES, 'UTF-8');
+    $ytUrl = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
+    $codeConfigured = trim((string) ($settings['pdf_unlock_code'] ?? '')) !== '';
+    $err = trim($gateError);
+    $out = '<div class="mb-4 rounded-xl border-2 border-red-300 bg-gradient-to-b from-red-50 via-white to-amber-50 p-4 shadow-md ring-1 ring-red-100">';
+    $out .= '<p class="text-center text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube · activate downloads</p>';
+    $out .= '<h2 class="mt-2 text-center text-base font-bold leading-snug text-slate-900">Subscribe on YouTube, then confirm here</h2>';
+    $out .= '<p class="mt-1.5 text-center text-xs text-slate-600">Until you do, PDF downloads stay locked. Same step as when you open a file — you can unlock once here for every document.</p>';
+    if ($err !== '') {
+        $out .= '<p class="mt-3 rounded-lg bg-red-100 px-3 py-2 text-center text-xs font-medium text-red-900">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+    if ($ch !== '') {
+        $out .= '<div class="mt-4 flex flex-col gap-2">'
+            . '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
+            . '<p class="text-center text-[10px] text-slate-600">Opens in a new tab — subscribe, then use the button below.</p></div>';
+    } else {
+        $out .= '<p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900">Your teacher still needs to add the YouTube channel ID under Admin → YouTube gate.</p>';
+    }
+    if ($codeConfigured) {
+        $out .= '<form method="post" action="' . $action . '" class="mt-4 space-y-2">'
+            . '<input type="hidden" name="pdf_gate_action" value="unlock_code">'
+            . '<label class="block text-left text-xs font-medium text-slate-700">Code from the latest video (optional)</label>'
+            . '<input type="text" name="unlock_code" autocomplete="off" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="e.g. TRYTEST2026">'
+            . '<button type="submit" class="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800">Unlock with code</button></form>';
+    }
+    $out .= '<form method="post" action="' . $action . '" id="trytestDownloadsNudgeForm" class="mt-3">'
+        . '<input type="hidden" name="pdf_gate_action" value="nudge_continue">'
+        . '<button type="button" id="trytestDownloadsContinueBtn" class="w-full rounded-xl border-2 border-emerald-600 bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700">I have subscribed — unlock downloads</button></form>';
+    $out .= '<p class="mt-2 text-center text-[10px] text-slate-500">No Google sign-in. We open YouTube first, then unlock this browser for PDFs.</p>';
+    $uJson = json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP);
+    $out .= '<script>(function(){var b=document.getElementById("trytestDownloadsContinueBtn");var f=document.getElementById("trytestDownloadsNudgeForm");'
+        . 'if(!b||!f)return;var u=' . $uJson . ';'
+        . 'b.addEventListener("click",function(){if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},2600);});})();</script>';
+    $out .= '</div>';
+
+    return $out;
+}
+
+/**
  * Small promo strip when the PDF / YouTube nudge is enabled (quiz pages, etc.).
  *
  * @param array<string, mixed> $settings trytest_youtube_settings()
