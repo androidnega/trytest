@@ -40,24 +40,33 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
     return $ud !== '' && strcasecmp($ud, $dd) === 0;
 }
 
-function trytest_student_avatar_svg(string $seed, int $size = 56): string
+function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 0): string
 {
-    $h = (int) sprintf('%u', crc32($seed));
+    $mix = $seed . "\0#" . (string) max(0, $userId);
+    $h = (int) sprintf('%u', crc32($mix));
     $hue = $h % 360;
-    $base = sprintf('hsl(%d,55%%,82%%)', $hue);
-    $eyeY = 38 + ($h % 5);
-    $mouth = ($h % 3) === 0 ? 'M28,48 Q36,54 44,48' : (($h % 3) === 1 ? 'M30,50 Q36,46 42,50' : 'M30,52 Q36,58 42,52');
+    $sat = 48 + ($h >> 3) % 22;
+    $light = 72 + ($h >> 7) % 18;
+    $base = sprintf('hsl(%d,%d%%,%d%%)', $hue, $sat, $light);
+    $eyeY = 36 + ($h % 7);
+    $eyeOff = ($h % 2) === 0 ? 0 : 1;
+    $mouth = ($h % 4) === 0 ? 'M28,48 Q36,54 44,48' : (($h % 4) === 1 ? 'M30,50 Q36,46 42,50' : (($h % 4) === 2 ? 'M30,52 Q36,58 42,52' : 'M32,51 Q36,48 40,51'));
+    $cheek = ($h % 5) === 0 ? '<ellipse cx="22" cy="46" rx="5" ry="3" fill="rgba(255,120,140,.22)"/><ellipse cx="50" cy="46" rx="5" ry="3" fill="rgba(255,120,140,.22)"/>' : '';
 
     return sprintf(
         '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 72 72" role="img" aria-hidden="true">'
         . '<circle cx="36" cy="36" r="34" fill="%s"/>'
-        . '<circle cx="28" cy="%d" r="4" fill="rgba(0,0,0,.35)"/><circle cx="44" cy="%d" r="4" fill="rgba(0,0,0,.35)"/>'
-        . '<path d="%s" fill="none" stroke="rgba(0,0,0,.32)" stroke-width="2.2" stroke-linecap="round"/>'
+        . '%s'
+        . '<circle cx="%d" cy="%d" r="4.2" fill="rgba(0,0,0,.38)"/><circle cx="%d" cy="%d" r="4.2" fill="rgba(0,0,0,.38)"/>'
+        . '<path d="%s" fill="none" stroke="rgba(0,0,0,.34)" stroke-width="2.2" stroke-linecap="round"/>'
         . '</svg>',
         $size,
         $size,
         $base,
+        $cheek,
+        28 - $eyeOff,
         $eyeY,
+        44 + $eyeOff,
         $eyeY,
         $mouth
     );
@@ -195,7 +204,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
             ?>
             <li class="flex flex-nowrap items-center gap-2 rounded-lg px-2 py-1.5 <?php echo $isMe ? 'bg-emerald-100/60' : 'bg-white'; ?>">
                 <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500"><?php echo $i; ?></span>
-                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32); ?></div>
+                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32, $uid); ?></div>
                 <div class="min-w-0 flex-1 overflow-hidden">
                     <p class="truncate text-xs font-medium leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?><?php if ($dept !== ''): ?><span class="text-slate-400"> · </span><span class="text-[10px] text-slate-500"><?php echo $h($dept); ?></span><?php endif; ?></p>
                 </div>
@@ -221,9 +230,9 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
     $frac = $showFraction && $tot > 0 ? '/' . $tot : '';
     ?>
     <div class="<?php echo $h($box); ?> relative flex flex-col items-center">
-        <?php if ($crown): ?><span class="absolute -top-5 text-2xl" aria-hidden="true">👑</span><?php endif; ?>
-        <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3 <?php echo $isMe ? 'ring-2 ring-[#E50914]/40 ring-offset-1' : ''; ?>">
-            <div class="mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/80 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48); ?></div>
+        <?php if ($crown): ?><span class="absolute -top-4 left-1/2 z-10 -translate-x-1/2 text-lg leading-none drop-shadow-sm" aria-hidden="true">👑</span><?php endif; ?>
+        <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3">
+            <div class="relative z-0 mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/90 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48, $uid); ?></div>
             <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
             <?php if ($dept !== ''): ?><p class="w-full truncate px-0.5 text-center text-[8px] text-slate-600"><?php echo $h($dept); ?></p><?php endif; ?>
             <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $h($frac); ?></p>

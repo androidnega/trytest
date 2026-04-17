@@ -40,8 +40,8 @@ $navClass = static function (bool $on): string {
     <header class="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
             <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-slate-100 to-slate-200 [&>svg]:h-full [&>svg]:w-full sm:h-11 sm:w-11">
-                    <?php echo trytest_student_avatar_svg($userIndex, 44); ?>
+                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-slate-100 to-slate-200 ring-1 ring-slate-200/80 [&>svg]:h-full [&>svg]:w-full sm:h-11 sm:w-11">
+                    <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
                 </div>
                 <div class="min-w-0">
                     <p class="truncate text-sm font-semibold leading-tight text-slate-900"><?php echo $h($userDisplayName); ?></p>
@@ -103,14 +103,18 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
-            <div class="mb-4 grid grid-cols-2 gap-2">
-                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-3 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200">
-                    <span class="text-xl" aria-hidden="true">🏆</span>
-                    <p class="mt-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-800">Leaderboard</p>
+            <div class="mb-4 grid grid-cols-3 gap-2">
+                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
+                    <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>
+                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Rank</p>
                 </a>
-                <a href="#section-courses" class="rounded-xl bg-gradient-to-br from-cyan-50 to-white p-3 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200">
-                    <span class="text-xl" aria-hidden="true">📚</span>
-                    <p class="mt-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-800">Courses</p>
+                <a href="#section-courses" class="rounded-xl bg-gradient-to-br from-cyan-50 to-white p-2.5 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200 sm:p-3">
+                    <span class="text-lg sm:text-xl" aria-hidden="true">📚</span>
+                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Courses</p>
+                </a>
+                <a href="#section-downloads" class="rounded-xl bg-gradient-to-br from-red-50 to-white p-2.5 text-center ring-1 ring-red-100/90 transition hover:ring-red-200 sm:p-3">
+                    <span class="text-lg sm:text-xl" aria-hidden="true">📥</span>
+                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Files</p>
                 </a>
             </div>
 
@@ -134,40 +138,50 @@ $navClass = static function (bool $on): string {
                 </section>
             <?php endif; ?>
 
-            <?php if (!empty($studentDocuments)): ?>
-                <section class="mb-6">
-                    <h2 class="mb-2 text-sm font-bold">Downloads</h2>
+            <section id="section-downloads" class="scroll-mt-20 mb-6">
+                <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/80 to-red-50/30 p-4 shadow-sm ring-1 ring-slate-100 sm:p-5">
+                    <div class="mb-3 flex flex-wrap items-center gap-2">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-lg text-white shadow-sm" aria-hidden="true">📄</span>
+                        <div class="min-w-0 flex-1">
+                            <h2 class="text-base font-bold text-slate-900 sm:text-lg">Materials &amp; downloads</h2>
+                            <p class="text-[11px] text-slate-500">PDFs and handouts your teacher shared for your program.</p>
+                        </div>
+                    </div>
                     <?php if (($youtubePromoBanner ?? '') !== ''): ?>
                         <div class="mb-3"><?php echo $youtubePromoBanner; ?></div>
                     <?php elseif (!empty($youtubePdfGateActive)): ?>
-                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">PDFs: quick YouTube support step before download (no Google sign-in required).</p>
+                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">Before each download: quick YouTube nudge (optional code) — no Google sign-in.</p>
                     <?php endif; ?>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <?php foreach ($studentDocuments as $doc): ?>
-                            <?php
-                            $eligible = !empty($doc['eligible']);
-                            $dd = trim((string) ($doc['department'] ?? ''));
-                            $dl = trim((string) ($doc['level'] ?? ''));
-                            $scope = ($dd === '' ? 'Any program' : $dd) . ' · ' . ($dl === '' ? 'Any level' : ('Lv ' . $dl));
-                            ?>
-                            <div class="flex flex-col rounded-2xl bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm ring-1 ring-slate-200/80">
-                                <div class="mb-3 flex items-start gap-3">
-                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-lg text-white" aria-hidden="true">PDF</span>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="font-semibold leading-snug text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'Document')); ?></p>
-                                        <p class="mt-1 text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
+                    <?php if (!empty($studentDocuments)): ?>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <?php foreach ($studentDocuments as $doc): ?>
+                                <?php
+                                $eligible = !empty($doc['eligible']);
+                                $dd = trim((string) ($doc['department'] ?? ''));
+                                $dl = trim((string) ($doc['level'] ?? ''));
+                                $scope = ($dd === '' ? 'Any program' : $dd) . ' · ' . ($dl === '' ? 'Any level' : ('Lv ' . $dl));
+                                ?>
+                                <div class="flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-sm sm:p-4">
+                                    <div class="mb-3 flex items-start gap-3">
+                                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-xs font-black text-white" aria-hidden="true">PDF</span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-semibold leading-snug text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'Document')); ?></p>
+                                            <p class="mt-1 text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
+                                        </div>
                                     </div>
+                                    <?php if ($eligible): ?>
+                                        <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C6A7D] py-2.5 text-sm font-bold text-white transition hover:bg-[#24586a]">Download</a>
+                                    <?php else: ?>
+                                        <p class="mt-auto rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-500">Not for your program / level</p>
+                                    <?php endif; ?>
                                 </div>
-                                <?php if ($eligible): ?>
-                                    <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C6A7D] py-2.5 text-sm font-bold text-white transition hover:bg-[#24586a]">Download</a>
-                                <?php else: ?>
-                                    <p class="mt-auto rounded-xl bg-slate-100 py-2 text-center text-xs font-medium text-slate-500">Not for your program / level</p>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="rounded-xl border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">No PDF materials are available for you yet.</p>
+                    <?php endif; ?>
+                </div>
+            </section>
 
             <section id="section-courses" class="scroll-mt-20">
                 <h2 class="mb-3 text-sm font-bold">Courses</h2>
@@ -226,7 +240,7 @@ $navClass = static function (bool $on): string {
                                                     <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
                                                 <?php endif; ?>
                                             </div>
-                                            <p class="trytest-quiz-countdown mt-1.5 hidden rounded-lg px-2 py-1 text-center text-[10px] font-bold tabular-nums tracking-tight sm:text-[11px]"></p>
+                                            <p class="trytest-quiz-countdown mt-2 hidden min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base" role="status" aria-live="polite"></p>
                                         </div>
                                     <?php endforeach; ?>
                                     <?php if (empty($course['quizzes'])): ?>
@@ -287,18 +301,17 @@ $navClass = static function (bool $on): string {
 })();
 
 (function () {
-    function pad(n) { return String(n).padStart(2, '0'); }
-    function formatRemain(ms) {
-        if (ms <= 0) return '0d 00:00:00';
-        var s = Math.floor(ms / 1000);
-        var d = Math.floor(s / 86400);
-        var h = Math.floor((s % 86400) / 3600);
-        var m = Math.floor((s % 3600) / 60);
-        var sec = s % 60;
-        return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    /** Minutes and seconds only (large total minutes allowed). */
+    function formatMinSec(ms) {
+        if (ms <= 0) return '0:00';
+        var totalSec = Math.floor(ms / 1000);
+        var m = Math.floor(totalSec / 60);
+        var sec = totalSec % 60;
+        return String(m) + ':' + pad2(sec);
     }
     function countdownBase() {
-        return 'trytest-quiz-countdown mt-1.5 rounded-lg px-2 py-1 text-center text-[10px] font-bold tabular-nums tracking-tight sm:text-[11px] ';
+        return 'trytest-quiz-countdown mt-2 min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base ';
     }
     function tick() {
         var now = Date.now();
@@ -315,22 +328,22 @@ $navClass = static function (bool $on): string {
                 return;
             }
             if (s && now < s) {
-                el.className = countdownBase() + 'bg-amber-100 text-amber-950';
-                el.textContent = 'Opens in ' + formatRemain(s - now);
+                el.className = countdownBase() + 'border-amber-300 bg-amber-100 text-amber-950 shadow-inner';
+                el.innerHTML = '<span class="block text-[10px] font-bold uppercase tracking-wide text-amber-800/90 sm:text-[11px]">Opens in</span><span class="mt-0.5 block text-lg sm:text-2xl">' + formatMinSec(s - now) + '</span>';
                 return;
             }
             if (e && now < e) {
-                el.className = countdownBase() + 'bg-sky-100 text-sky-950';
-                el.textContent = 'Closes in ' + formatRemain(e - now);
+                el.className = countdownBase() + 'border-sky-400 bg-sky-100 text-sky-950 shadow-inner';
+                el.innerHTML = '<span class="block text-[10px] font-bold uppercase tracking-wide text-sky-900/90 sm:text-[11px]">Closes in</span><span class="mt-0.5 block text-lg sm:text-2xl">' + formatMinSec(e - now) + '</span>';
                 return;
             }
             if (e && now >= e) {
-                el.className = countdownBase() + 'bg-slate-200 text-slate-700';
+                el.className = countdownBase() + 'border-slate-300 bg-slate-200 text-slate-700';
                 el.textContent = 'Ended';
                 return;
             }
             if (s && now >= s && (!e || now <= e)) {
-                el.className = countdownBase() + 'bg-emerald-100 text-emerald-950';
+                el.className = countdownBase() + 'border-emerald-300 bg-emerald-100 text-emerald-950';
                 el.textContent = 'Open now';
                 return;
             }
