@@ -390,37 +390,13 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
 }
 
 /**
- * Uses stored refresh token to confirm the student is still subscribed to your channel (optional OAuth path).
+ * PDF downloads: only the light nudge (session after Continue / correct code).
+ * Google OAuth / YouTube API subscription checks are not used for PDF access.
  */
-function trytest_youtube_download_allowed(PDO $db, int $userId, array $settings): bool
+function trytest_youtube_download_allowed(array $settings): bool
 {
     if (empty($settings['gate_active'])) {
         return true;
     }
-    if (trytest_pdf_light_gate_session_ok()) {
-        return true;
-    }
-    if (trytest_youtube_session_verified()) {
-        return true;
-    }
-    if (empty($settings['credentials_complete'])) {
-        return false;
-    }
-    $stmt = $db->prepare('SELECT youtube_refresh_token FROM users WHERE id = ?');
-    $stmt->execute([$userId]);
-    $rt = trim((string) ($stmt->fetchColumn() ?: ''));
-    if ($rt === '') {
-        return false;
-    }
-    $access = trytest_youtube_refresh_access_token($rt, $settings);
-    if ($access === null) {
-        trytest_youtube_clear_user_tokens($db, $userId);
-        return false;
-    }
-    $ok = trytest_youtube_user_subscribed_to_channel($access, $settings['channel_id']);
-    if (!$ok) {
-        return false;
-    }
-    trytest_youtube_mark_session_verified();
-    return true;
+    return trytest_pdf_light_gate_session_ok();
 }

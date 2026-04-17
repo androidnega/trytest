@@ -53,31 +53,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'txt') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    if ($action === 'create_question') {
-        $quizId = (int) ($_POST['quiz_id'] ?? 0);
-        $selectedQuizId = $quizId;
-        $type = strtolower(trim((string) ($_POST['question_type'] ?? 'mcq')));
-        $question = trim((string) ($_POST['question'] ?? ''));
-        $correct = trim((string) ($_POST['correct_answer'] ?? ''));
-        $a = trim((string) ($_POST['option_a'] ?? ''));
-        $b = trim((string) ($_POST['option_b'] ?? ''));
-        $c = trim((string) ($_POST['option_c'] ?? ''));
-        $d = trim((string) ($_POST['option_d'] ?? ''));
-        if ($quizId < 1 || $question === '' || $correct === '') {
-            $error = 'Quiz, question, and correct answer are required.';
-        } elseif ($type === 'mcq' && ($a === '' || $b === '' || $c === '' || $d === '')) {
-            $error = 'For MCQ, options A-D are required.';
-        } else {
-            if ($type === 'fill') {
-                $a = $b = $c = $d = null;
-            }
-            $db->prepare(
-                'INSERT INTO questions (quiz_id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            )->execute([$quizId, $type, $question, $a, $b, $c, $d, $correct, 'pending']);
-            $message = 'Question added to review pool.';
-        }
-    }
     if ($action === 'approve_all') {
         $quizId = (int) ($_POST['quiz_id'] ?? 0);
         $selectedQuizId = $quizId;
@@ -169,32 +144,10 @@ if ($selectedQuizId > 0) {
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-            <section class="rounded-2xl border border-slate-200 bg-white p-5">
-                <h2 class="font-semibold mb-3">Add Question</h2>
-                <form method="post" class="grid md:grid-cols-2 gap-2">
-                    <input type="hidden" name="action" value="create_question">
-                    <select class="border rounded-lg px-3 py-2 md:col-span-2" name="quiz_id" required>
-                        <option value="">Select quiz</option>
-                        <?php foreach ($quizzes as $quiz): ?>
-                            <option value="<?php echo (int) $quiz['id']; ?>"><?php echo htmlspecialchars((string) $quiz['title'], ENT_QUOTES, 'UTF-8'); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <select class="border rounded-lg px-3 py-2" name="question_type" required>
-                        <option value="mcq">MCQ</option>
-                        <option value="fill">Fill</option>
-                    </select>
-                    <input class="border rounded-lg px-3 py-2" name="correct_answer" placeholder="Correct answer" required>
-                    <textarea class="border rounded-lg px-3 py-2 md:col-span-2" name="question" rows="2" placeholder="Question text" required></textarea>
-                    <input class="border rounded-lg px-3 py-2" name="option_a" placeholder="Option A">
-                    <input class="border rounded-lg px-3 py-2" name="option_b" placeholder="Option B">
-                    <input class="border rounded-lg px-3 py-2" name="option_c" placeholder="Option C">
-                    <input class="border rounded-lg px-3 py-2" name="option_d" placeholder="Option D">
-                    <button class="md:col-span-2 bg-slate-900 text-white rounded-lg py-2 font-medium">Add Question</button>
-                </form>
-            </section>
+        <div class="max-w-3xl">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
-                <h2 class="font-semibold">Question Set & Review Pool</h2>
+                <h2 class="font-semibold">Question Set &amp; Review Pool</h2>
+                <p class="text-xs text-slate-500">To load new items into the review pool, use <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_exam'), ENT_QUOTES, 'UTF-8'); ?>">Import exam</a> or <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_json'), ENT_QUOTES, 'UTF-8'); ?>">Import JSON</a>. Here you pick the quiz set, approve or edit, and export.</p>
                 <form method="get" class="space-y-2">
                     <label class="text-xs text-slate-500">Quiz set</label>
                     <div class="flex gap-2">

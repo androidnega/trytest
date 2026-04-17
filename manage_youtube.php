@@ -97,7 +97,7 @@ $effective = trytest_youtube_settings();
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 class="text-xl font-bold text-slate-900">YouTube &amp; PDF downloads</h1>
-                    <p class="mt-1 text-sm text-slate-500">Optional friendly screen before PDFs (channel link, optional video code, continue without Google). OAuth is only needed if you want API-based subscription checks.</p>
+                    <p class="mt-1 text-sm text-slate-500">Before each PDF, students see your channel, an optional video code, and can continue — no Google sign-in. PDF access is never tied to OAuth or the YouTube API.</p>
                 </div>
                 <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm font-medium text-indigo-600 hover:underline">← Manager</a>
             </div>
@@ -116,10 +116,7 @@ $effective = trytest_youtube_settings();
                     <?php if ($effective['gate_active'] && trim((string) ($effective['channel_id'] ?? '')) === ''): ?>
                         <p class="mt-1 text-sm font-semibold text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Gate on but channel ID is missing — add UC… below or in <code class="rounded bg-white px-1">config/youtube.php</code></p>
                     <?php elseif ($effective['gate_active']): ?>
-                        <p class="mt-1 text-sm font-semibold text-emerald-700"><i class="fa-solid fa-heart mr-1"></i> PDF nudge on — students see YouTube + optional code (low friction)</p>
-                        <?php if (!empty($effective['oauth_gate_ready'])): ?>
-                            <p class="mt-1 text-[11px] text-slate-600">OAuth is complete: subscribed students who connect Google can download without that screen.</p>
-                        <?php endif; ?>
+                        <p class="mt-1 text-sm font-semibold text-emerald-700"><i class="fa-solid fa-heart mr-1"></i> PDF nudge on — YouTube link + optional code + Continue (same flow for everyone)</p>
                     <?php else: ?>
                         <p class="mt-1 text-sm font-semibold text-slate-600"><i class="fa-solid fa-unlock mr-1"></i> PDF downloads go straight through (no YouTube screen)</p>
                     <?php endif; ?>
@@ -152,7 +149,7 @@ $effective = trytest_youtube_settings();
                     <p class="mt-1 text-[11px] text-slate-500">If set, students can enter this code from your video to unlock the PDF. Leave empty to hide the code field; they can still use Continue.</p>
                 </div>
 
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Optional: Google OAuth (stricter)</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Optional: Google OAuth (legacy — not used for PDF downloads)</p>
 
                 <div>
                     <label class="mb-1 block text-xs font-medium text-slate-600">OAuth client ID</label>
@@ -175,7 +172,7 @@ $effective = trytest_youtube_settings();
 
                 <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 text-[11px] text-slate-600">
                     <p class="font-semibold text-slate-700">File / env fallback</p>
-                    <p class="mt-1">Empty OAuth fields can be filled from <code class="rounded bg-white px-1">config/youtube.php</code> or environment variables. The <strong>PDF nudge toggle</strong> is stored here; when OAuth is fully configured, subscribed students who linked Google can skip the nudge.</p>
+                    <p class="mt-1">Empty OAuth fields can be filled from <code class="rounded bg-white px-1">config/youtube.php</code> or environment variables. The <strong>PDF nudge toggle</strong> is stored here. OAuth credentials are kept only if you reuse them elsewhere; they do not unlock PDFs on this site.</p>
                 </div>
 
                 <button type="submit" class="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Save settings</button>

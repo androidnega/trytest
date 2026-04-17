@@ -51,8 +51,7 @@ if (!trytest_student_document_eligible($userDept, $userLevel, $docDept, $docLeve
 
 $yt = trytest_youtube_settings();
 if (!empty($yt['gate_active'])) {
-    $uid = (int) $_SESSION['user_id'];
-    if (!trytest_youtube_download_allowed($db, $uid, $yt)) {
+    if (!trytest_youtube_download_allowed($yt)) {
         $gateErr = '';
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $act = (string) ($_POST['pdf_gate_action'] ?? '');
