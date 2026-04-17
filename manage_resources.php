@@ -97,7 +97,7 @@ $deptOptions = trytest_department_dropdown_options($db);
                 <h1 class="text-xl font-bold text-slate-900">Student PDF materials</h1>
                 <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
             </div>
-            <p class="mt-2 text-sm text-slate-500">Files are stored on this server only. Students see each item on their dashboard and can download if it matches their program and level. Optional: turn on the YouTube subscription gate under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_youtube'), ENT_QUOTES, 'UTF-8'); ?>">YouTube gate</a> (or leave it off for immediate downloads).</p>
+            <p class="mt-2 text-sm text-slate-500">Files are stored on this server only. Students open <strong>Downloads</strong> from their app menu; files match their program and level. Optional: turn on the YouTube nudge under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_youtube'), ENT_QUOTES, 'UTF-8'); ?>">YouTube gate</a> (or leave it off for immediate downloads).</p>
             <?php if ($error !== ''): ?><div class="mt-3 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         </div>

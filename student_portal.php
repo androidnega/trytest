@@ -211,7 +211,6 @@ $coursesWithQuizzes = [];
 $totalPoints = 0;
 $recentAttempts = [];
 $levelLeaderboardRows = [];
-$studentDocuments = [];
 $doneBlock = null;
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
@@ -297,30 +296,12 @@ if ($isUserLoggedIn) {
         }
     }
 
-    $docRows = $db->query('SELECT id, title, department, level FROM student_documents ORDER BY id DESC')->fetchAll();
-    foreach ($docRows as $d) {
-        $dd = trim((string) ($d['department'] ?? ''));
-        $dl = trim((string) ($d['level'] ?? ''));
-        $studentDocuments[] = [
-            'id' => (int) ($d['id'] ?? 0),
-            'title' => (string) ($d['title'] ?? ''),
-            'department' => $dd,
-            'level' => $dl,
-            'eligible' => trytest_student_document_eligible($userDepartment, $userLevel, $dd, $dl),
-        ];
-    }
 }
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
-$downloadResourceBase = trytest_url('download_resource');
-$ytSettingsForUi = trytest_youtube_settings();
-$youtubePdfGateActive = !empty($ytSettingsForUi['gate_active']);
-$youtubePromoBanner = trytest_youtube_promo_banner_html($ytSettingsForUi);
-if (!$isUserLoggedIn) {
-    $studentDocuments = [];
-}
+$downloadsPageUrl = trytest_url('downloads');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 ?>
 <!DOCTYPE html>

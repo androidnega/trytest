@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 /** @var string $dashboardUrl */
 /** @var string $quizUrlBase */
-/** @var string $downloadResourceBase */
-/** @var bool $youtubePdfGateActive */
-/** @var string $youtubePromoBanner HTML strip from trytest_youtube_promo_banner_html() */
-/** @var list<array<string,mixed>> $studentDocuments */
+/** @var string $downloadsPageUrl */
 /** @var int $userId */
 /** @var string $userIndex */
 /** @var string $userLevel */
@@ -63,6 +60,7 @@ $navClass = static function (bool $on): string {
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Program</span><span class="min-w-0 truncate text-right font-medium text-slate-800"><?php echo $h($deptLabel); ?></span></p>
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
+                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="block border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50">Downloads</a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
                             <button type="submit" class="w-full rounded-lg px-3 py-2 text-left text-sm text-[#E50914] hover:bg-red-50" role="menuitem">Log out</button>
@@ -71,9 +69,10 @@ $navClass = static function (bool $on): string {
                 </div>
             </div>
         </div>
-        <div class="mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-10 pb-2 text-sm font-semibold md:flex">
+        <div class="mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex">
             <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="whitespace-nowrap text-slate-500 hover:text-slate-700">Downloads</a>
         </div>
     </header>
 
@@ -87,9 +86,6 @@ $navClass = static function (bool $on): string {
                     <span class="whitespace-nowrap"><?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400">/<?php echo (int) $doneBlock['total']; ?></span></span>
                 </div>
                 <p class="mt-3 text-center text-sm text-slate-600">Accuracy <?php echo $acc; ?>%</p>
-                <?php if (($youtubePromoBanner ?? '') !== ''): ?>
-                    <div class="mt-3"><?php echo $youtubePromoBanner; ?></div>
-                <?php endif; ?>
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
                     <p class="text-center text-sm font-semibold text-[#2C6A7D]">Your rank on this quiz: #<?php echo (int) $doneBlock['rank']; ?></p>
                 <?php endif; ?>
@@ -103,7 +99,7 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
-            <div class="mb-4 grid grid-cols-3 gap-2">
+            <div class="mb-4 grid grid-cols-2 gap-2">
                 <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>
                     <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Rank</p>
@@ -111,10 +107,6 @@ $navClass = static function (bool $on): string {
                 <a href="#section-courses" class="rounded-xl bg-gradient-to-br from-cyan-50 to-white p-2.5 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">📚</span>
                     <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Courses</p>
-                </a>
-                <a href="#section-downloads" class="rounded-xl bg-gradient-to-br from-red-50 to-white p-2.5 text-center ring-1 ring-red-100/90 transition hover:ring-red-200 sm:p-3">
-                    <span class="text-lg sm:text-xl" aria-hidden="true">📥</span>
-                    <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Files</p>
                 </a>
             </div>
 
@@ -137,51 +129,6 @@ $navClass = static function (bool $on): string {
                     </div>
                 </section>
             <?php endif; ?>
-
-            <section id="section-downloads" class="scroll-mt-20 mb-6">
-                <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/80 to-red-50/30 p-4 shadow-sm ring-1 ring-slate-100 sm:p-5">
-                    <div class="mb-3 flex flex-wrap items-center gap-2">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-lg text-white shadow-sm" aria-hidden="true">📄</span>
-                        <div class="min-w-0 flex-1">
-                            <h2 class="text-base font-bold text-slate-900 sm:text-lg">Materials &amp; downloads</h2>
-                            <p class="text-[11px] text-slate-500">PDFs and handouts your teacher shared for your program.</p>
-                        </div>
-                    </div>
-                    <?php if (($youtubePromoBanner ?? '') !== ''): ?>
-                        <div class="mb-3"><?php echo $youtubePromoBanner; ?></div>
-                    <?php elseif (!empty($youtubePdfGateActive)): ?>
-                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">Before each download: quick YouTube nudge (optional code) — no Google sign-in.</p>
-                    <?php endif; ?>
-                    <?php if (!empty($studentDocuments)): ?>
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <?php foreach ($studentDocuments as $doc): ?>
-                                <?php
-                                $eligible = !empty($doc['eligible']);
-                                $dd = trim((string) ($doc['department'] ?? ''));
-                                $dl = trim((string) ($doc['level'] ?? ''));
-                                $scope = ($dd === '' ? 'Any program' : $dd) . ' · ' . ($dl === '' ? 'Any level' : ('Lv ' . $dl));
-                                ?>
-                                <div class="flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-sm sm:p-4">
-                                    <div class="mb-3 flex items-start gap-3">
-                                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-xs font-black text-white" aria-hidden="true">PDF</span>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold leading-snug text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'Document')); ?></p>
-                                            <p class="mt-1 text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
-                                        </div>
-                                    </div>
-                                    <?php if ($eligible): ?>
-                                        <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C6A7D] py-2.5 text-sm font-bold text-white transition hover:bg-[#24586a]">Download</a>
-                                    <?php else: ?>
-                                        <p class="mt-auto rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-500">Not for your program / level</p>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="rounded-xl border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">No PDF materials are available for you yet.</p>
-                    <?php endif; ?>
-                </div>
-            </section>
 
             <section id="section-courses" class="scroll-mt-20">
                 <h2 class="mb-3 text-sm font-bold">Courses</h2>
@@ -278,6 +225,10 @@ $navClass = static function (bool $on): string {
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($navClass($tabRank)); ?>">
                 <span class="text-lg">🏆</span>
                 <span class="text-[10px] font-semibold">Rank</span>
+            </a>
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($navClass(false)); ?>">
+                <span class="text-lg">📥</span>
+                <span class="text-[10px] font-semibold">Files</span>
             </a>
         </div>
     </nav>
