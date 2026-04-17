@@ -13,6 +13,18 @@ require __DIR__ . '/includes/youtube_subscribe.php';
 
 $departmentOptions = trytest_department_dropdown_options($db);
 
+$incomingShareQuiz = isset($_GET['quiz']) ? (int) $_GET['quiz'] : 0;
+if ($incomingShareQuiz < 1 && isset($_GET['quiz_id'])) {
+    $incomingShareQuiz = (int) $_GET['quiz_id'];
+}
+if ($incomingShareQuiz > 0) {
+    $qc = $db->prepare('SELECT id FROM quizzes WHERE id = ?');
+    $qc->execute([$incomingShareQuiz]);
+    if ($qc->fetchColumn()) {
+        $_SESSION['pending_shared_quiz_id'] = $incomingShareQuiz;
+    }
+}
+
 /**
  * Simple 4-digit numeric password for students.
  */
@@ -34,6 +46,15 @@ if ($viewReset && $_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postedShare = isset($_POST['shared_quiz_id']) ? (int) $_POST['shared_quiz_id'] : 0;
+    if ($postedShare > 0) {
+        $qc = $db->prepare('SELECT id FROM quizzes WHERE id = ?');
+        $qc->execute([$postedShare]);
+        if ($qc->fetchColumn()) {
+            $_SESSION['pending_shared_quiz_id'] = $postedShare;
+        }
+    }
+
     $action = $_POST['action'] ?? '';
 
     if ($action === 'check_index') {
@@ -88,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
                 $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
                     ->execute([(int) $user['id']]);
-                trytest_redirect(trytest_url('dashboard'));
+                trytest_redirect(trytest_student_post_login_redirect_url($db));
             }
         }
     }
@@ -145,7 +166,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'logout_user') {
         trytest_youtube_clear_session_verified();
-        unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department'], $_SESSION['trytest_pdf_gate_ok_at']);
+        unset(
+            $_SESSION['user_id'],
+            $_SESSION['user_index_number'],
+            $_SESSION['user_level'],
+            $_SESSION['user_department'],
+            $_SESSION['trytest_pdf_gate_ok_at'],
+            $_SESSION['pending_shared_quiz_id']
+        );
         trytest_redirect(trytest_home_with_query(['out' => '1']));
     }
 }
@@ -167,6 +195,17 @@ if ($isUserLoggedIn) {
 }
 
 $userDepartment = $isUserLoggedIn ? trim((string) ($_SESSION['user_department'] ?? '')) : '';
+
+if ($isUserLoggedIn) {
+    $pq = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
+    if ($pq > 0) {
+        if (trytest_student_can_access_quiz($db, $pq, $userLevel, $userDepartment)) {
+            unset($_SESSION['pending_shared_quiz_id']);
+            trytest_redirect(trytest_url('quiz?quiz_id=' . $pq));
+        }
+        unset($_SESSION['pending_shared_quiz_id']);
+    }
+}
 
 $coursesWithQuizzes = [];
 $totalPoints = 0;
@@ -282,6 +321,7 @@ $youtubePromoBanner = trytest_youtube_promo_banner_html($ytSettingsForUi);
 if (!$isUserLoggedIn) {
     $studentDocuments = [];
 }
+$pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -307,6 +347,12 @@ else: ?>
             <h1 class="text-2xl font-bold text-slate-900 mb-1 text-center md:text-left">Trytest</h1>
             <p class="text-slate-600 mb-5 text-center md:text-left">Sign in with your index number.</p>
 
+            <?php if ($pendingShareQuizId > 0): ?>
+                <div class="mb-4 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-center text-sm text-indigo-900 md:text-left">
+                    You have a quiz link — sign in to open it (your level and program must match the quiz).
+                </div>
+            <?php endif; ?>
+
             <?php if ($error !== ''): ?>
                 <div class="mb-4 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php endif; ?>
@@ -326,6 +372,9 @@ else: ?>
                     <p class="mb-3 text-sm text-slate-600">Enter your index. We will create a new 4-digit Trytest password.</p>
                     <form method="post" class="space-y-3">
                         <input type="hidden" name="action" value="reset_password">
+                        <?php if ($pendingShareQuizId > 0): ?>
+                            <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                        <?php endif; ?>
                         <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
                         <button class="w-full rounded-lg bg-indigo-600 py-2 font-medium text-white" type="submit">Reset password</button>
                     </form>
@@ -341,6 +390,9 @@ else: ?>
                             <?php if ($loginMode === 'index'): ?>
                                 <form method="post" class="space-y-3" id="formCheckIndex">
                                     <input type="hidden" name="action" value="check_index">
+                                    <?php if ($pendingShareQuizId > 0): ?>
+                                        <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                    <?php endif; ?>
                                     <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index number (e.g BC/ITS/24/047)" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
                                     <button class="w-full rounded-lg bg-indigo-600 py-2 font-medium text-white" type="submit">Continue</button>
                                 </form>
@@ -349,6 +401,9 @@ else: ?>
                                 <p class="mb-2 text-center text-sm text-slate-600 md:text-left">Index <span class="font-semibold"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span><?php if ($existingUserLevel !== ''): ?> · Level <?php echo htmlspecialchars($existingUserLevel, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></p>
                                 <form method="post" class="space-y-3" id="formLoginExisting">
                                     <input type="hidden" name="action" value="login_existing">
+                                    <?php if ($pendingShareQuizId > 0): ?>
+                                        <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                    <?php endif; ?>
                                     <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
                                     <div>
                                         <label for="studentPassword" class="mb-1 block text-left text-xs font-medium text-slate-600">Your Trytest password <span class="text-slate-400">(4 digits)</span></label>
@@ -365,6 +420,9 @@ else: ?>
                                 <p class="mb-2 text-center text-sm text-slate-600 md:text-left">New account · <span class="font-semibold"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span></p>
                                 <form method="post" class="space-y-3">
                                     <input type="hidden" name="action" value="register_new">
+                                    <?php if ($pendingShareQuizId > 0): ?>
+                                        <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                    <?php endif; ?>
                                     <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
                                     <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" name="level" required>
                                         <option value="">Your level</option>

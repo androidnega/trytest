@@ -196,7 +196,7 @@ foreach ($questionRows as $row) {
                             <input class="w-full border rounded-lg px-2 py-2 text-sm" type="datetime-local" name="quiz_ends_at">
                         </div>
                     </div>
-                    <p class="text-[11px] text-slate-500">Leave both empty for always-on access. Students see countdowns on their dashboard.</p>
+                    <p class="text-[11px] text-slate-500">Leave both empty for always-on access. Students see countdowns on their dashboard. After you create a quiz, use <strong>Share with students</strong> to copy or send a WhatsApp link (students sign in first).</p>
                     <div>
                         <label class="block text-[11px] font-medium text-slate-600 mb-1">Student time limit <span class="text-slate-400 font-normal">(minutes, optional)</span></label>
                         <input class="w-full border rounded-lg px-3 py-2" type="number" name="duration_minutes" min="0" step="1" placeholder="0 = no limit; timer starts when they see Q1">
@@ -241,6 +241,23 @@ foreach ($questionRows as $row) {
                                         <input type="hidden" name="id" value="<?php echo $quizId; ?>">
                                         <button class="text-red-600 text-xs" onclick="return confirm('Delete this quiz and all its questions?');">Delete</button>
                                     </form>
+                                </div>
+                            </div>
+                            <?php
+                            $shareUrl = trytest_absolute_url('share_quiz?id=' . $quizId);
+                            $shareTitle = (string) ($quiz['title'] ?? 'Quiz');
+                            $waBody = 'Trytest — "' . $shareTitle . "\"\n\n" . $shareUrl . "\n\nSign in with your index number to open the quiz.";
+                            $waHref = 'https://wa.me/?text=' . rawurlencode($waBody);
+                            ?>
+                            <div class="share-quiz-block mt-2 rounded-lg border border-emerald-100 bg-emerald-50/60 p-2">
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-900">Share with students</p>
+                                <p class="mt-0.5 text-[10px] text-emerald-800/90">Opens sign-in, then the quiz (same rules as the dashboard).</p>
+                                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                                    <input type="text" readonly class="share-quiz-url-input min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 font-mono text-[10px] text-slate-800" value="<?php echo htmlspecialchars($shareUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <div class="flex shrink-0 flex-wrap gap-1.5">
+                                        <button type="button" class="share-quiz-copy rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800" data-url="<?php echo htmlspecialchars($shareUrl, ENT_QUOTES, 'UTF-8'); ?>">Copy link</button>
+                                        <a href="<?php echo htmlspecialchars($waHref, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-semibold text-white hover:bg-[#20bd5a] sm:flex-initial"><i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp</a>
+                                    </div>
                                 </div>
                             </div>
                             <form method="post" class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
@@ -291,6 +308,44 @@ foreach ($questionRows as $row) {
         </div>
     </div>
 <script>
+(function () {
+    document.querySelectorAll('.share-quiz-copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-url') || '';
+            if (!url) return;
+            var resetLabel = function () {
+                btn.textContent = 'Copy link';
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function () {
+                    btn.textContent = 'Copied!';
+                    setTimeout(resetLabel, 2200);
+                }).catch(function () {
+                    var block = btn.closest('.share-quiz-block');
+                    var inp = block ? block.querySelector('.share-quiz-url-input') : null;
+                    if (inp) {
+                        inp.select();
+                        try {
+                            document.execCommand('copy');
+                        } catch (e) {}
+                    }
+                });
+                return;
+            }
+            var block = btn.closest('.share-quiz-block');
+            var inp = block ? block.querySelector('.share-quiz-url-input') : null;
+            if (inp) {
+                inp.select();
+                try {
+                    document.execCommand('copy');
+                    btn.textContent = 'Copied!';
+                    setTimeout(resetLabel, 2200);
+                } catch (e) {}
+            }
+        });
+    });
+})();
+
 (function () {
     const select = document.getElementById('quizCourseSelect');
     const levelLabel = document.getElementById('selectedCourseLevel');

@@ -147,6 +147,77 @@ function trytest_level_leaderboard(PDO $db, string $level, int $limit = 40): arr
     return $out;
 }
 
+/**
+ * Whether this student may open the quiz (same course/level/dept rules as the dashboard list).
+ */
+function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel, string $userDepartment): bool
+{
+    $quizId = max(0, $quizId);
+    $userLevel = trim($userLevel);
+    $userDepartment = trim($userDepartment);
+    if ($quizId < 1 || $userLevel === '') {
+        return false;
+    }
+
+    if ($userDepartment === '') {
+        $sql = 'SELECT 1 FROM quizzes q WHERE q.id = ?
+            AND (q.level IS NULL OR TRIM(COALESCE(q.level, \'\')) = \'\' OR q.level = ?)
+            AND (
+                EXISTS (SELECT 1 FROM courses c WHERE c.id = q.course_id AND c.level = ?)
+                OR EXISTS (
+                    SELECT 1 FROM quiz_courses qc
+                    INNER JOIN courses c ON c.id = qc.course_id
+                    WHERE qc.quiz_id = q.id AND c.level = ?
+                )
+            )
+            LIMIT 1';
+        $st = $db->prepare($sql);
+        $st->execute([$quizId, $userLevel, $userLevel, $userLevel]);
+
+        return (bool) $st->fetchColumn();
+    }
+
+    $sql = 'SELECT 1 FROM quizzes q WHERE q.id = ?
+        AND (q.level IS NULL OR TRIM(COALESCE(q.level, \'\')) = \'\' OR q.level = ?)
+        AND (
+            EXISTS (
+                SELECT 1 FROM courses c
+                WHERE c.id = q.course_id AND c.level = ?
+                AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))
+            )
+            OR EXISTS (
+                SELECT 1 FROM quiz_courses qc
+                INNER JOIN courses c ON c.id = qc.course_id
+                WHERE qc.quiz_id = q.id AND c.level = ?
+                AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))
+            )
+        )
+        LIMIT 1';
+    $st = $db->prepare($sql);
+    $st->execute([$quizId, $userLevel, $userLevel, $userDepartment, $userLevel, $userDepartment]);
+
+    return (bool) $st->fetchColumn();
+}
+
+/**
+ * After sign-in: dashboard, or quiz if a share link was pending and access is allowed.
+ */
+function trytest_student_post_login_redirect_url(PDO $db): string
+{
+    $qid = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
+    if ($qid < 1) {
+        return trytest_url('dashboard');
+    }
+    $level = trim((string) ($_SESSION['user_level'] ?? ''));
+    $dept = trim((string) ($_SESSION['user_department'] ?? ''));
+    unset($_SESSION['pending_shared_quiz_id']);
+    if (trytest_student_can_access_quiz($db, $qid, $level, $dept)) {
+        return trytest_url('quiz?quiz_id=' . $qid);
+    }
+
+    return trytest_url('dashboard');
+}
+
 function trytest_render_quiz_podium_html(array $board, int $userId, callable $h): string
 {
     ob_start();
