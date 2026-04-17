@@ -174,11 +174,11 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
     $third = $top[2] ?? null;
     ?>
     <div class="flex items-end justify-center gap-2 pt-4 pb-2">
-        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'border-slate-300', false, $showFraction); ?>
-        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'border-[#84B8B8] ring-2 ring-[#84B8B8]/50', true, $showFraction); ?>
-        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'border-slate-300', false, $showFraction); ?>
+        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'bg-slate-100/90', false, $showFraction); ?>
+        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'bg-emerald-50', true, $showFraction); ?>
+        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'bg-slate-100/90', false, $showFraction); ?>
     </div>
-    <ul class="mt-4 max-h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2">
+    <ul class="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-2">
         <?php
         $i = 0;
         foreach ($rows as $row):
@@ -193,14 +193,13 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
             $tot = (int) ($row['best_total'] ?? 0);
             $isMe = $uid === $userId;
             ?>
-            <li class="flex items-center gap-3 rounded-xl px-2 py-2 <?php echo $isMe ? 'bg-[#84B8B8]/20' : ''; ?>">
-                <span class="w-6 text-center text-xs font-bold text-slate-500"><?php echo $i; ?></span>
-                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 36); ?></div>
-                <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium"><?php echo $h(trytest_student_display_name($idx)); ?></p>
-                    <?php if ($dept !== ''): ?><p class="truncate text-[10px] text-slate-500"><?php echo $h($dept); ?></p><?php endif; ?>
+            <li class="flex flex-nowrap items-center gap-2 rounded-lg px-2 py-1.5 <?php echo $isMe ? 'bg-emerald-100/60' : 'bg-white'; ?>">
+                <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500"><?php echo $i; ?></span>
+                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32); ?></div>
+                <div class="min-w-0 flex-1 overflow-hidden">
+                    <p class="truncate text-xs font-medium leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?><?php if ($dept !== ''): ?><span class="text-slate-400"> · </span><span class="text-[10px] text-slate-500"><?php echo $h($dept); ?></span><?php endif; ?></p>
                 </div>
-                <span class="text-xs font-bold text-[#2C6A7D]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
+                <span class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
             </li>
         <?php endforeach; ?>
     </ul>
@@ -210,7 +209,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
 function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h, string $box, string $ring, bool $crown, bool $showFraction): void
 {
     if (!$slot) {
-        echo '<div class="' . $h($box) . ' flex flex-col items-center justify-end rounded-xl border border-dashed border-slate-300 bg-white"></div>';
+        echo '<div class="' . $h($box) . ' flex flex-col items-center justify-end rounded-xl bg-slate-100/50"></div>';
         return;
     }
     $uid = (int) ($slot['user_id'] ?? 0);
@@ -223,12 +222,12 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
     ?>
     <div class="<?php echo $h($box); ?> relative flex flex-col items-center">
         <?php if ($crown): ?><span class="absolute -top-5 text-2xl" aria-hidden="true">👑</span><?php endif; ?>
-        <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl border <?php echo $h($ring); ?> bg-white px-1 pb-2 pt-3 <?php echo $isMe ? 'ring-2 ring-[#E50914]/30' : ''; ?>">
-            <div class="mb-1 h-12 w-12 overflow-hidden rounded-xl [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48); ?></div>
-            <p class="w-full truncate text-center text-[11px] font-bold"><?php echo $h(trytest_student_display_name($idx)); ?></p>
-            <?php if ($dept !== ''): ?><p class="w-full truncate text-center text-[9px] text-slate-500"><?php echo $h($dept); ?></p><?php endif; ?>
-            <p class="mt-1 text-xs font-extrabold text-[#2C6A7D]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
-            <span class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">#<?php echo $place; ?></span>
+        <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3 <?php echo $isMe ? 'ring-2 ring-[#E50914]/40 ring-offset-1' : ''; ?>">
+            <div class="mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/80 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48); ?></div>
+            <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
+            <?php if ($dept !== ''): ?><p class="w-full truncate px-0.5 text-center text-[8px] text-slate-600"><?php echo $h($dept); ?></p><?php endif; ?>
+            <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
+            <span class="mt-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-600">#<?php echo $place; ?></span>
         </div>
     </div>
     <?php

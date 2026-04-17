@@ -175,7 +175,10 @@ $levelLeaderboardRows = [];
 $studentDocuments = [];
 $doneBlock = null;
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
-if (!in_array($activeTab, ['home', 'rank', 'profile'], true)) {
+if ($activeTab === 'profile') {
+    $activeTab = 'home';
+}
+if (!in_array($activeTab, ['home', 'rank'], true)) {
     $activeTab = 'home';
 }
 

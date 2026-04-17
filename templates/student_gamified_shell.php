@@ -26,7 +26,6 @@ $h = static function (string $s): string {
 
 $tabHome = $activeTab === 'home';
 $tabRank = $activeTab === 'rank';
-$tabProfile = $activeTab === 'profile';
 $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 
@@ -38,26 +37,31 @@ $navClass = static function (bool $on): string {
 ?>
 <div class="min-h-screen bg-white text-slate-900 pb-24 md:pb-8">
     <header class="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-            <div class="flex min-w-0 items-center gap-3">
-                <div class="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white [&>svg]:h-full [&>svg]:w-full">
-                    <?php echo trytest_student_avatar_svg($userIndex, 48); ?>
+        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+            <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-slate-100 to-slate-200 [&>svg]:h-full [&>svg]:w-full sm:h-11 sm:w-11">
+                    <?php echo trytest_student_avatar_svg($userIndex, 44); ?>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-xs text-slate-500">Hello</p>
-                    <p class="truncate font-semibold"><?php echo $h($userDisplayName); ?></p>
-                    <p class="truncate text-[11px] text-slate-500">Level <?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
+                    <p class="truncate text-sm font-semibold leading-tight text-slate-900"><?php echo $h($userDisplayName); ?></p>
+                    <p class="truncate text-[10px] text-slate-500 sm:text-[11px]">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-[#2C6A7D]">
-                    Points: <?php echo (int) $totalPoints; ?>
+            <div class="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+                <div class="inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap rounded-full bg-[#2C6A7D]/10 px-2 py-1 text-[11px] font-bold tabular-nums text-[#2C6A7D] sm:px-3 sm:text-sm">
+                    <span class="font-semibold text-[#2C6A7D]/75">Pts</span>
+                    <span><?php echo (int) $totalPoints; ?></span>
                 </div>
-                <div class="relative">
-                    <button type="button" id="profileMenuBtn" class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋮</button>
-                    <div id="profileMenu" class="hidden absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white py-2 shadow-lg" role="menu">
-                        <p class="border-b border-slate-100 px-3 py-2 text-xs text-slate-500">Signed in</p>
-                        <p class="px-3 py-1 text-sm font-medium"><?php echo $h($userIndex); ?></p>
+                <div class="relative shrink-0">
+                    <button type="button" id="profileMenuBtn" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-700 hover:bg-slate-200 sm:h-10 sm:w-10" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
+                    <div id="profileMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-2 shadow-lg" role="menu">
+                        <p class="px-3 text-xs font-semibold text-slate-900">Profile</p>
+                        <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500"><?php echo $h($userIndex); ?></p>
+                        <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600">
+                            <p class="flex justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
+                            <p class="flex justify-between gap-2"><span class="text-slate-400">Program</span><span class="min-w-0 truncate text-right font-medium text-slate-800"><?php echo $h($deptLabel); ?></span></p>
+                            <p class="flex justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
+                        </div>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
                             <button type="submit" class="w-full rounded-lg px-3 py-2 text-left text-sm text-[#E50914] hover:bg-red-50" role="menuitem">Log out</button>
@@ -66,10 +70,9 @@ $navClass = static function (bool $on): string {
                 </div>
             </div>
         </div>
-        <div class="mx-auto hidden max-w-5xl items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex">
-            <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=profile" class="<?php echo $tabProfile ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Profile</a>
+        <div class="mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-10 pb-2 text-sm font-semibold md:flex">
+            <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
+            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
         </div>
     </header>
 
@@ -79,8 +82,8 @@ $navClass = static function (bool $on): string {
             <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
                 <p class="text-center text-xs font-semibold uppercase tracking-widest text-[#E50914]">Quiz complete</p>
                 <h2 class="mt-1 text-center text-lg font-bold"><?php echo $h((string) ($doneBlock['title'] ?? 'Quiz')); ?></h2>
-                <div class="mx-auto mt-4 flex h-28 w-28 items-center justify-center rounded-full border-4 border-[#84B8B8] bg-white text-2xl font-extrabold text-[#2C6A7D]">
-                    <?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400">/<?php echo (int) $doneBlock['total']; ?></span>
+                <div class="mx-auto mt-4 flex h-28 w-28 items-center justify-center rounded-full border-4 border-[#84B8B8] bg-white text-2xl font-extrabold tabular-nums text-[#2C6A7D]">
+                    <span class="whitespace-nowrap"><?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400">/<?php echo (int) $doneBlock['total']; ?></span></span>
                 </div>
                 <p class="mt-3 text-center text-sm text-slate-600">Accuracy <?php echo $acc; ?>%</p>
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
@@ -90,42 +93,37 @@ $navClass = static function (bool $on): string {
             </section>
 
             <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-4">
-                <h3 class="text-center text-sm font-bold">Leaderboard · this quiz</h3>
-                <p class="mb-4 text-center text-[11px] text-slate-500">Students who attempted this quiz (best score)</p>
+                <h3 class="text-center text-sm font-bold">This quiz · leaderboard</h3>
                 <?php echo trytest_render_quiz_podium_html($doneBlock['board'] ?? [], $userId, $h); ?>
             </section>
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
-            <div class="mb-4 grid grid-cols-3 gap-2">
-                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+            <div class="mb-4 grid grid-cols-2 gap-2">
+                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-3 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200">
                     <span class="text-xl" aria-hidden="true">🏆</span>
-                    <p class="mt-1 text-[11px] font-semibold leading-tight">Level rank</p>
+                    <p class="mt-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-800">Leaderboard</p>
                 </a>
-                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                <a href="#section-courses" class="rounded-xl bg-gradient-to-br from-cyan-50 to-white p-3 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200">
                     <span class="text-xl" aria-hidden="true">📚</span>
-                    <p class="mt-1 text-[11px] font-semibold leading-tight">Courses</p>
-                </div>
-                <a href="<?php echo $h($dashboardUrl); ?>?tab=profile" class="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
-                    <span class="text-xl" aria-hidden="true">👤</span>
-                    <p class="mt-1 text-[11px] font-semibold leading-tight">Profile</p>
+                    <p class="mt-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-800">Courses</p>
                 </a>
             </div>
 
             <?php if ($recentAttempts): ?>
                 <section class="mb-6">
-                    <div class="mb-2 flex items-center justify-between">
-                        <h2 class="text-sm font-bold">Recent quizzes</h2>
-                        <a class="text-xs text-[#2C6A7D]" href="<?php echo $h($dashboardUrl); ?>?tab=rank">See ranks →</a>
+                    <div class="mb-2 flex flex-nowrap items-center justify-between gap-2">
+                        <h2 class="shrink-0 text-sm font-bold">Recent</h2>
+                        <a class="shrink-0 whitespace-nowrap text-xs font-medium text-[#2C6A7D]" href="<?php echo $h($dashboardUrl); ?>?tab=rank">Ranks →</a>
                     </div>
                     <div class="space-y-2">
                         <?php foreach (array_slice($recentAttempts, 0, 5) as $att): ?>
-                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($att['quiz_id'] ?? 0); ?>" class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3 text-left hover:border-[#84B8B8]">
-                                <div class="min-w-0 pr-2">
+                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($att['quiz_id'] ?? 0); ?>" class="flex flex-nowrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left ring-1 ring-slate-100 transition hover:bg-slate-100/80">
+                                <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-medium"><?php echo $h((string) ($att['quiz_title'] ?? 'Quiz')); ?></p>
-                                    <p class="text-[11px] text-slate-500"><?php echo $h((string) ($att['created_at'] ?? '')); ?></p>
+                                    <p class="truncate text-[10px] text-slate-500"><?php echo $h((string) ($att['created_at'] ?? '')); ?></p>
                                 </div>
-                                <span class="shrink-0 rounded-full bg-[#84B8B8]/30 px-2.5 py-1 text-xs font-bold text-[#2C6A7D]"><?php echo (int) ($att['score'] ?? 0); ?>/<?php echo (int) ($att['total'] ?? 0); ?></span>
+                                <span class="shrink-0 whitespace-nowrap rounded-full bg-[#2C6A7D]/10 px-2 py-0.5 text-xs font-bold tabular-nums text-[#2C6A7D]"><?php echo (int) ($att['score'] ?? 0); ?>/<?php echo (int) ($att['total'] ?? 0); ?></span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -134,33 +132,30 @@ $navClass = static function (bool $on): string {
 
             <?php if (!empty($studentDocuments)): ?>
                 <section class="mb-6">
-                    <h2 class="mb-2 text-sm font-bold">Materials (PDF)</h2>
-                    <p class="mb-2 text-[11px] text-slate-500">Downloads match your level and program when the admin set them. Others are shown so you know they exist.</p>
+                    <h2 class="mb-2 text-sm font-bold">Downloads</h2>
                     <?php if (!empty($youtubePdfGateActive)): ?>
-                        <p class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">To download, you must be subscribed to the official course YouTube channel. The first download opens a quick Google sign-in to confirm your subscription.</p>
+                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">YouTube subscription required for PDFs.</p>
                     <?php endif; ?>
-                    <div class="space-y-2">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <?php foreach ($studentDocuments as $doc): ?>
                             <?php
                             $eligible = !empty($doc['eligible']);
                             $dd = trim((string) ($doc['department'] ?? ''));
                             $dl = trim((string) ($doc['level'] ?? ''));
-                            $scope = ($dd === '' ? 'All programs' : $dd) . ' · ' . ($dl === '' ? 'All levels' : ('Level ' . $dl));
+                            $scope = ($dd === '' ? 'Any program' : $dd) . ' · ' . ($dl === '' ? 'Any level' : ('Lv ' . $dl));
                             ?>
-                            <div class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-medium"><?php echo $h((string) ($doc['title'] ?? 'Document')); ?></p>
-                                    <p class="text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
-                                    <?php if ($eligible): ?>
-                                        <p class="mt-1 text-[10px] font-semibold text-emerald-700">For you</p>
-                                    <?php else: ?>
-                                        <p class="mt-1 text-[10px] font-semibold text-slate-500">Not for your current program or level</p>
-                                    <?php endif; ?>
+                            <div class="flex flex-col rounded-2xl bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                <div class="mb-3 flex items-start gap-3">
+                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-lg text-white" aria-hidden="true">PDF</span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-semibold leading-snug text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'Document')); ?></p>
+                                        <p class="mt-1 text-[10px] text-slate-500"><?php echo $h($scope); ?></p>
+                                    </div>
                                 </div>
                                 <?php if ($eligible): ?>
-                                    <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="shrink-0 rounded-lg bg-[#2C6A7D] px-3 py-2 text-xs font-semibold text-white">Download</a>
+                                    <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C6A7D] py-2.5 text-sm font-bold text-white transition hover:bg-[#24586a]">Download</a>
                                 <?php else: ?>
-                                    <span class="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-400">—</span>
+                                    <p class="mt-auto rounded-xl bg-slate-100 py-2 text-center text-xs font-medium text-slate-500">Not for your program / level</p>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -168,8 +163,8 @@ $navClass = static function (bool $on): string {
                 </section>
             <?php endif; ?>
 
-            <section>
-                <h2 class="mb-3 text-sm font-bold">Your courses</h2>
+            <section id="section-courses" class="scroll-mt-20">
+                <h2 class="mb-3 text-sm font-bold">Courses</h2>
                 <?php if (!$coursesWithQuizzes): ?>
                     <p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">No courses match your level<?php echo $userDepartment !== '' ? ' and program' : ''; ?> yet.</p>
                 <?php else: ?>
@@ -206,8 +201,8 @@ $navClass = static function (bool $on): string {
                                             data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
                                             data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
                                         >
-                                            <div class="flex items-start justify-between gap-2">
-                                                <div class="min-w-0 flex-1">
+                                            <div class="flex flex-nowrap items-start justify-between gap-2">
+                                                <div class="min-w-0 flex-1 overflow-hidden">
                                                     <?php if ($canPlay): ?>
                                                         <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="block text-[11px] font-semibold text-slate-800 hover:text-[#2C6A7D] leading-snug">
                                                             <?php echo $h($qtitle); ?>
@@ -215,13 +210,7 @@ $navClass = static function (bool $on): string {
                                                     <?php else: ?>
                                                         <p class="text-[11px] font-semibold text-slate-600 leading-snug"><?php echo $h($qtitle); ?></p>
                                                     <?php endif; ?>
-                                                    <p class="mt-1 text-[10px] text-slate-500">
-                                                        <?php if ($qc < 1): ?>
-                                                            No approved questions yet — check back after your instructor publishes items.
-                                                        <?php else: ?>
-                                                            <?php echo $qc; ?> question<?php echo $qc === 1 ? '' : 's'; ?> · during the quiz you’ll see <span class="font-semibold text-slate-700">Question n / <?php echo $qc; ?></span>
-                                                        <?php endif; ?>
-                                                    </p>
+                                                    <p class="mt-1 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions · n/' . (string) $qc); ?></p>
                                                 </div>
                                                 <?php if ($canPlay): ?>
                                                     <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
@@ -231,7 +220,7 @@ $navClass = static function (bool $on): string {
                                                     <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
                                                 <?php endif; ?>
                                             </div>
-                                            <p class="trytest-quiz-countdown mt-1.5 rounded-md bg-slate-50 px-2 py-1.5 text-center text-[11px] font-mono font-bold tracking-tight text-[#2C6A7D] ring-1 ring-slate-100 <?php echo $hasSchedule ? '' : 'hidden'; ?>"></p>
+                                            <p class="trytest-quiz-countdown mt-1.5 hidden rounded-lg px-2 py-1 text-center text-[10px] font-bold tabular-nums tracking-tight sm:text-[11px]"></p>
                                         </div>
                                     <?php endforeach; ?>
                                     <?php if (empty($course['quizzes'])): ?>
@@ -249,32 +238,14 @@ $navClass = static function (bool $on): string {
             <section class="mb-4">
                 <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D]">← Home</a>
                 <h2 class="mt-2 text-xl font-bold">Leaderboard</h2>
-                <p class="text-xs text-slate-500">Total points at level <?php echo $h($userLevel); ?> · your program: <?php echo $h($deptLabel); ?></p>
+                <p class="mt-1 flex flex-nowrap items-center gap-x-2 overflow-x-auto text-xs text-slate-600">
+                    <span class="shrink-0 whitespace-nowrap font-medium text-slate-800">Lv&nbsp;<?php echo $h($userLevel); ?></span>
+                    <span class="shrink-0 text-slate-300" aria-hidden="true">·</span>
+                    <span class="min-w-0 shrink truncate"><?php echo $h($deptLabel); ?></span>
+                    <span class="shrink-0 whitespace-nowrap tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?> pts</span>
+                </p>
             </section>
             <?php echo trytest_render_level_podium_html($levelLeaderboardRows, $userId, $h); ?>
-            <p class="mt-4 text-center text-[11px] text-slate-500">Points = sum of scores from all quiz attempts.</p>
-        <?php endif; ?>
-
-        <?php if ($tabProfile): ?>
-            <section class="mb-4">
-                <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D]">← Home</a>
-                <h2 class="mt-2 text-xl font-bold">Profile</h2>
-            </section>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 text-sm">
-                <div class="flex justify-center pb-2">
-                    <div class="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 [&>svg]:h-full [&>svg]:w-full">
-                        <?php echo trytest_student_avatar_svg($userIndex, 80); ?>
-                    </div>
-                </div>
-                <p><span class="text-slate-500">Index</span><br><span class="font-medium"><?php echo $h($userIndex); ?></span></p>
-                <p><span class="text-slate-500">Level</span><br><span class="font-medium"><?php echo $h($userLevel); ?></span></p>
-                <p><span class="text-slate-500">Program</span><br><span class="font-medium"><?php echo $h($deptLabel); ?></span></p>
-                <p><span class="text-slate-500">Total points</span><br><span class="font-semibold text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
-                <form method="post" class="pt-2 border-t border-slate-200">
-                    <input type="hidden" name="action" value="logout_user">
-                    <button type="submit" class="w-full rounded-xl bg-[#E50914] py-3 text-sm font-bold text-white">Log out</button>
-                </form>
-            </div>
         <?php endif; ?>
     </main>
 
@@ -287,10 +258,6 @@ $navClass = static function (bool $on): string {
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($navClass($tabRank)); ?>">
                 <span class="text-lg">🏆</span>
                 <span class="text-[10px] font-semibold">Rank</span>
-            </a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=profile" class="<?php echo $h($navClass($tabProfile)); ?>">
-                <span class="text-lg">👤</span>
-                <span class="text-[10px] font-semibold">Profile</span>
             </a>
         </div>
     </nav>
@@ -324,43 +291,45 @@ $navClass = static function (bool $on): string {
         var sec = s % 60;
         return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
     }
+    function countdownBase() {
+        return 'trytest-quiz-countdown mt-1.5 rounded-lg px-2 py-1 text-center text-[10px] font-bold tabular-nums tracking-tight sm:text-[11px] ';
+    }
     function tick() {
         var now = Date.now();
         document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
             var el = card.querySelector('.trytest-quiz-countdown');
             if (!el) return;
-            el.classList.remove('text-slate-500');
-            el.classList.add('text-[#2C6A7D]');
             var sRaw = card.getAttribute('data-quiz-start') || '';
             var eRaw = card.getAttribute('data-quiz-end') || '';
             var s = sRaw ? parseInt(sRaw, 10) * 1000 : 0;
             var e = eRaw ? parseInt(eRaw, 10) * 1000 : 0;
             if (!s && !e) {
                 el.textContent = '';
-                el.classList.add('hidden');
+                el.className = countdownBase() + 'hidden';
                 return;
             }
-            el.classList.remove('hidden');
             if (s && now < s) {
+                el.className = countdownBase() + 'bg-amber-100 text-amber-950';
                 el.textContent = 'Opens in ' + formatRemain(s - now);
                 return;
             }
             if (e && now < e) {
+                el.className = countdownBase() + 'bg-sky-100 text-sky-950';
                 el.textContent = 'Closes in ' + formatRemain(e - now);
                 return;
             }
             if (e && now >= e) {
-                el.textContent = 'Quiz window ended';
-                el.classList.remove('text-[#2C6A7D]');
-                el.classList.add('text-slate-500');
+                el.className = countdownBase() + 'bg-slate-200 text-slate-700';
+                el.textContent = 'Ended';
                 return;
             }
             if (s && now >= s && (!e || now <= e)) {
-                el.textContent = 'Quiz is open';
+                el.className = countdownBase() + 'bg-emerald-100 text-emerald-950';
+                el.textContent = 'Open now';
                 return;
             }
             el.textContent = '';
-            el.classList.add('hidden');
+            el.className = countdownBase() + 'hidden';
         });
     }
     tick();
