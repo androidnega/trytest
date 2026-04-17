@@ -256,6 +256,8 @@ $totalPoints = 0;
 $recentAttempts = [];
 $levelLeaderboardRows = [];
 $doneBlock = null;
+$doneComparison = null;
+$dashboardMotivation = '';
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
     $activeTab = 'home';
@@ -269,16 +271,16 @@ if ($isUserLoggedIn) {
     $ptsStmt->execute([$userId]);
     $totalPoints = (int) $ptsStmt->fetchColumn();
 
-    $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c WHERE c.level = ?';
-    $courseParams = [$userLevel];
+    $courses = [];
     if ($userDepartment !== '') {
-        $courseSql .= ' AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))';
-        $courseParams[] = $userDepartment;
+        $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
+            WHERE c.level = ?
+              AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+            ORDER BY c.code ASC';
+        $courseStmt = $db->prepare($courseSql);
+        $courseStmt->execute([$userLevel, $userDepartment]);
+        $courses = $courseStmt->fetchAll();
     }
-    $courseSql .= ' ORDER BY c.code ASC';
-    $courseStmt = $db->prepare($courseSql);
-    $courseStmt->execute($courseParams);
-    $courses = $courseStmt->fetchAll();
 
     foreach ($courses as $course) {
         $quizStmt = $db->prepare(
@@ -322,7 +324,7 @@ if ($isUserLoggedIn) {
     $recentStmt->execute([$userId]);
     $recentAttempts = $recentStmt->fetchAll();
 
-    $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, 40);
+    $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment, 40);
 
     $doneQuizId = isset($_GET['done']) ? (int) $_GET['done'] : 0;
     if ($doneQuizId > 0) {
@@ -343,7 +345,7 @@ if ($isUserLoggedIn) {
                 $enDone !== '' ? $enDone : null
             );
             $canRetryQuiz = ($retryPhase === 'open' || $retryPhase === 'unset');
-            $boardRows = trytest_quiz_leaderboard($db, $doneQuizId, 40);
+            $boardRows = trytest_quiz_leaderboard($db, $doneQuizId, 40, $userLevel, $userDepartment);
             $userRank = null;
             $rn = 1;
             foreach ($boardRows as $br) {
@@ -362,12 +364,46 @@ if ($isUserLoggedIn) {
                 'board' => $boardRows,
                 'can_retry' => $canRetryQuiz,
             ];
+            $lastTwoAttempts = $db->prepare(
+                'SELECT score, total, created_at
+                 FROM score_attempts
+                 WHERE quiz_id = ? AND user_id = ?
+                 ORDER BY id DESC
+                 LIMIT 2'
+            );
+            $lastTwoAttempts->execute([$doneQuizId, $userId]);
+            $attemptRows = $lastTwoAttempts->fetchAll(PDO::FETCH_ASSOC);
+            if (count($attemptRows) >= 2) {
+                $latest = (int) ($attemptRows[0]['score'] ?? 0);
+                $prev = (int) ($attemptRows[1]['score'] ?? 0);
+                $delta = $latest - $prev;
+                $doneComparison = [
+                    'latest' => $latest,
+                    'previous' => $prev,
+                    'delta' => $delta,
+                    'trend' => $delta > 0 ? 'up' : ($delta < 0 ? 'down' : 'same'),
+                ];
+            }
             $activeTab = 'home';
         }
     }
 
     $downloadsBadgeCount = trytest_student_downloads_pending_count($db, $userId, $userDepartment, $userLevel);
 
+    $motivationBits = [
+        '100' => 'Keep building your foundations; every quiz sharpens your basics.',
+        '200' => 'You are in the core stage now. Stay consistent and your exam confidence will rise.',
+        '300' => 'This is your specialization stretch. Push a little further on every attempt.',
+        '400' => 'Final lap energy: revise smart, practice often, and finish strong.',
+    ];
+    $wish = [
+        'Wishing you success in your upcoming exams.',
+        'Stay calm and focused - you are getting better each day.',
+        'Keep practicing; your consistency is your advantage.',
+    ];
+    $dashboardMotivation = ($motivationBits[$userLevel] ?? 'Keep practicing and stay exam-ready.')
+        . ' '
+        . $wish[array_rand($wish)];
 }
 
 $downloadsBadgeCount = $downloadsBadgeCount ?? 0;
@@ -408,6 +444,8 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
+    $doneComparison = is_array($doneComparison) ? $doneComparison : null;
+    $dashboardMotivation = (string) ($dashboardMotivation ?? '');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">

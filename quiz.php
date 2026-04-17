@@ -42,6 +42,15 @@ if ($quizLevel !== '' && $quizLevel !== $userLevel) {
     echo 'You are not allowed to access this quiz.';
     exit;
 }
+$userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
+if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {
+    http_response_code(403);
+    echo 'You are not allowed to access this quiz.';
+    exit;
+}
+$priorAttemptStmt = $db->prepare('SELECT 1 FROM scores WHERE quiz_id = ? AND user_id = ? LIMIT 1');
+$priorAttemptStmt->execute([$quizId, (int) ($_SESSION['user_id'] ?? 0)]);
+$hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
 $ytSettings = trytest_youtube_settings();
@@ -329,7 +338,9 @@ window.QUIZ_CONFIG = {
     quizAdEnabled: <?php echo json_encode((bool) ($quizAdConfig['enabled'] ?? false), JSON_THROW_ON_ERROR); ?>,
     quizAdEvery: <?php echo json_encode((int) ($quizAdConfig['every'] ?? 20), JSON_THROW_ON_ERROR); ?>,
     quizAdWatchSeconds: <?php echo json_encode((int) ($quizAdConfig['watch_seconds'] ?? 20), JSON_THROW_ON_ERROR); ?>,
-    quizAdVideos: <?php echo json_encode((array) ($quizAdConfig['videos'] ?? []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
+    quizAdVideos: <?php echo json_encode((array) ($quizAdConfig['videos'] ?? []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    priorAttempt: <?php echo json_encode($hasPriorAttempt, JSON_THROW_ON_ERROR); ?>,
+    resetAttemptUrl: <?php echo json_encode(trytest_url('reset_quiz_attempt'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>

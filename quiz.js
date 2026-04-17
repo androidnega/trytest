@@ -7,6 +7,8 @@
     const quizAdEvery = Math.max(1, Number(cfg.quizAdEvery || 20));
     const quizAdWatchSeconds = Math.max(5, Number(cfg.quizAdWatchSeconds || 20));
     const quizAdVideos = Array.isArray(cfg.quizAdVideos) ? cfg.quizAdVideos.map(String).filter(Boolean) : [];
+    const priorAttempt = !!cfg.priorAttempt;
+    const resetAttemptUrl = String(cfg.resetAttemptUrl || '');
 
     function trytestWebPrefix() {
         var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
@@ -128,6 +130,7 @@
     let remainingSeconds = durationSeconds;
     let timerHandle = null;
     let quizClockStarted = false;
+    let timerPaused = false;
     /** @type {number[]} */
     let adBreaksSeen = [];
 
@@ -201,6 +204,7 @@
             timerLabel.textContent = 'No limit';
             return;
         }
+        timerPaused = false;
         timerLabel.textContent = formatClock(remainingSeconds);
         if (timerHandle) clearInterval(timerHandle);
         timerHandle = setInterval(function () {
@@ -234,6 +238,23 @@
             return;
         }
         timerLabel.textContent = formatClock(durationSeconds);
+    }
+
+    function pauseTimer() {
+        if (!quizClockStarted) return;
+        if (remainingSeconds <= 0) return;
+        if (timerHandle) {
+            clearInterval(timerHandle);
+            timerHandle = null;
+        }
+        timerPaused = true;
+    }
+
+    function resumeTimer() {
+        if (!quizClockStarted) return;
+        if (!timerPaused) return;
+        if (remainingSeconds <= 0) return;
+        startTimer();
     }
 
     function triggerCardWrongFeedback() {
@@ -451,6 +472,7 @@
             return;
         }
         var wait = Math.max(1, Math.floor(quizAdWatchSeconds));
+        pauseTimer();
         setStatus('Watch required', 'ok');
         questionBox.innerHTML =
             '<div class="space-y-3">' +
@@ -491,9 +513,24 @@
                 if (btn.disabled) return;
                 clearInterval(unlockTimer);
                 markAdBreakSeen(breakIndex);
+                resumeTimer();
                 done();
             });
         }
+    }
+
+    function resetPriorAttemptIfNeeded() {
+        if (!priorAttempt || !resetAttemptUrl || !quizId) {
+            return Promise.resolve();
+        }
+        return fetch(resetAttemptUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quiz_id: quizId }),
+        }).then(function () {
+            // Retake reset is best-effort; quiz can still continue if it fails.
+        }).catch(function () {});
     }
 
     function loadQuestionIds() {
@@ -815,7 +852,8 @@
         setStatus('Starting', 'ok');
         quizClockStarted = false;
 
-        loadQuestionIds()
+        resetPriorAttemptIfNeeded()
+            .then(loadQuestionIds)
             .then(function (ids) {
                 if (!ids.length) {
                     questionBox.innerHTML = '<p class="text-slate-500">No questions in this quiz yet.</p>';

@@ -32,11 +32,22 @@ if ($quizId < 1 || $score < 0 || $total < 1 || $score > $total) {
 }
 
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/student_helpers.php';
 
 $userId = !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 try {
     if ($userId !== null && $userId > 0) {
+        $userLevel = trim((string) ($_SESSION['user_level'] ?? ''));
+        $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
+        if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'forbidden']);
+            exit;
+        }
         $db->beginTransaction();
+        $att = $db->prepare('INSERT INTO score_attempts (quiz_id, user_id, score, total) VALUES (?, ?, ?, ?)');
+        $att->execute([$quizId, $userId, $score, $total]);
+        $attemptId = (int) $db->lastInsertId();
         $existingStmt = $db->prepare(
             'SELECT id FROM scores WHERE quiz_id = ? AND user_id = ? ORDER BY id ASC LIMIT 1'
         );
@@ -48,14 +59,14 @@ try {
             $cleanup = $db->prepare('DELETE FROM scores WHERE quiz_id = ? AND user_id = ? AND id <> ?');
             $cleanup->execute([$quizId, $userId, $existingId]);
             $db->commit();
-            echo json_encode(['ok' => true, 'id' => $existingId, 'replaced' => true]);
+            echo json_encode(['ok' => true, 'id' => $existingId, 'attempt_id' => $attemptId, 'replaced' => true]);
             exit;
         }
         $ins = $db->prepare('INSERT INTO scores (quiz_id, user_id, score, total) VALUES (?, ?, ?, ?)');
         $ins->execute([$quizId, $userId, $score, $total]);
         $newId = (int) $db->lastInsertId();
         $db->commit();
-        echo json_encode(['ok' => true, 'id' => $newId, 'replaced' => false]);
+        echo json_encode(['ok' => true, 'id' => $newId, 'attempt_id' => $attemptId, 'replaced' => false]);
         exit;
     }
 

@@ -73,7 +73,7 @@ function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 
 }
 
 /** @return list<array{user_id:int,index_number:string,department:string,best_score:int,best_total:int,first_best_at:string}> */
-function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40): array
+function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string $level = null, ?string $department = null): array
 {
     if ($quizId < 1) {
         return [];
@@ -96,7 +96,19 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40): array
                r.created_at AS first_best_at
         FROM ranked r
         INNER JOIN users u ON u.id = r.user_id
-        WHERE r.rn = 1
+        WHERE r.rn = 1';
+    $params = [$quizId];
+    $lv = trim((string) ($level ?? ''));
+    $dp = trim((string) ($department ?? ''));
+    if ($lv !== '') {
+        $sql .= ' AND LOWER(TRIM(COALESCE(u.level, \'\'))) = LOWER(TRIM(?))';
+        $params[] = $lv;
+    }
+    if ($dp !== '') {
+        $sql .= ' AND LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))';
+        $params[] = $dp;
+    }
+    $sql .= '
         ORDER BY CASE WHEN r.total > 0 THEN (CAST(r.score AS REAL) / r.total) ELSE 0 END DESC,
                  r.score DESC,
                  r.created_at ASC,
@@ -104,7 +116,7 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40): array
         LIMIT ' . $lim;
 
     $stmt = $db->prepare($sql);
-    $stmt->execute([$quizId]);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $out = [];
     foreach ($rows as $r) {
@@ -121,9 +133,11 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40): array
 }
 
 /** @return list<array{user_id:int,index_number:string,department:string,total_points:int}> */
-function trytest_level_leaderboard(PDO $db, string $level, int $limit = 40): array
+function trytest_level_leaderboard(PDO $db, string $level, string $department, int $limit = 40): array
 {
-    if ($level === '') {
+    $lv = trim($level);
+    $dp = trim($department);
+    if ($lv === '' || $dp === '') {
         return [];
     }
     $stmt = $db->prepare(
@@ -131,12 +145,13 @@ function trytest_level_leaderboard(PDO $db, string $level, int $limit = 40): arr
                 COALESCE(SUM(s.score), 0) AS total_points
          FROM users u
          LEFT JOIN scores s ON s.user_id = u.id AND s.user_id IS NOT NULL
-         WHERE u.level = ?
+         WHERE LOWER(TRIM(COALESCE(u.level, \'\'))) = LOWER(TRIM(?))
+           AND LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))
          GROUP BY u.id
          ORDER BY total_points DESC, u.index_number ASC
          LIMIT ' . max(1, min(100, $limit))
     );
-    $stmt->execute([$level]);
+    $stmt->execute([$lv, $dp]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $out = [];
     foreach ($rows as $r) {
@@ -158,26 +173,8 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
     $quizId = max(0, $quizId);
     $userLevel = trim($userLevel);
     $userDepartment = trim($userDepartment);
-    if ($quizId < 1 || $userLevel === '') {
+    if ($quizId < 1 || $userLevel === '' || $userDepartment === '') {
         return false;
-    }
-
-    if ($userDepartment === '') {
-        $sql = 'SELECT 1 FROM quizzes q WHERE q.id = ?
-            AND (q.level IS NULL OR TRIM(COALESCE(q.level, \'\')) = \'\' OR q.level = ?)
-            AND (
-                EXISTS (SELECT 1 FROM courses c WHERE c.id = q.course_id AND c.level = ?)
-                OR EXISTS (
-                    SELECT 1 FROM quiz_courses qc
-                    INNER JOIN courses c ON c.id = qc.course_id
-                    WHERE qc.quiz_id = q.id AND c.level = ?
-                )
-            )
-            LIMIT 1';
-        $st = $db->prepare($sql);
-        $st->execute([$quizId, $userLevel, $userLevel, $userLevel]);
-
-        return (bool) $st->fetchColumn();
     }
 
     $sql = 'SELECT 1 FROM quizzes q WHERE q.id = ?
@@ -186,13 +183,13 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
             EXISTS (
                 SELECT 1 FROM courses c
                 WHERE c.id = q.course_id AND c.level = ?
-                AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))
+                AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
             )
             OR EXISTS (
                 SELECT 1 FROM quiz_courses qc
                 INNER JOIN courses c ON c.id = qc.course_id
                 WHERE qc.quiz_id = q.id AND c.level = ?
-                AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))
+                AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
             )
         )
         LIMIT 1';
@@ -434,12 +431,15 @@ function trytest_student_downloads_pending_count(PDO $db, int $userId, string $u
 function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel, string $userDepartment): array
 {
     $out = [];
+    $userLevel = trim($userLevel);
+    $userDepartment = trim($userDepartment);
+    if ($userLevel === '' || $userDepartment === '') {
+        return $out;
+    }
     $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c WHERE c.level = ?';
     $courseParams = [$userLevel];
-    if ($userDepartment !== '') {
-        $courseSql .= ' AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))';
-        $courseParams[] = $userDepartment;
-    }
+    $courseSql .= ' AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))';
+    $courseParams[] = $userDepartment;
     $courseSql .= ' ORDER BY c.code ASC';
     $courseStmt = $db->prepare($courseSql);
     $courseStmt->execute($courseParams);

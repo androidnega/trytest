@@ -18,6 +18,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 
 $userLevel = (string) ($_SESSION['user_level'] ?? '');
+$userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
 if (empty($_SESSION['user_id']) || $userLevel === '') {
     http_response_code(401);
     echo json_encode(['ok' => false, 'error' => 'not_authenticated'], JSON_THROW_ON_ERROR);
@@ -33,6 +34,11 @@ if ($quiz === false) {
     exit;
 }
 if (!empty($quiz['level']) && (string) $quiz['level'] !== $userLevel) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_THROW_ON_ERROR);
+    exit;
+}
+if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_THROW_ON_ERROR);
     exit;

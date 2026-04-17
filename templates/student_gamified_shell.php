@@ -23,6 +23,8 @@ declare(strict_types=1);
 /** @var array<string,mixed>|null $doneBlock */
 /** @var string $quizDoneYoutubeHtml */
 /** @var string $dashboardYoutubeVideosHtml */
+/** @var array<string,mixed>|null $doneComparison */
+/** @var string $dashboardMotivation */
 
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -130,17 +132,28 @@ $navClass = static function (bool $on): string {
                     <span class="whitespace-nowrap"><?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400">/<?php echo (int) $doneBlock['total']; ?></span></span>
                 </div>
                 <p class="mt-3 text-center text-sm text-slate-600">Accuracy <?php echo $acc; ?>%</p>
+                <?php if (is_array($doneComparison)): ?>
+                    <?php $delta = (int) ($doneComparison['delta'] ?? 0); ?>
+                    <p class="mt-1 text-center text-sm font-semibold <?php echo $delta >= 0 ? 'text-emerald-700' : 'text-amber-700'; ?>">
+                        <?php if ($delta > 0): ?>
+                            Better than last attempt by +<?php echo $delta; ?> points.
+                        <?php elseif ($delta < 0): ?>
+                            <?php echo abs($delta); ?> points below your last attempt. You can bounce back.
+                        <?php else: ?>
+                            Same as your last attempt. Keep pushing for a new high score.
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
                     <p class="text-center text-sm font-semibold text-[#2C6A7D]">Your rank on this quiz: #<?php echo (int) $doneBlock['rank']; ?></p>
                 <?php endif; ?>
                 <?php if ($quizDoneYoutubeHtml !== ''): ?>
                     <div class="mt-4"><?php echo $quizDoneYoutubeHtml; ?></div>
                 <?php endif; ?>
-                <?php if (!empty($doneBlock['can_retry'])): ?>
-                    <p class="mt-3 text-center text-xs leading-snug text-slate-600">You can <strong class="text-slate-800">take this quiz again</strong> while it stays open. Your next attempt replaces your previous result for this quiz.</p>
-                    <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo (int) ($doneBlock['quiz_id'] ?? 0); ?>" class="mt-3 block w-full rounded-xl border-2 border-[#2C6A7D] bg-white py-3 text-center text-sm font-bold text-[#2C6A7D] shadow-sm hover:bg-cyan-50/80">Try again</a>
-                <?php else: ?>
+                <?php if (empty($doneBlock['can_retry'])): ?>
                     <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts.</p>
+                <?php else: ?>
+                    <p class="mt-3 text-center text-xs text-slate-500">To retake this quiz later, use the course card below. Starting again resets your previous points for this quiz.</p>
                 <?php endif; ?>
                 <a href="<?php echo $h($dashboardUrl); ?>" class="mt-3 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
             </section>
@@ -152,12 +165,16 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
+            <section class="mb-4 rounded-xl border border-slate-200 bg-sky-50 px-4 py-3">
+                <p class="text-sm font-semibold text-slate-900">Level <?php echo $h($userLevel); ?> focus</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-700"><?php echo $h($dashboardMotivation); ?></p>
+            </section>
             <div class="mb-4 grid grid-cols-2 gap-2">
-                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
+                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-amber-50 p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>
                     <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Rank</p>
                 </a>
-                <a href="#section-courses" class="rounded-xl bg-gradient-to-br from-cyan-50 to-white p-2.5 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200 sm:p-3">
+                <a href="#section-courses" class="rounded-xl bg-cyan-50 p-2.5 text-center ring-1 ring-cyan-100/90 transition hover:ring-cyan-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">📚</span>
                     <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Courses</p>
                 </a>
@@ -211,9 +228,10 @@ $navClass = static function (bool $on): string {
                                 );
                                 $canPlay = ($phase === 'open' || $phase === 'unset');
                                 $courseLabel = trim((string) ($course['code'] ?? '') . ' · ' . (string) ($course['title'] ?? ''));
+                                $quizCardBg = ['bg-slate-50', 'bg-blue-50', 'bg-emerald-50', 'bg-amber-50'][($qid > 0 ? $qid : 0) % 4];
                                 ?>
                                 <article
-                                    class="rounded-md border border-slate-200 bg-white px-2.5 py-2 shadow-sm trytest-quiz-card"
+                                    class="rounded-md border border-slate-200 <?php echo $h($quizCardBg); ?> px-2.5 py-2 shadow-sm trytest-quiz-card"
                                     data-quiz-id="<?php echo $qid; ?>"
                                     data-user-id="<?php echo (int) $userId; ?>"
                                     data-user-has-attempt="<?php echo !empty($qz['user_has_attempt']) ? '1' : '0'; ?>"
@@ -429,7 +447,7 @@ $navClass = static function (bool $on): string {
                     'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80';
                 var playHref = card.getAttribute('data-quiz-href') || '';
                 var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
-                var playLabel = hasAttempt ? 'Start again' : 'Start now';
+                var playLabel = hasAttempt ? 'Retake (resets points)' : 'Start now';
                 el.textContent = '';
                 if (playHref) {
                     var link = document.createElement('a');

@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS scores (
     FOREIGN KEY (quiz_id) REFERENCES quizzes(id)
 );
 
+CREATE TABLE IF NOT EXISTS score_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quiz_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     index_number TEXT NOT NULL UNIQUE,
@@ -76,6 +87,8 @@ CREATE TABLE IF NOT EXISTS quiz_courses (
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 ');
+
+$db->exec('CREATE INDEX IF NOT EXISTS idx_score_attempts_user_quiz_id ON score_attempts(user_id, quiz_id, id DESC)');
 
 $quizColumns = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
 $hasDurationMinutes = false;
