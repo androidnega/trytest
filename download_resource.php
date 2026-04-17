@@ -53,8 +53,24 @@ $yt = trytest_youtube_settings();
 if (!empty($yt['gate_active'])) {
     $uid = (int) $_SESSION['user_id'];
     if (!trytest_youtube_download_allowed($db, $uid, $yt)) {
-        $back = trytest_url('download_resource?id=' . $id);
-        trytest_redirect(trytest_url('youtube_login?next=' . rawurlencode($back)));
+        $gateErr = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $act = (string) ($_POST['pdf_gate_action'] ?? '');
+            if ($act === 'unlock_code') {
+                $code = trim((string) ($_POST['unlock_code'] ?? ''));
+                $expect = trim((string) ($yt['pdf_unlock_code'] ?? ''));
+                if ($expect !== '' && strcasecmp($code, $expect) === 0) {
+                    trytest_pdf_light_gate_mark_ok();
+                    trytest_redirect(trytest_url('download_resource?id=' . $id));
+                }
+                $gateErr = $expect === '' ? 'No video code is set yet — use Continue to download.' : 'That code does not match the one in the video.';
+            } elseif ($act === 'nudge_continue') {
+                trytest_pdf_light_gate_mark_ok();
+                trytest_redirect(trytest_url('download_resource?id=' . $id));
+            }
+        }
+        trytest_render_pdf_download_gate($id, (string) ($row['title'] ?? 'PDF'), $yt, $gateErr);
+        exit;
     }
 }
 

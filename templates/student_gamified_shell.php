@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var string $quizUrlBase */
 /** @var string $downloadResourceBase */
 /** @var bool $youtubePdfGateActive */
+/** @var string $youtubePromoBanner HTML strip from trytest_youtube_promo_banner_html() */
 /** @var list<array<string,mixed>> $studentDocuments */
 /** @var int $userId */
 /** @var string $userIndex */
@@ -86,6 +87,9 @@ $navClass = static function (bool $on): string {
                     <span class="whitespace-nowrap"><?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400">/<?php echo (int) $doneBlock['total']; ?></span></span>
                 </div>
                 <p class="mt-3 text-center text-sm text-slate-600">Accuracy <?php echo $acc; ?>%</p>
+                <?php if (($youtubePromoBanner ?? '') !== ''): ?>
+                    <div class="mt-3"><?php echo $youtubePromoBanner; ?></div>
+                <?php endif; ?>
                 <?php if (($doneBlock['rank'] ?? null) !== null): ?>
                     <p class="text-center text-sm font-semibold text-[#2C6A7D]">Your rank on this quiz: #<?php echo (int) $doneBlock['rank']; ?></p>
                 <?php endif; ?>
@@ -133,8 +137,10 @@ $navClass = static function (bool $on): string {
             <?php if (!empty($studentDocuments)): ?>
                 <section class="mb-6">
                     <h2 class="mb-2 text-sm font-bold">Downloads</h2>
-                    <?php if (!empty($youtubePdfGateActive)): ?>
-                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">YouTube subscription required for PDFs.</p>
+                    <?php if (($youtubePromoBanner ?? '') !== ''): ?>
+                        <div class="mb-3"><?php echo $youtubePromoBanner; ?></div>
+                    <?php elseif (!empty($youtubePdfGateActive)): ?>
+                        <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950">PDFs: quick YouTube support step before download (no Google sign-in required).</p>
                     <?php endif; ?>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <?php foreach ($studentDocuments as $doc): ?>

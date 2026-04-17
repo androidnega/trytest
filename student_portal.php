@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'logout_user') {
         trytest_youtube_clear_session_verified();
-        unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department']);
+        unset($_SESSION['user_id'], $_SESSION['user_index_number'], $_SESSION['user_level'], $_SESSION['user_department'], $_SESSION['trytest_pdf_gate_ok_at']);
         trytest_redirect(trytest_home_with_query(['out' => '1']));
     }
 }
@@ -276,7 +276,9 @@ $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-fillin
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
 $downloadResourceBase = trytest_url('download_resource');
-$youtubePdfGateActive = trytest_youtube_settings()['gate_active'];
+$ytSettingsForUi = trytest_youtube_settings();
+$youtubePdfGateActive = !empty($ytSettingsForUi['gate_active']);
+$youtubePromoBanner = trytest_youtube_promo_banner_html($ytSettingsForUi);
 if (!$isUserLoggedIn) {
     $studentDocuments = [];
 }

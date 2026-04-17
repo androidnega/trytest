@@ -220,6 +220,18 @@ CREATE TABLE IF NOT EXISTS youtube_app_settings (
 ');
 $db->exec('INSERT OR IGNORE INTO youtube_app_settings (id, gate_enabled) VALUES (1, 0)');
 
+$ytCols = $db->query('PRAGMA table_info(youtube_app_settings)')->fetchAll();
+$hasYtPdfCode = false;
+foreach ($ytCols as $column) {
+    if (($column['name'] ?? '') === 'pdf_unlock_code') {
+        $hasYtPdfCode = true;
+        break;
+    }
+}
+if (!$hasYtPdfCode) {
+    $db->exec('ALTER TABLE youtube_app_settings ADD COLUMN pdf_unlock_code TEXT NOT NULL DEFAULT \'\'');
+}
+
 $db->exec('
 CREATE TABLE IF NOT EXISTS student_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

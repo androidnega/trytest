@@ -19,6 +19,11 @@ if (!$settings['gate_active']) {
     trytest_redirect($next);
 }
 
+if (empty($settings['credentials_complete'])) {
+    $next = trytest_youtube_safe_next($_GET['next'] ?? '');
+    trytest_redirect($next);
+}
+
 $next = trytest_youtube_safe_next($_GET['next'] ?? trytest_home_url());
 $state = bin2hex(random_bytes(16));
 $_SESSION['oauth_youtube_state'] = $state;

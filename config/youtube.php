@@ -29,7 +29,7 @@ declare(strict_types=1);
  *
  * 5) Put the values below (or use environment variables on production).
  *
- * When client_id or channel_id is empty, the download gate is OFF so the site still works until you configure it.
+ * The PDF nudge is controlled in Admin → YouTube (database). Values here fill in blanks when DB fields are empty.
  */
 return [
     'client_id' => getenv('YOUTUBE_OAUTH_CLIENT_ID') ?: '',
@@ -38,4 +38,6 @@ return [
     'redirect_uri' => getenv('YOUTUBE_OAUTH_REDIRECT_URI') !== false ? (string) getenv('YOUTUBE_OAUTH_REDIRECT_URI') : '',
     /** Your channel ID (UC…) — API checks the signed-in user is subscribed to THIS channel */
     'channel_id' => getenv('YOUTUBE_CHANNEL_ID') ?: '',
+    /** Optional: code you mention in a video; students can enter it on the PDF screen (no API). */
+    'pdf_unlock_code' => getenv('YOUTUBE_PDF_UNLOCK_CODE') !== false ? trim((string) getenv('YOUTUBE_PDF_UNLOCK_CODE')) : '',
 ];

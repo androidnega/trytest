@@ -43,6 +43,9 @@ if ($quizLevel !== '' && $quizLevel !== $userLevel) {
     exit;
 }
 
+require_once __DIR__ . '/includes/youtube_subscribe.php';
+$ytBanner = trytest_youtube_promo_banner_html(trytest_youtube_settings());
+
 $startsRaw = isset($quizRow['quiz_starts_at']) ? trim((string) $quizRow['quiz_starts_at']) : '';
 $endsRaw = isset($quizRow['quiz_ends_at']) ? trim((string) $quizRow['quiz_ends_at']) : '';
 $schedulePhase = trytest_quiz_schedule_phase(
@@ -70,6 +73,9 @@ if ($schedulePhase === 'before') {
             <p class="text-sm text-slate-600">Scheduled: <?php echo htmlspecialchars($openLabel, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endif; ?>
         <p id="openCountdown" class="text-2xl font-mono font-bold text-[#2C6A7D]"></p>
+        <?php if ($ytBanner !== ''): ?>
+            <div class="mt-3 text-left"><?php echo $ytBanner; ?></div>
+        <?php endif; ?>
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="inline-block w-full rounded-2xl bg-[#E50914] py-3 text-sm font-bold text-white">Back to dashboard</a>
     </div>
     <script>
@@ -117,6 +123,9 @@ if ($schedulePhase === 'after') {
         <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Quiz window closed</p>
         <h1 class="text-xl font-bold"><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
         <p class="text-sm text-slate-600">This quiz is no longer accepting attempts.</p>
+        <?php if ($ytBanner !== ''): ?>
+            <div class="mt-3 text-left"><?php echo $ytBanner; ?></div>
+        <?php endif; ?>
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="mt-4 inline-block w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white">Back to dashboard</a>
     </div>
 </body>
@@ -198,6 +207,9 @@ if ($durationSec > 0) {
 </div>
 
 <main class="mx-auto max-w-lg px-4 pt-4">
+    <?php if ($ytBanner !== ''): ?>
+        <div class="mb-3"><?php echo $ytBanner; ?></div>
+    <?php endif; ?>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm">
         <div>
             <p class="text-[10px] uppercase tracking-wider text-slate-500">Score</p>
