@@ -12,16 +12,90 @@ $message = '';
 $isAdmin = !empty($_SESSION['is_admin']);
 
 /**
+ * Strip citation markers and normalize newlines for pasted exam / AI output.
+ */
+function trytest_exam_import_normalize_text(string $s): string
+{
+    $s = str_replace(["\r\n", "\r"], "\n", $s);
+    $s = preg_replace('/\[cite_start\]\s*/iu', '', $s) ?? $s;
+    $s = preg_replace('/\[cite:\s*[^\]\n]+\]/iu', '', $s) ?? $s;
+    return trim($s);
+}
+
+/**
  * @return array<int, string>
  */
 function buildAnswerMap(string $answersPart): array
 {
+    $answersPart = trytest_exam_import_normalize_text($answersPart);
     $answers = [];
-    preg_match_all('/(\d+)\s*[\.\)\:-]\s*([A-D])\b/i', $answersPart, $matches, PREG_SET_ORDER);
+    // "1. B", "1) B", "1: B", "1 B" at line start
+    preg_match_all('/(?:^|\n)\s*(\d+)\s*[\.\)\:]?\s*([A-D])\b/im', $answersPart, $matches, PREG_SET_ORDER);
     foreach ($matches as $match) {
         $answers[(int) $match[1]] = strtoupper($match[2]);
     }
+
     return $answers;
+}
+
+/**
+ * Parse one question block (stem + option lines A-D or A-C).
+ *
+ * @return array{question:string,options:array<string,string>,raw:array<string,string>}|null
+ */
+function trytest_exam_import_parse_question_body(string $body): ?array
+{
+    $body = trim($body);
+    if ($body === '') {
+        return null;
+    }
+    $lines = preg_split('/\n/', $body) ?: [];
+    $stem = [];
+    /** @var array<string,string> */
+    $opts = ['A' => '', 'B' => '', 'C' => '', 'D' => ''];
+    /** @var array<string,string> */
+    $rawOpts = ['A' => '', 'B' => '', 'C' => '', 'D' => ''];
+    $current = null;
+
+    foreach ($lines as $rawLine) {
+        $line = trim($rawLine);
+        if ($line === '') {
+            continue;
+        }
+        if (preg_match('/^([A-D])[\.\)]\s*(.*)$/iu', $line, $m)) {
+            $current = strtoupper($m[1]);
+            $text = trim((string) $m[2]);
+            $rawOpts[$current] = $text;
+            $opts[$current] = preg_replace('/\s*\*{3,}\s*$/', '', $text) ?? $text;
+            $opts[$current] = preg_replace('/\s+/', ' ', trim($opts[$current])) ?? trim($opts[$current]);
+            continue;
+        }
+        if ($current !== null) {
+            $rawOpts[$current] = trim($rawOpts[$current] . "\n" . $line);
+            $opts[$current] = trim($opts[$current] . ' ' . $line);
+            $opts[$current] = preg_replace('/\s*\*{3,}\s*$/', '', $opts[$current]) ?? $opts[$current];
+            $opts[$current] = preg_replace('/\s+/', ' ', trim($opts[$current])) ?? trim($opts[$current]);
+            continue;
+        }
+        $stem[] = $line;
+    }
+
+    $question = trim(preg_replace('/\s+/', ' ', implode(' ', $stem)) ?? '');
+    if ($question === '') {
+        return null;
+    }
+
+    $filled = 0;
+    foreach (['A', 'B', 'C', 'D'] as $L) {
+        if (trim($opts[$L]) !== '') {
+            $filled++;
+        }
+    }
+    if ($filled < 2) {
+        return null;
+    }
+
+    return ['question' => $question, 'options' => $opts, 'raw' => $rawOpts];
 }
 
 /**
@@ -29,51 +103,35 @@ function buildAnswerMap(string $answersPart): array
  */
 function parseExamQuestions(string $questionsPart, array $answerMap): array
 {
+    $questionsPart = trytest_exam_import_normalize_text($questionsPart);
     $rows = [];
-    preg_match_all('/(^|\n)\s*(\d+)\.\s*(.+?)(?=\n\s*\d+\.\s+|\z)/s', $questionsPart, $blocks, PREG_SET_ORDER);
+    preg_match_all(
+        '/(?:^|\n)\s*(\d+)\.\s*(.+?)(?=\n\s*\d+\.\s|\z)/s',
+        $questionsPart,
+        $blocks,
+        PREG_SET_ORDER
+    );
 
     foreach ($blocks as $block) {
-        $number = (int) ($block[2] ?? 0);
-        $body = trim((string) ($block[3] ?? ''));
+        $number = (int) ($block[1] ?? 0);
+        $body = trim((string) ($block[2] ?? ''));
         if ($number < 1 || $body === '') {
             continue;
         }
 
-        $parts = preg_split('/\n\s*([A-D])\.\s*/i', $body, -1, PREG_SPLIT_DELIM_CAPTURE);
-        if (!is_array($parts) || count($parts) < 9) {
+        $parsed = trytest_exam_import_parse_question_body($body);
+        if ($parsed === null) {
             continue;
         }
 
-        $question = preg_replace('/\s+/', ' ', trim((string) $parts[0])) ?? trim((string) $parts[0]);
-        $options = [];
-        $rawOptions = [];
-
-        for ($i = 1; $i < count($parts) - 1; $i += 2) {
-            $label = strtoupper(trim((string) $parts[$i]));
-            $raw = trim((string) $parts[$i + 1]);
-            if (!in_array($label, ['A', 'B', 'C', 'D'], true)) {
-                continue;
-            }
-            $rawOptions[$label] = $raw;
-            $clean = preg_replace('/\s*\*{3}\s*$/', '', $raw) ?? $raw;
-            $clean = preg_replace('/\s+/', ' ', trim($clean)) ?? trim($clean);
-            $options[$label] = $clean;
-        }
-
-        if (
-            $question === '' ||
-            empty($options['A']) ||
-            empty($options['B']) ||
-            empty($options['C']) ||
-            empty($options['D'])
-        ) {
-            continue;
-        }
+        $options = $parsed['options'];
+        $rawOptions = $parsed['raw'];
+        $question = $parsed['question'];
 
         $correctLetter = strtoupper((string) ($answerMap[$number] ?? ''));
         if (!in_array($correctLetter, ['A', 'B', 'C', 'D'], true)) {
             foreach (['A', 'B', 'C', 'D'] as $letter) {
-                if (preg_match('/\*{3}\s*$/', (string) ($rawOptions[$letter] ?? '')) === 1) {
+                if (preg_match('/\*{3,}\s*$/', (string) ($rawOptions[$letter] ?? '')) === 1) {
                     $correctLetter = $letter;
                     break;
                 }
@@ -82,6 +140,15 @@ function parseExamQuestions(string $questionsPart, array $answerMap): array
 
         if (!in_array($correctLetter, ['A', 'B', 'C', 'D'], true)) {
             continue;
+        }
+        if (trim($options[$correctLetter] ?? '') === '') {
+            continue;
+        }
+
+        foreach (['A', 'B', 'C', 'D'] as $L) {
+            if (trim($options[$L]) === '') {
+                $options[$L] = '';
+            }
         }
 
         $rows[] = [
@@ -127,12 +194,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ((int) $check->fetchColumn() === 0) {
                 $error = 'Selected quiz does not exist.';
             } else {
-                $parts = preg_split('/ANSWER\s+KEY/i', $rawText, 2);
+                $parts = preg_split('/ANSWER\s*KEY/i', $rawText, 2);
                 $questionsPart = trim((string) ($parts[0] ?? ''));
                 $answersPart = trim((string) ($parts[1] ?? ''));
 
                 $answerMap = buildAnswerMap($answersPart);
                 $parsed = parseExamQuestions($questionsPart, $answerMap);
+                if (!$parsed && preg_match('/ANSWER\s*KEY/i', $rawText) !== 1) {
+                    $parsed = parseExamQuestions($questionsPart, []);
+                }
 
                 if (!$parsed) {
                     $error = 'No valid questions found. Use numbered questions with A-D options and include ANSWER KEY.';
@@ -226,9 +296,37 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                     </button>
                 </form>
 
-                <p class="text-xs text-slate-500 mt-3">
-                    Format expected: numbered questions, options A-D, and answer key lines like "1. B". Headers and instructions are ignored automatically.
-                </p>
+                <details class="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-700">
+                    <summary class="cursor-pointer font-semibold text-slate-900">Format for paste / AI output (plain text)</summary>
+                    <p class="mt-2 text-xs leading-relaxed text-slate-600">
+                        Use one block per question: a line starting with <code class="rounded bg-white px-1">1.</code>, <code class="rounded bg-white px-1">2.</code>, … then the stem, then each option on its own line starting with
+                        <code class="rounded bg-white px-1">A.</code> / <code class="rounded bg-white px-1">B)</code> etc. (3 or 4 options is fine; leave D out if unused.)
+                        LaTeX like <code class="rounded bg-white px-1">$f=1/T$</code> is kept. Trailing <code class="rounded bg-white px-1">***</code> on an option marks the correct answer when there is no answer key.
+                        Citations like <code class="rounded bg-white px-1">[cite_start]</code> or <code class="rounded bg-white px-1">[cite: 1, 2]</code> are stripped automatically.
+                    </p>
+                    <pre class="mt-2 max-h-64 overflow-auto rounded-md border border-slate-200 bg-white p-2 text-[11px] leading-snug text-slate-800"><?php echo htmlspecialchars(
+                        <<<'FORMAT'
+1. What is the primary scope of data communication?
+A. The physical transmission of electrical power
+B. The exchange of data between two devices via some form of transmission medium
+C. The storage and retrieval of information from a database
+D. The processing of data by a single computer's CPU
+
+5. In a data communication system, the _________ is the physical path by which a message travels from sender to receiver.
+A. Protocol
+B. Transmitter
+C. Receiver
+D. Transmission medium
+
+ANSWER KEY
+1. B
+5. D
+FORMAT
+                        ,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ); ?></pre>
+                </details>
             <?php endif; ?>
         </div>
     </div>
