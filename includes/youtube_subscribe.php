@@ -77,7 +77,7 @@ function trytest_youtube_extract_video_id(string $url): string
 function trytest_youtube_embed_url(string $videoUrl): string
 {
     $id = trytest_youtube_extract_video_id($videoUrl);
-    return $id === '' ? '' : ('https://www.youtube.com/embed/' . rawurlencode($id) . '?rel=0');
+    return $id === '' ? '' : ('https://www.youtube.com/embed/' . rawurlencode($id) . '?rel=0&autoplay=1&mute=1');
 }
 
 /**

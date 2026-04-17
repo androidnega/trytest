@@ -75,7 +75,6 @@ $navClass = static function (bool $on): string {
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500"><?php echo $h($userIndex); ?></p>
                         <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600">
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
-                            <p class="flex justify-between gap-2"><span class="text-slate-400">Program</span><span class="min-w-0 truncate text-right font-medium text-slate-800"><?php echo $h($deptLabel); ?></span></p>
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative block border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50">Downloads<?php echo $downloadsNavBadge; ?></a>
@@ -148,9 +147,6 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
-            <?php if ($dashboardYoutubeVideosHtml !== ''): ?>
-                <?php echo $dashboardYoutubeVideosHtml; ?>
-            <?php endif; ?>
             <div class="mb-4 grid grid-cols-2 gap-2">
                 <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="rounded-xl bg-gradient-to-br from-amber-50 to-white p-2.5 text-center ring-1 ring-amber-100/90 transition hover:ring-amber-200 sm:p-3">
                     <span class="text-lg sm:text-xl" aria-hidden="true">🏆</span>
@@ -161,6 +157,9 @@ $navClass = static function (bool $on): string {
                     <p class="mt-1 text-[10px] font-semibold leading-tight text-slate-800 sm:text-[11px]">Courses</p>
                 </a>
             </div>
+            <?php if ($dashboardYoutubeVideosHtml !== ''): ?>
+                <?php echo $dashboardYoutubeVideosHtml; ?>
+            <?php endif; ?>
 
             <?php if ($recentAttempts): ?>
                 <section class="mb-6">
@@ -187,67 +186,60 @@ $navClass = static function (bool $on): string {
                 <?php if (!$coursesWithQuizzes): ?>
                     <p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">No courses match your level<?php echo $userDepartment !== '' ? ' and program' : ''; ?> yet.</p>
                 <?php else: ?>
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div class="space-y-2">
                         <?php foreach ($coursesWithQuizzes as $course): ?>
                             <?php $cd = trim((string) ($course['department'] ?? '')); ?>
-                            <article class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                                <div class="border-b border-slate-100 p-3">
-                                    <p class="text-[10px] font-bold uppercase tracking-wider text-[#2C6A7D]"><?php echo $h((string) ($course['code'] ?? '')); ?></p>
-                                    <p class="text-sm font-semibold leading-snug"><?php echo $h((string) ($course['title'] ?? '')); ?></p>
-                                    <?php if ($cd !== ''): ?><p class="mt-1 text-[10px] text-slate-500"><?php echo $h($cd); ?></p><?php endif; ?>
-                                </div>
-                                <div class="space-y-1.5 p-2">
-                                    <?php foreach ($course['quizzes'] as $qz): ?>
-                                        <?php
-                                        $qid = (int) ($qz['id'] ?? 0);
-                                        $qtitle = (string) ($qz['title'] ?? '');
-                                        $qc = (int) ($qz['question_count'] ?? 0);
-                                        $stRaw = isset($qz['quiz_starts_at']) ? trim((string) $qz['quiz_starts_at']) : '';
-                                        $enRaw = isset($qz['quiz_ends_at']) ? trim((string) $qz['quiz_ends_at']) : '';
-                                        $stTs = $stRaw !== '' ? strtotime($stRaw) : false;
-                                        $enTs = $enRaw !== '' ? strtotime($enRaw) : false;
-                                        $stSec = ($stTs !== false && $stTs > 0) ? (int) $stTs : '';
-                                        $enSec = ($enTs !== false && $enTs > 0) ? (int) $enTs : '';
-                                        $phase = trytest_quiz_schedule_phase(
-                                            $stRaw !== '' ? $stRaw : null,
-                                            $enRaw !== '' ? $enRaw : null
-                                        );
-                                        $canPlay = ($phase === 'open' || $phase === 'unset');
-                                        $hasSchedule = ($stRaw !== '' || $enRaw !== '');
-                                        ?>
-                                        <div
-                                            class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-left trytest-quiz-card"
-                                            data-quiz-id="<?php echo $qid; ?>"
-                                            data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
-                                            data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
-                                            data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
-                                        >
-                                            <div class="flex flex-nowrap items-start justify-between gap-2">
-                                                <div class="min-w-0 flex-1 overflow-hidden">
-                                                    <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block text-[11px] font-semibold leading-snug <?php echo $canPlay ? 'text-slate-800 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
-                                                        <?php echo $h($qtitle); ?>
-                                                    </a>
-                                                    <p class="mt-1 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions · n/' . (string) $qc); ?></p>
-                                                    <?php if ($canPlay && !empty($qz['user_has_attempt'])): ?>
-                                                        <p class="mt-0.5 text-[9px] font-semibold leading-tight text-[#2C6A7D]">You have completed this before — tap the title to retry.</p>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <?php if ($canPlay): ?>
-                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
-                                                <?php elseif ($phase === 'before'): ?>
-                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">Soon</span>
-                                                <?php else: ?>
-                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="trytest-quiz-countdown mt-2 hidden min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base" role="status" aria-live="polite"></div>
+                            <?php foreach ($course['quizzes'] as $qz): ?>
+                                <?php
+                                $qid = (int) ($qz['id'] ?? 0);
+                                $qtitle = (string) ($qz['title'] ?? '');
+                                $qc = (int) ($qz['question_count'] ?? 0);
+                                $stRaw = isset($qz['quiz_starts_at']) ? trim((string) $qz['quiz_starts_at']) : '';
+                                $enRaw = isset($qz['quiz_ends_at']) ? trim((string) $qz['quiz_ends_at']) : '';
+                                $stTs = $stRaw !== '' ? strtotime($stRaw) : false;
+                                $enTs = $enRaw !== '' ? strtotime($enRaw) : false;
+                                $stSec = ($stTs !== false && $stTs > 0) ? (int) $stTs : '';
+                                $enSec = ($enTs !== false && $enTs > 0) ? (int) $enTs : '';
+                                $phase = trytest_quiz_schedule_phase(
+                                    $stRaw !== '' ? $stRaw : null,
+                                    $enRaw !== '' ? $enRaw : null
+                                );
+                                $canPlay = ($phase === 'open' || $phase === 'unset');
+                                $courseLabel = trim((string) ($course['code'] ?? '') . ' · ' . (string) ($course['title'] ?? ''));
+                                ?>
+                                <article
+                                    class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm trytest-quiz-card"
+                                    data-quiz-id="<?php echo $qid; ?>"
+                                    data-user-id="<?php echo (int) $userId; ?>"
+                                    data-quiz-href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>"
+                                    data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
+                                    data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
+                                >
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate text-[10px] font-semibold uppercase tracking-wide text-[#2C6A7D]"><?php echo $h($courseLabel); ?></p>
+                                            <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block truncate text-sm font-semibold leading-snug <?php echo $canPlay ? 'text-slate-900 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
+                                                <?php echo $h($qtitle); ?>
+                                            </a>
+                                            <p class="mt-0.5 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions'); ?></p>
+                                            <p class="trytest-quiz-progress mt-0.5 text-[10px] font-medium text-[#2C6A7D]" data-total="<?php echo $qc; ?>">
+                                                <?php echo !empty($qz['user_has_attempt']) ? 'Completed before' : 'Not started'; ?>
+                                            </p>
                                         </div>
-                                    <?php endforeach; ?>
-                                    <?php if (empty($course['quizzes'])): ?>
-                                        <p class="py-1 text-center text-[10px] text-slate-400">No quizzes</p>
-                                    <?php endif; ?>
-                                </div>
-                            </article>
+                                        <?php if ($canPlay): ?>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
+                                        <?php elseif ($phase === 'before'): ?>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">Soon</span>
+                                        <?php else: ?>
+                                            <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="trytest-quiz-countdown mt-1.5 hidden min-h-[2rem] w-full rounded-lg border px-2 py-1.5 text-center text-xs font-black tabular-nums leading-tight tracking-tight sm:text-sm" role="status" aria-live="polite"></div>
+                                </article>
+                            <?php endforeach; ?>
+                            <?php if (empty($course['quizzes'])): ?>
+                                <p class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-400"><?php echo $h((string) ($course['code'] ?? '')); ?> has no quizzes yet.</p>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
@@ -308,6 +300,41 @@ $navClass = static function (bool $on): string {
 })();
 
 (function () {
+    function setQuizResumeProgress() {
+        document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
+            var quizId = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
+            var userIdVal = parseInt(card.getAttribute('data-user-id') || '0', 10);
+            var el = card.querySelector('.trytest-quiz-progress');
+            if (!el || !quizId || !userIdVal) return;
+            var fallback = el.textContent || 'Not started';
+            var key = 'trytest_quiz_resume_v1_' + String(userIdVal) + '_' + String(quizId);
+            try {
+                var raw = localStorage.getItem(key);
+                if (!raw) {
+                    el.textContent = fallback;
+                    return;
+                }
+                var payload = JSON.parse(raw);
+                if (!payload || payload.v !== 1 || !Array.isArray(payload.orderedIds)) {
+                    el.textContent = fallback;
+                    return;
+                }
+                var total = payload.orderedIds.length || parseInt(el.getAttribute('data-total') || '0', 10) || 0;
+                var idx = parseInt(String(payload.currentIndex || 0), 10);
+                if (isNaN(idx) || idx < 0) idx = 0;
+                if (total > 0 && idx > total) idx = total;
+                if (total > 0 && idx > 0 && idx < total) {
+                    var pct = Math.round((idx / total) * 100);
+                    el.textContent = 'In progress: ' + idx + '/' + total + ' (' + pct + '%)';
+                    return;
+                }
+                el.textContent = fallback;
+            } catch (e) {
+                el.textContent = fallback;
+            }
+        });
+    }
+
     function pad2(n) { return String(n).padStart(2, '0'); }
     function formatMinSec(ms) {
         if (ms <= 0) return '0:00';
@@ -414,6 +441,7 @@ $navClass = static function (bool $on): string {
         });
     }
     tick();
+    setQuizResumeProgress();
     setInterval(tick, 1000);
 
     var pollUrl = <?php echo json_encode($quizSchedulesPollUrl ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
