@@ -1,6 +1,7 @@
 (function () {
-    const cfg = window.QUIZ_CONFIG || { quizId: 0, durationSeconds: 0 };
+    const cfg = window.QUIZ_CONFIG || { quizId: 0, userId: 0, durationSeconds: 0 };
     const quizId = cfg.quizId;
+    const userId = Number(cfg.userId || 0);
     const durationSeconds = Number(cfg.durationSeconds || 0);
 
     function trytestWebPrefix() {
@@ -21,6 +22,84 @@
             return '/' + path;
         }
         return path === '' ? b : b + '/' + path;
+    }
+
+    function resumeStorageKey() {
+        return 'trytest_quiz_resume_v1_' + String(userId || '0') + '_' + String(quizId);
+    }
+
+    function clearQuizResumeStorage() {
+        try {
+            localStorage.removeItem(resumeStorageKey());
+        } catch (e) {}
+    }
+
+    function parseResumePayload(raw) {
+        if (!raw) return null;
+        try {
+            var o = JSON.parse(raw);
+            if (!o || o.v !== 1 || !Array.isArray(o.orderedIds)) return null;
+            return o;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function idsSameMultiset(a, b) {
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+        var sa = a
+            .slice()
+            .sort(function (x, y) {
+                return x - y;
+            })
+            .join(',');
+        var sb = b
+            .slice()
+            .sort(function (x, y) {
+                return x - y;
+            })
+            .join(',');
+        return sa === sb;
+    }
+
+    function applyResume(saved, serverIds) {
+        if (!saved || !idsSameMultiset(saved.orderedIds, serverIds)) return false;
+        if (saved.orderedIds.length !== serverIds.length) return false;
+        if (Number(saved.durationSeconds) !== Number(durationSeconds)) return false;
+        var idx = parseInt(String(saved.currentIndex), 10);
+        if (isNaN(idx) || idx < 0 || idx >= saved.orderedIds.length) return false;
+        orderedIds = saved.orderedIds.slice();
+        currentIndex = idx;
+        score = Math.max(0, parseInt(String(saved.score), 10) || 0);
+        var rem = parseInt(String(saved.remainingSeconds), 10);
+        rem = isNaN(rem) ? durationSeconds : Math.max(0, rem);
+        if (durationSeconds > 0) {
+            rem = Math.min(rem, durationSeconds);
+        }
+        remainingSeconds = rem;
+        quizClockStarted = false;
+        setScoreDisplay();
+        if (totalValue) totalValue.textContent = String(orderedIds.length);
+        setFrozenTimerLabel();
+        return true;
+    }
+
+    function saveQuizResume() {
+        if (!quizId || !orderedIds.length) return;
+        if (currentIndex >= orderedIds.length) return;
+        try {
+            localStorage.setItem(
+                resumeStorageKey(),
+                JSON.stringify({
+                    v: 1,
+                    orderedIds: orderedIds,
+                    currentIndex: currentIndex,
+                    score: score,
+                    remainingSeconds: remainingSeconds,
+                    durationSeconds: durationSeconds,
+                })
+            );
+        } catch (e) {}
     }
 
     const questionBox = document.getElementById('questionBox');
@@ -120,7 +199,9 @@
                 clearInterval(timerHandle);
                 timerHandle = null;
                 endQuiz();
+                return;
             }
+            saveQuizResume();
         }, 1000);
     }
 
@@ -413,11 +494,13 @@
 
         if (type === 'fill') {
             renderFillQuestion(q);
+            saveQuizResume();
             return;
         }
 
         questionBox.innerHTML = title + renderMcqOptions(q);
         bindMcqHandlers(q);
+        saveQuizResume();
     }
 
     function showQuestionAtCurrentIndex() {
@@ -562,10 +645,12 @@
 
     function advance() {
         currentIndex++;
+        saveQuizResume();
         showQuestionAtCurrentIndex();
     }
 
     function endQuiz() {
+        clearQuizResumeStorage();
         if (timerHandle) {
             clearInterval(timerHandle);
             timerHandle = null;
@@ -615,17 +700,11 @@
         progressLabel.textContent = 'Starting…';
         setScoreDisplay();
         setStatus('Starting', 'ok');
-        remainingSeconds = durationSeconds;
         quizClockStarted = false;
-        setFrozenTimerLabel();
 
         loadQuestionIds()
             .then(function (ids) {
-                orderedIds = shuffleInPlace(ids.slice());
-                currentIndex = 0;
-                score = 0;
-                setScoreDisplay();
-                if (orderedIds.length === 0) {
+                if (!ids.length) {
                     questionBox.innerHTML = '<p class="text-slate-500">No questions in this quiz yet.</p>';
                     progressLabel.textContent = '';
                     if (totalValue) totalValue.textContent = '0';
@@ -633,6 +712,23 @@
                     setStatus('No Questions', 'error');
                     return;
                 }
+                var raw = null;
+                try {
+                    raw = localStorage.getItem(resumeStorageKey());
+                } catch (e) {}
+                var saved = parseResumePayload(raw);
+                if (saved && applyResume(saved, ids)) {
+                    progressLabel.textContent = 'Resuming where you left off…';
+                    setStatus('In Progress', 'ok');
+                    showQuestionAtCurrentIndex();
+                    return;
+                }
+                remainingSeconds = durationSeconds;
+                setFrozenTimerLabel();
+                orderedIds = shuffleInPlace(ids.slice());
+                currentIndex = 0;
+                score = 0;
+                setScoreDisplay();
                 if (totalValue) totalValue.textContent = String(orderedIds.length);
                 showQuestionAtCurrentIndex();
             })
@@ -652,6 +748,13 @@
         e.preventDefault();
         btn.click();
     });
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+            saveQuizResume();
+        }
+    });
+    window.addEventListener('pagehide', saveQuizResume);
 
     start();
 })();

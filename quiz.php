@@ -322,6 +322,7 @@ if ($durationSec > 0) {
 <script>
 window.QUIZ_CONFIG = {
     quizId: <?php echo json_encode($quizId, JSON_THROW_ON_ERROR); ?>,
+    userId: <?php echo json_encode((int) ($_SESSION['user_id'] ?? 0), JSON_THROW_ON_ERROR); ?>,
     durationSeconds: <?php echo json_encode($effectiveDurationSeconds, JSON_THROW_ON_ERROR); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;

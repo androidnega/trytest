@@ -97,7 +97,10 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40): array
         FROM ranked r
         INNER JOIN users u ON u.id = r.user_id
         WHERE r.rn = 1
-        ORDER BY r.score DESC, r.created_at ASC, u.index_number ASC
+        ORDER BY CASE WHEN r.total > 0 THEN (CAST(r.score AS REAL) / r.total) ELSE 0 END DESC,
+                 r.score DESC,
+                 r.created_at ASC,
+                 u.index_number ASC
         LIMIT ' . $lim;
 
     $stmt = $db->prepare($sql);
@@ -268,7 +271,6 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
             }
             $uid = (int) ($row['user_id'] ?? 0);
             $idx = (string) ($row['index_number'] ?? '');
-            $dept = trim((string) ($row['department'] ?? ''));
             $sc = (int) ($row['best_score'] ?? 0);
             $tot = (int) ($row['best_total'] ?? 0);
             $isMe = $uid === $userId;
@@ -277,7 +279,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
                 <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500"><?php echo $i; ?></span>
                 <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32, $uid); ?></div>
                 <div class="min-w-0 flex-1 overflow-hidden">
-                    <p class="truncate text-xs font-medium leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?><?php if ($dept !== ''): ?><span class="text-slate-400"> · </span><span class="text-[10px] text-slate-500"><?php echo $h($dept); ?></span><?php endif; ?></p>
+                    <p class="truncate text-xs font-medium leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
                 </div>
                 <span class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
             </li>
@@ -294,7 +296,6 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
     }
     $uid = (int) ($slot['user_id'] ?? 0);
     $idx = (string) ($slot['index_number'] ?? '');
-    $dept = trim((string) ($slot['department'] ?? ''));
     $sc = (int) ($slot['best_score'] ?? 0);
     $tot = (int) ($slot['best_total'] ?? 0);
     $isMe = $uid === $userId;
@@ -305,7 +306,6 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
         <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3">
             <div class="relative z-0 mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/90 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48, $uid); ?></div>
             <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
-            <?php if ($dept !== ''): ?><p class="w-full truncate px-0.5 text-center text-[8px] text-slate-600"><?php echo $h($dept); ?></p><?php endif; ?>
             <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
             <span class="mt-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-600">#<?php echo $place; ?></span>
         </div>
