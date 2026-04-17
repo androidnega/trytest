@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/departments.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -80,6 +81,8 @@ $courses = $db->query(
      GROUP BY c.id
      ORDER BY c.id DESC'
 )->fetchAll();
+
+$deptPresets = trytest_department_dropdown_options($db);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,7 +113,13 @@ $courses = $db->query(
                         <input class="w-full border rounded-lg px-3 py-2" name="level" placeholder="Level (e.g 200)" required>
                     </div>
                     <input class="w-full border rounded-lg px-3 py-2" name="title" placeholder="Course title" required>
-                    <input class="w-full border rounded-lg px-3 py-2" name="department" placeholder="Department / program (optional)">
+                    <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets" placeholder="Department / program (optional)" maxlength="120" autocomplete="off">
+                    <datalist id="trytest_dept_presets">
+                        <?php foreach ($deptPresets as $dp): ?>
+                            <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                    <p class="text-xs text-slate-500">Manage the shared list under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>">Departments &amp; programs</a>.</p>
                     <button class="w-full bg-slate-900 text-white rounded-lg py-2 font-medium">Add Course</button>
                 </form>
             </section>
@@ -124,7 +133,12 @@ $courses = $db->query(
                             <option value="<?php echo (int) $course['id']; ?>"><?php echo htmlspecialchars((string) $course['code'] . ' — ' . $course['title'], ENT_QUOTES, 'UTF-8'); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <input class="w-full border rounded-lg px-3 py-2" name="department" placeholder="Department / program (blank to clear)">
+                    <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets2" placeholder="Department / program (blank to clear)" maxlength="120" autocomplete="off">
+                    <datalist id="trytest_dept_presets2">
+                        <?php foreach ($deptPresets as $dp): ?>
+                            <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
                     <button class="w-full bg-[#2C6A7D] text-white rounded-lg py-2 font-medium">Update Department</button>
                 </form>
             </section>

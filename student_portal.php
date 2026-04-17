@@ -7,24 +7,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/departments.php';
 require __DIR__ . '/includes/student_helpers.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
-$departmentOptions = [];
-try {
-    $deptRows = $db->query(
-        "SELECT DISTINCT TRIM(department) AS d FROM courses WHERE TRIM(COALESCE(department, '')) != '' ORDER BY d COLLATE NOCASE"
-    )->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($deptRows as $dr) {
-        $dv = trim((string) ($dr['d'] ?? ''));
-        if ($dv === '') {
-            continue;
-        }
-        $departmentOptions[] = ['value' => $dv, 'label' => $dv];
-    }
-} catch (Throwable $e) {
-    $departmentOptions = [];
-}
+$departmentOptions = trytest_department_dropdown_options($db);
 
 /**
  * Simple 4-digit numeric password for students.
@@ -389,7 +376,7 @@ else: ?>
                                         <?php endforeach; ?>
                                     </select>
                                     <?php if (!$departmentOptions): ?>
-                                        <p class="text-xs text-slate-500">Your admin can add programs on each course; until then, all courses for your level are shown.</p>
+                                        <p class="text-xs text-slate-500">Your admin can add program names under Manager → Departments, or set a department on a course; until then, all courses for your level are shown.</p>
                                     <?php endif; ?>
                                     <button class="w-full rounded-lg bg-indigo-600 py-2 font-medium text-white" type="submit">Create account</button>
                                 </form>

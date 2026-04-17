@@ -232,6 +232,14 @@ CREATE TABLE IF NOT EXISTS student_documents (
 );
 ');
 
+$db->exec('
+CREATE TABLE IF NOT EXISTS departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
+
 // Keep SQLite file writable for the web server user in local XAMPP setups.
 if (!$dbFileExisted && is_file($dbFile)) {
     @chmod($dbFile, 0666);

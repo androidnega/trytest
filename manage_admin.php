@@ -13,6 +13,7 @@ if (empty($_SESSION['is_admin'])) {
 }
 
 $courseCount = (int) $db->query('SELECT COUNT(*) FROM courses')->fetchColumn();
+$departmentPresetCount = (int) $db->query('SELECT COUNT(*) FROM departments')->fetchColumn();
 $quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
 $userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $questionCount = (int) $db->query('SELECT COUNT(*) FROM questions')->fetchColumn();
@@ -56,6 +57,19 @@ $ytLabel = $yt['gate_active'] ? 'On' : 'Off';
                         <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $courseCount; ?></span>
                     </div>
                     <p class="truncate text-[11px] leading-tight text-slate-500">Programs &amp; departments</p>
+                </div>
+                <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
+            </a>
+            <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>" class="group flex min-h-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50/90">
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
+                    <i class="fa-solid fa-building-columns text-xs"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="truncate text-sm font-semibold text-slate-900">Departments</h2>
+                        <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600"><?php echo $departmentPresetCount; ?></span>
+                    </div>
+                    <p class="truncate text-[11px] leading-tight text-slate-500">Dropdown list for students &amp; PDFs</p>
                 </div>
                 <i class="fa-solid fa-chevron-right shrink-0 text-[10px] text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
             </a>

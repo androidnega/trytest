@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/departments.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -78,9 +79,7 @@ $rows = $db->query(
      ORDER BY id DESC'
 )->fetchAll();
 
-$deptOptions = $db->query(
-    "SELECT DISTINCT TRIM(department) AS d FROM courses WHERE TRIM(COALESCE(department, '')) != '' ORDER BY d COLLATE NOCASE"
-)->fetchAll();
+$deptOptions = trytest_department_dropdown_options($db);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -112,7 +111,7 @@ $deptOptions = $db->query(
                     <select class="w-full border rounded-lg px-3 py-2" name="department">
                         <option value="">All programs (any department)</option>
                         <?php foreach ($deptOptions as $d): ?>
-                            <?php $dv = trim((string) ($d['d'] ?? '')); ?>
+                            <?php $dv = trim((string) ($d['value'] ?? '')); ?>
                             <?php if ($dv === '') {
                                 continue;
                             } ?>
