@@ -93,6 +93,8 @@ if (!preg_match('/\.pdf$/i', $downloadName)) {
     $downloadName .= '.pdf';
 }
 
+trytest_record_document_download($db, (int) $_SESSION['user_id'], $id);
+
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="' . str_replace(['"', "\r", "\n"], '', $downloadName) . '"');
 header('Content-Length: ' . (string) filesize($path));

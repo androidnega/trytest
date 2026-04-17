@@ -5,6 +5,8 @@ declare(strict_types=1);
 /** @var string $dashboardUrl */
 /** @var string $quizUrlBase */
 /** @var string $downloadsPageUrl */
+/** @var string $quizSchedulesPollUrl */
+/** @var int $downloadsBadgeCount */
 /** @var int $userId */
 /** @var string $userIndex */
 /** @var string $userLevel */
@@ -26,6 +28,14 @@ $tabHome = $activeTab === 'home';
 $tabRank = $activeTab === 'rank';
 $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
+$downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
+$downloadsNavBadge = '';
+if ($downloadsBadgeCount > 0) {
+    $dn = $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount;
+    $downloadsNavBadge = '<span class="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold leading-none text-white" aria-label="'
+        . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
+        . '">' . $h($dn) . '</span>';
+}
 
 $navClass = static function (bool $on): string {
     return $on
@@ -60,7 +70,7 @@ $navClass = static function (bool $on): string {
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Program</span><span class="min-w-0 truncate text-right font-medium text-slate-800"><?php echo $h($deptLabel); ?></span></p>
                             <p class="flex justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
-                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="block border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50">Downloads</a>
+                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative block border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50">Downloads<?php echo $downloadsNavBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
                             <button type="submit" class="w-full rounded-lg px-3 py-2 text-left text-sm text-[#E50914] hover:bg-red-50" role="menuitem">Log out</button>
@@ -72,7 +82,7 @@ $navClass = static function (bool $on): string {
         <div class="mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex">
             <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
-            <a href="<?php echo $h($downloadsPageUrl); ?>" class="whitespace-nowrap text-slate-500 hover:text-slate-700">Downloads</a>
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative whitespace-nowrap text-slate-500 hover:text-slate-700">Downloads<?php echo $downloadsNavBadge; ?></a>
         </div>
     </header>
 
@@ -165,26 +175,23 @@ $navClass = static function (bool $on): string {
                                         ?>
                                         <div
                                             class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-left trytest-quiz-card"
+                                            data-quiz-id="<?php echo $qid; ?>"
                                             data-quiz-start="<?php echo $stSec !== '' ? (string) $stSec : ''; ?>"
                                             data-quiz-end="<?php echo $enSec !== '' ? (string) $enSec : ''; ?>"
                                         >
                                             <div class="flex flex-nowrap items-start justify-between gap-2">
                                                 <div class="min-w-0 flex-1 overflow-hidden">
-                                                    <?php if ($canPlay): ?>
-                                                        <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="block text-[11px] font-semibold text-slate-800 hover:text-[#2C6A7D] leading-snug">
-                                                            <?php echo $h($qtitle); ?>
-                                                        </a>
-                                                    <?php else: ?>
-                                                        <p class="text-[11px] font-semibold text-slate-600 leading-snug"><?php echo $h($qtitle); ?></p>
-                                                    <?php endif; ?>
+                                                    <a href="<?php echo $h($quizUrlBase); ?>?quiz_id=<?php echo $qid; ?>" class="trytest-quiz-title block text-[11px] font-semibold leading-snug <?php echo $canPlay ? 'text-slate-800 hover:text-[#2C6A7D]' : 'pointer-events-none cursor-default text-slate-600'; ?>">
+                                                        <?php echo $h($qtitle); ?>
+                                                    </a>
                                                     <p class="mt-1 text-[10px] text-slate-500"><?php echo $qc < 1 ? 'No questions yet.' : ((string) $qc . ' questions · n/' . (string) $qc); ?></p>
                                                 </div>
                                                 <?php if ($canPlay): ?>
-                                                    <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
+                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">Open</span>
                                                 <?php elseif ($phase === 'before'): ?>
-                                                    <span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">Soon</span>
+                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800">Soon</span>
                                                 <?php else: ?>
-                                                    <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
+                                                    <span class="trytest-quiz-badge shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">Closed</span>
                                                 <?php endif; ?>
                                             </div>
                                             <p class="trytest-quiz-countdown mt-2 hidden min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base" role="status" aria-live="polite"></p>
@@ -226,8 +233,11 @@ $navClass = static function (bool $on): string {
                 <span class="text-lg">🏆</span>
                 <span class="text-[10px] font-semibold">Rank</span>
             </a>
-            <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($navClass(false)); ?>">
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($navClass(false)); ?> relative">
                 <span class="text-lg">📥</span>
+                <?php if ($downloadsBadgeCount > 0): ?>
+                    <span class="absolute right-[22%] top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white" aria-label="<?php echo (int) $downloadsBadgeCount; ?> pending"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) (int) $downloadsBadgeCount; ?></span>
+                <?php endif; ?>
                 <span class="text-[10px] font-semibold">Files</span>
             </a>
         </div>
@@ -253,7 +263,6 @@ $navClass = static function (bool $on): string {
 
 (function () {
     function pad2(n) { return String(n).padStart(2, '0'); }
-    /** Minutes and seconds only (large total minutes allowed). */
     function formatMinSec(ms) {
         if (ms <= 0) return '0:00';
         var totalSec = Math.floor(ms / 1000);
@@ -264,15 +273,57 @@ $navClass = static function (bool $on): string {
     function countdownBase() {
         return 'trytest-quiz-countdown mt-2 min-h-[2.75rem] w-full rounded-xl border px-2 py-2 text-center text-sm font-black tabular-nums leading-tight tracking-tight sm:min-h-[3rem] sm:px-3 sm:text-base ';
     }
+    function cardTimes(card) {
+        var sRaw = card.getAttribute('data-quiz-start') || '';
+        var eRaw = card.getAttribute('data-quiz-end') || '';
+        var s = sRaw ? parseInt(sRaw, 10) * 1000 : 0;
+        var e = eRaw ? parseInt(eRaw, 10) * 1000 : 0;
+        return { s: s, e: e };
+    }
+    function phaseKey(now, s, e) {
+        if (!s && !e) return 'unset';
+        if (s && now < s) return 'before';
+        if (e && now >= e) return 'after';
+        return 'open';
+    }
+    function setQuizBadge(badge, key) {
+        if (!badge) return;
+        var base = 'trytest-quiz-badge shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ';
+        if (key === 'before') {
+            badge.className = base + 'bg-amber-50 text-amber-800';
+            badge.textContent = 'Soon';
+        } else if (key === 'after') {
+            badge.className = base + 'bg-slate-100 text-slate-500';
+            badge.textContent = 'Closed';
+        } else {
+            badge.className = base + 'bg-emerald-50 text-emerald-700';
+            badge.textContent = 'Open';
+        }
+    }
     function tick() {
         var now = Date.now();
         document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
+            var t = cardTimes(card);
+            var s = t.s;
+            var e = t.e;
+            var pk = phaseKey(now, s, e);
+            var canPlay = pk === 'open' || pk === 'unset';
+            var badge = card.querySelector('.trytest-quiz-badge');
+            var title = card.querySelector('.trytest-quiz-title');
+            if (pk === 'unset') {
+                setQuizBadge(badge, 'open');
+            } else {
+                setQuizBadge(badge, pk);
+            }
+            if (title) {
+                if (canPlay) {
+                    title.className = 'trytest-quiz-title block text-[11px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D]';
+                } else {
+                    title.className = 'trytest-quiz-title block text-[11px] font-semibold leading-snug pointer-events-none cursor-default text-slate-600';
+                }
+            }
             var el = card.querySelector('.trytest-quiz-countdown');
             if (!el) return;
-            var sRaw = card.getAttribute('data-quiz-start') || '';
-            var eRaw = card.getAttribute('data-quiz-end') || '';
-            var s = sRaw ? parseInt(sRaw, 10) * 1000 : 0;
-            var e = eRaw ? parseInt(eRaw, 10) * 1000 : 0;
             if (!s && !e) {
                 el.textContent = '';
                 el.className = countdownBase() + 'hidden';
@@ -304,5 +355,42 @@ $navClass = static function (bool $on): string {
     }
     tick();
     setInterval(tick, 1000);
+
+    var pollUrl = <?php echo json_encode($quizSchedulesPollUrl ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+    if (pollUrl) {
+        function mergeSchedules(data) {
+            if (!data || !data.ok || !data.quizzes) return;
+            var map = {};
+            data.quizzes.forEach(function (q) {
+                var id = parseInt(q.quiz_id, 10);
+                if (!id) return;
+                map[id] = q;
+            });
+            document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
+                var id = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
+                var row = map[id];
+                if (!row) return;
+                if (row.start != null) {
+                    card.setAttribute('data-quiz-start', String(row.start));
+                } else {
+                    card.setAttribute('data-quiz-start', '');
+                }
+                if (row.end != null) {
+                    card.setAttribute('data-quiz-end', String(row.end));
+                } else {
+                    card.setAttribute('data-quiz-end', '');
+                }
+            });
+            tick();
+        }
+        function pollOnce() {
+            fetch(pollUrl, { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(mergeSchedules)
+                .catch(function () {});
+        }
+        setTimeout(pollOnce, 4000);
+        setInterval(pollOnce, 45000);
+    }
 })();
 </script>

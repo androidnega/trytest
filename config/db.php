@@ -245,6 +245,27 @@ CREATE TABLE IF NOT EXISTS student_documents (
 ');
 
 $db->exec('
+CREATE TABLE IF NOT EXISTS student_document_downloads (
+    user_id INTEGER NOT NULL,
+    document_id INTEGER NOT NULL,
+    downloaded_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
+    PRIMARY KEY (user_id, document_id)
+);
+');
+
+$userColsSeen = $db->query('PRAGMA table_info(users)')->fetchAll();
+$hasDownloadsLastSeen = false;
+foreach ($userColsSeen as $column) {
+    if (($column['name'] ?? '') === 'downloads_last_seen_at') {
+        $hasDownloadsLastSeen = true;
+        break;
+    }
+}
+if (!$hasDownloadsLastSeen) {
+    $db->exec('ALTER TABLE users ADD COLUMN downloads_last_seen_at TEXT');
+}
+
+$db->exec('
 CREATE TABLE IF NOT EXISTS departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL COLLATE NOCASE UNIQUE,

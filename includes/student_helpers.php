@@ -373,3 +373,107 @@ function trytest_quiz_schedule_phase(?string $startsAtSql, ?string $endsAtSql, ?
     }
     return 'open';
 }
+
+function trytest_record_document_download(PDO $db, int $userId, int $documentId): void
+{
+    if ($userId < 1 || $documentId < 1) {
+        return;
+    }
+    $st = $db->prepare(
+        'INSERT OR REPLACE INTO student_document_downloads (user_id, document_id, downloaded_at) VALUES (?, ?, datetime(\'now\'))'
+    );
+    $st->execute([$userId, $documentId]);
+}
+
+/**
+ * Eligible student documents the user has never downloaded (for nav badge).
+ */
+function trytest_student_downloads_pending_count(PDO $db, int $userId, string $userDepartment, string $userLevel): int
+{
+    if ($userId < 1) {
+        return 0;
+    }
+    $stmt = $db->query('SELECT id, department, level FROM student_documents');
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $eligibleIds = [];
+    foreach ($rows as $d) {
+        $dd = trim((string) ($d['department'] ?? ''));
+        $dl = trim((string) ($d['level'] ?? ''));
+        if (!trytest_student_document_eligible($userDepartment, $userLevel, $dd, $dl)) {
+            continue;
+        }
+        $eligibleIds[] = (int) ($d['id'] ?? 0);
+    }
+    $eligibleIds = array_values(array_filter($eligibleIds, static fn (int $id): bool => $id > 0));
+    if ($eligibleIds === []) {
+        return 0;
+    }
+    $placeholders = implode(',', array_fill(0, count($eligibleIds), '?'));
+    $chk = $db->prepare(
+        'SELECT document_id FROM student_document_downloads WHERE user_id = ? AND document_id IN (' . $placeholders . ')'
+    );
+    $chk->execute(array_merge([$userId], $eligibleIds));
+    $done = [];
+    foreach ($chk->fetchAll(PDO::FETCH_COLUMN) as $di) {
+        $done[(int) $di] = true;
+    }
+    $c = 0;
+    foreach ($eligibleIds as $id) {
+        if (empty($done[$id])) {
+            $c++;
+        }
+    }
+    return $c;
+}
+
+/**
+ * Latest open/close times per quiz id for the student dashboard (same rules as course list).
+ *
+ * @return array<int, array{start: int|null, end: int|null}>
+ */
+function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel, string $userDepartment): array
+{
+    $out = [];
+    $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c WHERE c.level = ?';
+    $courseParams = [$userLevel];
+    if ($userDepartment !== '') {
+        $courseSql .= ' AND (TRIM(COALESCE(c.department, \'\')) = \'\' OR LOWER(TRIM(c.department)) = LOWER(?))';
+        $courseParams[] = $userDepartment;
+    }
+    $courseSql .= ' ORDER BY c.code ASC';
+    $courseStmt = $db->prepare($courseSql);
+    $courseStmt->execute($courseParams);
+    $courses = $courseStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($courses as $course) {
+        $cid = (int) ($course['id'] ?? 0);
+        if ($cid < 1) {
+            continue;
+        }
+        $quizStmt = $db->prepare(
+            'SELECT DISTINCT q.id, q.quiz_starts_at, q.quiz_ends_at
+             FROM quizzes q
+             LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
+             WHERE (q.course_id = ? OR qc.course_id = ?)
+               AND (q.level IS NULL OR q.level = ?)
+             ORDER BY q.id DESC'
+        );
+        $quizStmt->execute([$cid, $cid, $userLevel]);
+        foreach ($quizStmt->fetchAll(PDO::FETCH_ASSOC) as $qz) {
+            $qid = (int) ($qz['id'] ?? 0);
+            if ($qid < 1) {
+                continue;
+            }
+            $stRaw = trim((string) ($qz['quiz_starts_at'] ?? ''));
+            $enRaw = trim((string) ($qz['quiz_ends_at'] ?? ''));
+            $stTs = $stRaw !== '' ? strtotime($stRaw) : false;
+            $enTs = $enRaw !== '' ? strtotime($enRaw) : false;
+            $out[$qid] = [
+                'start' => ($stTs !== false && $stTs > 0) ? (int) $stTs : null,
+                'end' => ($enTs !== false && $enTs > 0) ? (int) $enTs : null,
+            ];
+        }
+    }
+
+    return $out;
+}

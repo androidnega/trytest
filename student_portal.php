@@ -296,12 +296,17 @@ if ($isUserLoggedIn) {
         }
     }
 
+    $downloadsBadgeCount = trytest_student_downloads_pending_count($db, $userId, $userDepartment, $userLevel);
+
 }
+
+$downloadsBadgeCount = $downloadsBadgeCount ?? 0;
 
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
 $downloadsPageUrl = trytest_url('downloads');
+$quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 ?>
 <!DOCTYPE html>
@@ -321,6 +326,7 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 <?php if ($isUserLoggedIn):
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
+    $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">
