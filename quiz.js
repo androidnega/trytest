@@ -9,7 +9,7 @@
     const quizAdVideos = Array.isArray(cfg.quizAdVideos) ? cfg.quizAdVideos.map(String).filter(Boolean) : [];
     const priorAttempt = !!cfg.priorAttempt;
     const resetAttemptUrl = String(cfg.resetAttemptUrl || '');
-    const showExamWelcome = !!cfg.showExamWelcome;
+    const quizIntroSeconds = Math.max(1, Math.min(60, Number(cfg.quizIntroSeconds || 5)));
     const examWelcomeQuote = String(cfg.examWelcomeQuote || '');
     const examWelcomeImage = String(cfg.examWelcomeImage || '');
 
@@ -392,10 +392,10 @@
         return escapeHtml(s).replace(/'/g, '&#39;');
     }
 
-    function shouldSkipExamWelcome() {
-        if (!showExamWelcome) {
-            return true;
-        }
+    let quizIntroIntervalId = null;
+    let quizIntroFinished = false;
+
+    function shouldSkipQuizIntro() {
         try {
             var raw = localStorage.getItem(resumeStorageKey());
             if (parseResumePayload(raw)) {
@@ -405,14 +405,30 @@
         return false;
     }
 
-    function renderExamWelcome() {
+    function clearQuizIntroInterval() {
+        if (quizIntroIntervalId !== null) {
+            clearInterval(quizIntroIntervalId);
+            quizIntroIntervalId = null;
+        }
+    }
+
+    function beginQuizFromIntro() {
+        if (quizIntroFinished) {
+            return;
+        }
+        quizIntroFinished = true;
+        clearQuizIntroInterval();
+        start();
+    }
+
+    function renderQuizIntro() {
         if (!questionBox) {
-            start();
+            beginQuizFromIntro();
             return;
         }
         setStatus('Welcome', 'ok');
         if (progressLabel) {
-            progressLabel.textContent = 'When you are ready';
+            progressLabel.textContent = 'Before you begin';
         }
         if (progressBar) {
             progressBar.style.width = '0%';
@@ -438,7 +454,7 @@
             '<div class="rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-center shadow-md backdrop-blur-sm">' +
             '<p class="text-[9px] font-extrabold uppercase tracking-widest text-[#2C6A7D]">You belong here</p>' +
             '<p class="mt-0.5 text-[11px] font-bold leading-snug text-slate-900">Breathe in focus. Breathe out doubt.</p>' +
-            '</div></div></div>' +
+            '</div></div></div></div>' +
             '<div class="flex min-h-0 flex-1 flex-col justify-center rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">' +
             '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Exam floor</p>' +
             '<p class="mt-3 text-[15px] font-medium leading-relaxed text-slate-900 sm:text-[17px]">' +
@@ -446,15 +462,39 @@
             '</p>' +
             '<p class="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">The timer begins when the <span class="font-semibold text-slate-800">first question</span> loads.</p>' +
             '</div></div>' +
-            '<button type="button" id="examWelcomeStart" class="mt-5 w-full rounded-2xl bg-[#E50914] py-3.5 text-base font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.99]">Start now</button>' +
-            '</div>';
-        var btn = document.getElementById('examWelcomeStart');
-        if (btn) {
-            btn.addEventListener('click', function () {
-                if (btn.disabled) return;
-                btn.disabled = true;
-                btn.textContent = 'Starting…';
-                start();
+            '<div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">' +
+            '<p id="quizIntroAuto" class="text-center text-sm font-semibold tabular-nums text-slate-600 sm:text-left"></p>' +
+            '<button type="button" id="quizIntroContinue" class="w-full rounded-2xl border-2 border-[#2C6A7D] bg-white py-3.5 text-sm font-bold text-[#2C6A7D] shadow-sm transition hover:bg-slate-50 active:scale-[0.99] sm:order-first sm:w-auto sm:min-w-[148px]">Continue</button>' +
+            '</div></div>';
+        var autoEl = document.getElementById('quizIntroAuto');
+        var contBtn = document.getElementById('quizIntroContinue');
+        var left = quizIntroSeconds;
+        if (autoEl) {
+            autoEl.textContent = 'Starting in ' + left + 's…';
+        }
+        quizIntroIntervalId = setInterval(function () {
+            left -= 1;
+            if (left <= 0) {
+                clearQuizIntroInterval();
+                if (autoEl) {
+                    autoEl.textContent = 'Starting…';
+                }
+                beginQuizFromIntro();
+                return;
+            }
+            if (autoEl) {
+                autoEl.textContent = 'Starting in ' + left + 's…';
+            }
+        }, 1000);
+        if (contBtn) {
+            contBtn.addEventListener('click', function () {
+                if (quizIntroFinished) {
+                    return;
+                }
+                if (autoEl) {
+                    autoEl.textContent = 'Starting…';
+                }
+                beginQuizFromIntro();
             });
         }
     }
@@ -1176,9 +1216,9 @@
     });
     window.addEventListener('pagehide', saveQuizResume);
 
-    if (shouldSkipExamWelcome()) {
+    if (shouldSkipQuizIntro()) {
         start();
     } else {
-        renderExamWelcome();
+        renderQuizIntro();
     }
 })();

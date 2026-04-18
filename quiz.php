@@ -46,14 +46,11 @@ $priorAttemptStmt = $db->prepare('SELECT 1 FROM scores WHERE quiz_id = ? AND use
 $priorAttemptStmt->execute([$quizId, (int) ($_SESSION['user_id'] ?? 0)]);
 $hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
 
-require_once __DIR__ . '/includes/exam_motivation_quotes.php';
-$studentIdForWelcome = (int) ($_SESSION['user_id'] ?? 0);
-$lifetimeScoresStmt = $db->prepare('SELECT COUNT(*) FROM scores WHERE user_id = ?');
-$lifetimeScoresStmt->execute([$studentIdForWelcome]);
-$lifetimeScoreCount = (int) $lifetimeScoresStmt->fetchColumn();
-$showExamWelcome = $lifetimeScoreCount === 0;
-$examWelcomeQuote = trytest_exam_motivation_quote_for_student($studentIdForWelcome);
+require_once __DIR__ . '/includes/exam_quotes_unique.php';
+$studentIdForIntro = (int) ($_SESSION['user_id'] ?? 0);
+$examWelcomeQuote = trytest_exam_quote_for_quiz($studentIdForIntro, $quizId);
 $examWelcomeImageUrl = trytest_url('KofiEmma.jpg');
+$quizIntroSeconds = 5;
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
 $ytSettings = trytest_youtube_settings();
@@ -352,7 +349,7 @@ window.QUIZ_CONFIG = {
     quizAdVideos: <?php echo json_encode((array) ($quizAdConfig['videos'] ?? []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
     priorAttempt: <?php echo json_encode($hasPriorAttempt, JSON_THROW_ON_ERROR); ?>,
     resetAttemptUrl: <?php echo json_encode(trytest_url('reset_quiz_attempt'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
-    showExamWelcome: <?php echo json_encode($showExamWelcome, JSON_THROW_ON_ERROR); ?>,
+    quizIntroSeconds: <?php echo json_encode($quizIntroSeconds, JSON_THROW_ON_ERROR); ?>,
     examWelcomeQuote: <?php echo json_encode($examWelcomeQuote, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
     examWelcomeImage: <?php echo json_encode($examWelcomeImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
 };
