@@ -447,8 +447,22 @@
         }
         var img = examWelcomeImage;
         var quote =
-            examWelcomeQuote.trim() !== '' ? examWelcomeQuote : 'Good luck on this quiz.';
+            examWelcomeQuote.trim() !== '' ? examWelcomeQuote : 'Believe in yourself.\nYou are ready.';
         var author = quizAuthorName.trim();
+        var quoteLines = String(quote)
+            .split(/\n/)
+            .map(function (s) {
+                return s.trim();
+            })
+            .filter(Boolean);
+        var quoteHtml =
+            quoteLines.length > 0
+                ? quoteLines
+                      .map(function (line) {
+                          return escapeHtml(line);
+                      })
+                      .join('<br />')
+                : escapeHtml('Believe in yourself.') + '<br />' + escapeHtml('You are ready.');
         mount.innerHTML =
             '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4">' +
             '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
@@ -457,7 +471,7 @@
             '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100" width="128" height="128" loading="eager" />' +
             '<div class="min-w-0 flex-1 text-left">' +
             '<p id="quizIntroMsg" class="text-sm font-semibold leading-snug text-slate-800 sm:text-base">' +
-            escapeHtml(quote) +
+            quoteHtml +
             '</p>' +
             (author !== ''
                 ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm">' +
