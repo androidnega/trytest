@@ -9,6 +9,9 @@
     const quizAdVideos = Array.isArray(cfg.quizAdVideos) ? cfg.quizAdVideos.map(String).filter(Boolean) : [];
     const priorAttempt = !!cfg.priorAttempt;
     const resetAttemptUrl = String(cfg.resetAttemptUrl || '');
+    const showExamWelcome = !!cfg.showExamWelcome;
+    const examWelcomeQuote = String(cfg.examWelcomeQuote || '');
+    const examWelcomeImage = String(cfg.examWelcomeImage || '');
 
     function trytestWebPrefix() {
         var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
@@ -387,6 +390,73 @@
 
     function escapeAttr(s) {
         return escapeHtml(s).replace(/'/g, '&#39;');
+    }
+
+    function shouldSkipExamWelcome() {
+        if (!showExamWelcome) {
+            return true;
+        }
+        try {
+            var raw = localStorage.getItem(resumeStorageKey());
+            if (parseResumePayload(raw)) {
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    function renderExamWelcome() {
+        if (!questionBox) {
+            start();
+            return;
+        }
+        setStatus('Welcome', 'ok');
+        if (progressLabel) {
+            progressLabel.textContent = 'When you are ready';
+        }
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+        if (totalValue) {
+            totalValue.textContent = '—';
+        }
+        if (scoreValue) {
+            scoreValue.textContent = '0';
+        }
+        var img = examWelcomeImage;
+        var quote = examWelcomeQuote;
+        questionBox.innerHTML =
+            '<div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-md sm:p-6">' +
+            '<div class="flex flex-col gap-5 sm:flex-row sm:items-stretch sm:gap-6">' +
+            '<div class="mx-auto w-full max-w-[280px] shrink-0 sm:mx-0 sm:max-w-[42%] sm:w-[260px]">' +
+            '<div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner">' +
+            '<img src="' +
+            escapeAttr(img) +
+            '" alt="" class="trytest-exam-welcome-img block w-full object-cover object-[center_20%]" width="520" height="650" loading="eager" />' +
+            '<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/50 via-slate-900/10 to-transparent pt-14 pb-1 sm:pt-16"></div>' +
+            '<div class="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3">' +
+            '<div class="rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-center shadow-md backdrop-blur-sm">' +
+            '<p class="text-[9px] font-extrabold uppercase tracking-widest text-[#2C6A7D]">You belong here</p>' +
+            '<p class="mt-0.5 text-[11px] font-bold leading-snug text-slate-900">Breathe in focus. Breathe out doubt.</p>' +
+            '</div></div></div>' +
+            '<div class="flex min-h-0 flex-1 flex-col justify-center rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">' +
+            '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Exam floor</p>' +
+            '<p class="mt-3 text-[15px] font-medium leading-relaxed text-slate-900 sm:text-[17px]">' +
+            escapeHtml(quote) +
+            '</p>' +
+            '<p class="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">The timer begins when the <span class="font-semibold text-slate-800">first question</span> loads.</p>' +
+            '</div></div>' +
+            '<button type="button" id="examWelcomeStart" class="mt-5 w-full rounded-2xl bg-[#E50914] py-3.5 text-base font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.99]">Start now</button>' +
+            '</div>';
+        var btn = document.getElementById('examWelcomeStart');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                if (btn.disabled) return;
+                btn.disabled = true;
+                btn.textContent = 'Starting…';
+                start();
+            });
+        }
     }
 
     function renderLoading() {
@@ -1106,5 +1176,9 @@
     });
     window.addEventListener('pagehide', saveQuizResume);
 
-    start();
+    if (shouldSkipExamWelcome()) {
+        start();
+    } else {
+        renderExamWelcome();
+    }
 })();

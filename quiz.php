@@ -46,6 +46,15 @@ $priorAttemptStmt = $db->prepare('SELECT 1 FROM scores WHERE quiz_id = ? AND use
 $priorAttemptStmt->execute([$quizId, (int) ($_SESSION['user_id'] ?? 0)]);
 $hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
 
+require_once __DIR__ . '/includes/exam_motivation_quotes.php';
+$studentIdForWelcome = (int) ($_SESSION['user_id'] ?? 0);
+$lifetimeScoresStmt = $db->prepare('SELECT COUNT(*) FROM scores WHERE user_id = ?');
+$lifetimeScoresStmt->execute([$studentIdForWelcome]);
+$lifetimeScoreCount = (int) $lifetimeScoresStmt->fetchColumn();
+$showExamWelcome = $lifetimeScoreCount === 0;
+$examWelcomeQuote = trytest_exam_motivation_quote_for_student($studentIdForWelcome);
+$examWelcomeImageUrl = trytest_url('KofiEmma.jpg');
+
 require_once __DIR__ . '/includes/youtube_subscribe.php';
 $ytSettings = trytest_youtube_settings();
 $ytBanner = trytest_youtube_promo_banner_html($ytSettings);
@@ -172,6 +181,14 @@ if ($durationSec > 0) {
     <style>
         :root { color-scheme: light; }
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+        .trytest-exam-welcome-img {
+            max-height: min(52vh, 280px);
+        }
+        @media (min-width: 640px) {
+            .trytest-exam-welcome-img {
+                max-height: 300px;
+            }
+        }
         @keyframes success-pop {
             0% { transform: scale(1); }
             40% { transform: scale(1.06); }
@@ -334,7 +351,10 @@ window.QUIZ_CONFIG = {
     quizAdWatchSeconds: <?php echo json_encode((int) ($quizAdConfig['watch_seconds'] ?? 20), JSON_THROW_ON_ERROR); ?>,
     quizAdVideos: <?php echo json_encode((array) ($quizAdConfig['videos'] ?? []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
     priorAttempt: <?php echo json_encode($hasPriorAttempt, JSON_THROW_ON_ERROR); ?>,
-    resetAttemptUrl: <?php echo json_encode(trytest_url('reset_quiz_attempt'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
+    resetAttemptUrl: <?php echo json_encode(trytest_url('reset_quiz_attempt'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    showExamWelcome: <?php echo json_encode($showExamWelcome, JSON_THROW_ON_ERROR); ?>,
+    examWelcomeQuote: <?php echo json_encode($examWelcomeQuote, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
+    examWelcomeImage: <?php echo json_encode($examWelcomeImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
