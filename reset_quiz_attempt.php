@@ -48,9 +48,8 @@ if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment))
 }
 
 try {
-    $del = $db->prepare('DELETE FROM scores WHERE quiz_id = ? AND user_id = ?');
-    $del->execute([$quizId, $userId]);
-    echo json_encode(['ok' => true, 'removed' => $del->rowCount()]);
+    trytest_student_wipe_quiz_results($db, $userId, $quizId);
+    echo json_encode(['ok' => true, 'removed' => 1]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'reset_failed']);

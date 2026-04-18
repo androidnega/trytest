@@ -132,6 +132,9 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
         $quizStmt->execute(['approved', (int) $course['id'], (int) $course['id']]);
         $quizzes = [];
         foreach ($quizStmt->fetchAll() as $qz) {
+            if ((int) ($qz['question_count'] ?? 0) < 1) {
+                continue;
+            }
             if (!trytest_quiz_level_visible_to_student(isset($qz['quiz_level']) ? (string) $qz['quiz_level'] : null, $userLevel)) {
                 continue;
             }
@@ -270,29 +273,114 @@ function trytest_level_leaderboard(PDO $db, string $level, string $department, i
     if ($lv === '' || $dp === '') {
         return [];
     }
+    $wantCanon = trytest_student_level_canon($lv);
+    $lim = max(1, min(100, $limit));
     $stmt = $db->prepare(
         'SELECT u.id AS user_id, u.index_number AS index_number, u.department AS department,
+                TRIM(COALESCE(u.level, \'\')) AS user_level,
                 COALESCE(SUM(s.score), 0) AS total_points
          FROM users u
          LEFT JOIN scores s ON s.user_id = u.id AND s.user_id IS NOT NULL
-         WHERE LOWER(TRIM(COALESCE(u.level, \'\'))) = LOWER(TRIM(?))
-           AND LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))
-         GROUP BY u.id
-         ORDER BY total_points DESC, u.index_number ASC
-         LIMIT ' . max(1, min(100, $limit))
+         WHERE LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))
+         GROUP BY u.id, u.index_number, u.department, u.level
+         ORDER BY total_points DESC, u.index_number ASC'
     );
-    $stmt->execute([$lv, $dp]);
+    $stmt->execute([$dp]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $out = [];
+    $candidates = [];
     foreach ($rows as $r) {
-        $out[] = [
+        $ul = trytest_student_level_canon((string) ($r['user_level'] ?? ''));
+        if ($wantCanon === '' || $ul === '' || $ul !== $wantCanon) {
+            continue;
+        }
+        $candidates[] = [
             'user_id' => (int) ($r['user_id'] ?? 0),
             'index_number' => (string) ($r['index_number'] ?? ''),
             'department' => (string) ($r['department'] ?? ''),
             'total_points' => (int) ($r['total_points'] ?? 0),
         ];
     }
+
+    return array_slice($candidates, 0, $lim);
+}
+
+/**
+ * Latest saved score per quiz for this student (only quizzes they may open).
+ *
+ * @return list<array{quiz_id:int,title:string,score:int,total:int,created_at:string}>
+ */
+function trytest_student_quiz_results_rows(PDO $db, int $userId, string $userLevel, string $userDepartment): array
+{
+    if ($userId < 1) {
+        return [];
+    }
+    $stmt = $db->prepare(
+        'SELECT s.quiz_id AS quiz_id, q.title AS title, s.score AS score, s.total AS total, s.created_at AS created_at
+         FROM scores s
+         INNER JOIN quizzes q ON q.id = s.quiz_id
+         WHERE s.user_id = ?
+         ORDER BY datetime(s.created_at) DESC, s.id DESC'
+    );
+    $stmt->execute([$userId]);
+    $out = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $qid = (int) ($r['quiz_id'] ?? 0);
+        if ($qid < 1) {
+            continue;
+        }
+        if (!trytest_student_can_access_quiz($db, $qid, $userLevel, $userDepartment)) {
+            continue;
+        }
+        $out[] = [
+            'quiz_id' => $qid,
+            'title' => (string) ($r['title'] ?? 'Quiz'),
+            'score' => (int) ($r['score'] ?? 0),
+            'total' => (int) ($r['total'] ?? 0),
+            'created_at' => (string) ($r['created_at'] ?? ''),
+        ];
+    }
+
     return $out;
+}
+
+/**
+ * Remove this student’s saved score and attempt history for a quiz (try again).
+ */
+function trytest_student_wipe_quiz_results(PDO $db, int $userId, int $quizId): void
+{
+    if ($userId < 1 || $quizId < 1) {
+        return;
+    }
+    $db->prepare('DELETE FROM score_attempts WHERE quiz_id = ? AND user_id = ?')->execute([$quizId, $userId]);
+    $db->prepare('DELETE FROM scores WHERE quiz_id = ? AND user_id = ?')->execute([$quizId, $userId]);
+}
+
+/**
+ * Inline SVG for student dashboard quick-link tiles (stroke icons).
+ */
+function trytest_student_dashboard_tile_svg(string $kind, int $size = 40): string
+{
+    $s = max(20, min(56, $size));
+    $stroke = '#2C6A7D';
+    $sw = '1.75';
+    switch ($kind) {
+        case 'trophy':
+            $path = '<path d="M8 21h8M12 17v4M6 4h12v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4zM10 4V3a2 2 0 1 1 4 0v1" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linecap="round" stroke-linejoin="round"/>';
+            break;
+        case 'folder':
+            $path = '<path d="M4 6a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linejoin="round"/>';
+            break;
+        case 'quiz':
+            $path = '<path d="M6 4h12a2 2 0 0 1 2 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2zM9 9h6M9 13h4" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linecap="round" stroke-linejoin="round"/>';
+            break;
+        case 'results':
+            $path = '<path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-4" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linecap="round" stroke-linejoin="round"/>';
+            break;
+        default:
+            $path = '<circle cx="12" cy="12" r="8" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '"/>';
+    }
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $s . '" height="' . $s . '" viewBox="0 0 24 24" class="shrink-0" aria-hidden="true">' . $path . '</svg>';
 }
 
 /**

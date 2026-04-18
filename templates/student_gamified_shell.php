@@ -24,6 +24,7 @@ declare(strict_types=1);
 /** @var array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null $dashboardEncouragement */
 /** @var int $newQuizBadgeCount */
 /** @var string $quizUrlBase */
+/** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
 /** @var string $dashboardYoutubeVideosHtml Main dashboard YouTube block (may be empty). */
 $h = static function (string $s): string {
@@ -32,6 +33,8 @@ $h = static function (string $s): string {
 
 $tabHome = $activeTab === 'home';
 $tabRank = $activeTab === 'rank';
+$tabResults = $activeTab === 'results';
+$quizResultsRows = isset($quizResultsRows) && is_array($quizResultsRows) ? $quizResultsRows : [];
 $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
@@ -93,6 +96,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
+                        <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
@@ -123,6 +127,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Level</span><span class="font-medium text-slate-800"><?php echo $h($userLevel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
+                        <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2">
                             <input type="hidden" name="action" value="logout_user">
@@ -138,6 +143,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             : 'mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Home</a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Leaderboard</a>
+            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="whitespace-nowrap <?php echo $tabResults ? 'text-[#E50914]' : 'text-slate-500 hover:text-slate-700'; ?>">Results</a>
             <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                 <a href="<?php echo $h($quizzesPageUrl); ?>" class="whitespace-nowrap text-slate-500 hover:text-slate-700">Quizzes</a>
             <?php endif; ?>
@@ -221,7 +227,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             }
             $homeFlexLock = $dashboardFixedViewport;
             $tileRounded = $homeFlexLock ? 'rounded-xl' : 'rounded-2xl';
-            $tileMin = $homeFlexLock ? 'min-h-0 min-w-0' : 'min-h-[100px]';
+            $tileMin = $homeFlexLock ? 'min-h-0 min-w-0' : 'min-h-[96px]';
+            $tileSvg = $homeFlexLock ? 32 : 38;
             $homeGridClass = $homeFlexLock
                 ? 'grid min-h-0 flex-1 grid-cols-2 gap-4 [grid-template-rows:minmax(0,1fr)_minmax(0,1fr)]'
                 : 'grid grid-cols-2 gap-3';
@@ -267,36 +274,44 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             <?php endif; ?>
             <section class="<?php echo $h($quickSectionClass); ?>" aria-label="Quick links">
                 <div class="<?php echo $h($homeGridClass); ?>">
-                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($lbGridClass); ?>flex <?php echo $h($tileMin); ?> flex-col items-center justify-center <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-4 text-center text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50">
-                        <span class="text-2xl leading-none" aria-hidden="true">🏆</span>
-                        <span class="mt-2 text-sm font-bold leading-tight">Leaderboard</span>
-                        <span class="mt-0.5 text-xs text-slate-500">Level ranks</span>
+                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($lbGridClass); ?>flex <?php echo $h($tileMin); ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50">
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-bold leading-tight">Leaderboard</span>
+                            <span class="mt-0.5 block text-xs text-slate-500">Level ranks</span>
+                        </span>
                     </a>
-                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($filesGridClass); ?>relative flex <?php echo $h($tileMin); ?> flex-col items-center justify-center <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-4 text-center text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50">
+                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($filesGridClass); ?>relative flex <?php echo $h($tileMin); ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50">
                         <?php if ($downloadsBadgeCount > 0): ?>
-                            <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                            <span class="absolute right-2 top-2 z-10 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
                         <?php endif; ?>
-                        <span class="text-2xl leading-none" aria-hidden="true">📥</span>
-                        <span class="mt-2 text-sm font-bold leading-tight">Files</span>
-                        <span class="mt-0.5 text-xs text-slate-500">Downloads</span>
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-bold leading-tight">Files</span>
+                            <span class="mt-0.5 block text-xs text-slate-500">Downloads</span>
+                        </span>
                     </a>
                     <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                         <?php
-                        $quizCardClass = 'relative ' . $quizSpanClass . 'flex ' . $tileMin . ' flex-col items-center justify-center ' . $tileRounded . ' border border-slate-200 bg-white px-3 py-4 text-center text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50 ';
+                        $quizCardClass = 'relative ' . $quizSpanClass . 'flex ' . $tileMin . ' min-w-0 flex-row items-center gap-3 ' . $tileRounded . ' border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50 ';
                         ?>
                         <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>">
                             <?php if ($newQuizBadgeCount > 0): ?>
-                                <span class="absolute right-3 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                <span class="absolute right-2 top-2 z-10 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
                             <?php endif; ?>
-                            <span class="text-2xl leading-none <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse inline-block' : ''; ?>" aria-hidden="true">📝</span>
-                            <span class="mt-2 text-sm font-bold leading-tight">Quizzes</span>
-                            <span class="mt-0.5 text-xs text-slate-500"><?php echo (int) $totalQuizCards; ?> available</span>
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45 <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold leading-tight">Quizzes</span>
+                                <span class="mt-0.5 block text-xs text-slate-500"><span class="font-extrabold tabular-nums text-[#2C6A7D]"><?php echo (int) $totalQuizCards; ?></span> <?php echo (int) $totalQuizCards === 1 ? 'quiz' : 'quizzes'; ?> ready</span>
+                            </span>
                         </a>
                     <?php else: ?>
-                        <div class="<?php echo $h($quizSpanClass); ?>flex <?php echo $homeFlexLock ? 'min-h-0' : 'min-h-[88px]'; ?> flex-col items-center justify-center <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-4 text-center text-slate-500">
-                            <span class="text-2xl leading-none opacity-50" aria-hidden="true">📝</span>
-                            <span class="mt-2 text-sm font-semibold leading-tight text-slate-700">Quizzes</span>
-                            <span class="mt-0.5 text-xs text-slate-500">None for your program yet</span>
+                        <div class="<?php echo $h($quizSpanClass); ?>flex <?php echo $homeFlexLock ? 'min-h-0' : 'min-h-[88px]'; ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-500">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 opacity-70 ring-1 ring-slate-200" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-semibold leading-tight text-slate-700">Quizzes</span>
+                                <span class="mt-0.5 block text-xs text-slate-500">None for your program yet</span>
+                            </span>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -319,6 +334,53 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             </section>
             <?php echo trytest_render_level_podium_html($levelLeaderboardRows, $userId, $h); ?>
         <?php endif; ?>
+
+        <?php if ($tabResults): ?>
+            <section class="mb-4">
+                <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D]">← Home</a>
+                <h2 class="mt-2 text-xl font-bold">My results</h2>
+                <p class="mt-1 text-xs text-slate-600">Scores from quizzes you have finished. Try again clears your score and history for that quiz so you can start fresh.</p>
+            </section>
+            <?php if ($quizResultsRows === []): ?>
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
+                    <p class="font-medium text-slate-800">No results yet</p>
+                    <p class="mt-1 text-xs text-slate-500"><?php if ($quizzesPageUrl !== ''): ?>Complete a quiz from <a href="<?php echo $h($quizzesPageUrl); ?>" class="font-semibold text-[#2C6A7D] underline">Quizzes</a><?php else: ?>Complete a quiz<?php endif; ?> and your score will show here.</p>
+                </div>
+            <?php else: ?>
+                <ul class="space-y-3">
+                    <?php foreach ($quizResultsRows as $resRow): ?>
+                        <?php
+                        $rqid = (int) ($resRow['quiz_id'] ?? 0);
+                        $rscore = (int) ($resRow['score'] ?? 0);
+                        $rtotal = (int) ($resRow['total'] ?? 0);
+                        $racc = $rtotal > 0 ? (int) round(100 * $rscore / $rtotal) : 0;
+                        $rwhen = trim((string) ($resRow['created_at'] ?? ''));
+                        $rwhenDisp = $rwhen !== '' ? date('M j, Y · g:i A', strtotime($rwhen) ?: time()) : '';
+                        ?>
+                        <li class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-900"><?php echo $h((string) ($resRow['title'] ?? 'Quiz')); ?></p>
+                                    <p class="mt-1 text-xs text-slate-500"><?php echo $rwhenDisp !== '' ? $h($rwhenDisp) : ''; ?></p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="text-lg font-extrabold tabular-nums text-[#2C6A7D]"><?php echo $rscore; ?><span class="text-sm font-semibold text-slate-400">/<?php echo $rtotal; ?></span></p>
+                                    <p class="text-[11px] font-medium text-slate-500"><?php echo $racc; ?>% accuracy</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $rqid); ?>" class="inline-flex items-center rounded-lg bg-[#2C6A7D] px-3 py-2 text-xs font-bold text-white hover:bg-[#24586a]">View quiz</a>
+                                <form method="post" action="<?php echo $h($dashboardUrl); ?>" class="inline" onsubmit="return confirm('Try again? Your saved score and attempts for this quiz will be removed.');">
+                                    <input type="hidden" name="action" value="reset_student_quiz">
+                                    <input type="hidden" name="quiz_id" value="<?php echo $rqid; ?>">
+                                    <button type="submit" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50">Try again</button>
+                                </form>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        <?php endif; ?>
     </main>
 
     <nav class="<?php echo $dashboardFixedViewport
@@ -326,19 +388,23 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         : 'fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
         <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-lg' : 'mx-auto flex max-w-5xl'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $h($navClass($homeNavOn)); ?>">
-                <span class="text-lg">⌂</span>
-                <span class="text-[10px] font-semibold">Home</span>
+                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D]" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>
+                <span class="text-[9px] font-semibold leading-tight">Home</span>
             </a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($navClass($tabRank)); ?>">
-                <span class="text-lg">🏆</span>
-                <span class="text-[10px] font-semibold">Rank</span>
+                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', 22); ?></span>
+                <span class="text-[9px] font-semibold leading-tight">Rank</span>
+            </a>
+            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $h($navClass($tabResults)); ?>">
+                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', 22); ?></span>
+                <span class="text-[9px] font-semibold leading-tight">Results</span>
             </a>
             <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($navClass(false)); ?> relative">
-                <span class="text-lg">📥</span>
+                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', 22); ?></span>
                 <?php if ($downloadsBadgeCount > 0): ?>
-                    <span class="absolute right-[22%] top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white" aria-label="<?php echo (int) $downloadsBadgeCount; ?> pending"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) (int) $downloadsBadgeCount; ?></span>
+                    <span class="absolute right-[18%] top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white" aria-label="<?php echo (int) $downloadsBadgeCount; ?> pending"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) (int) $downloadsBadgeCount; ?></span>
                 <?php endif; ?>
-                <span class="text-[10px] font-semibold">Files</span>
+                <span class="text-[9px] font-semibold leading-tight">Files</span>
             </a>
         </div>
     </nav>

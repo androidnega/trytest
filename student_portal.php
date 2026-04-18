@@ -220,6 +220,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         trytest_redirect(trytest_home_with_query(['out' => '1']));
     }
+
+    if ($action === 'reset_student_quiz' && !empty($_SESSION['user_id'])) {
+        $resetQuizId = (int) ($_POST['quiz_id'] ?? 0);
+        $uidReset = (int) $_SESSION['user_id'];
+        $lvlReset = trim((string) ($_SESSION['user_level'] ?? ''));
+        $depReset = trim((string) ($_SESSION['user_department'] ?? ''));
+        if ($resetQuizId > 0 && trytest_student_can_access_quiz($db, $resetQuizId, $lvlReset, $depReset)) {
+            trytest_student_wipe_quiz_results($db, $uidReset, $resetQuizId);
+            trytest_redirect(trytest_url('quiz?quiz_id=' . $resetQuizId));
+        }
+        trytest_redirect(trytest_url('dashboard?tab=results'));
+    }
 }
 
 $isUserLoggedIn = !empty($_SESSION['user_id']);
@@ -258,11 +270,12 @@ $doneBlock = null;
 $doneComparison = null;
 $dashboardEncouragement = null;
 $newQuizBadgeCount = 0;
+$quizResultsRows = [];
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
     $activeTab = 'home';
 }
-if (!in_array($activeTab, ['home', 'rank'], true)) {
+if (!in_array($activeTab, ['home', 'rank', 'results'], true)) {
     $activeTab = 'home';
 }
 
@@ -353,6 +366,8 @@ if ($isUserLoggedIn) {
     }
 
     $downloadsBadgeCount = trytest_student_downloads_pending_count($db, $userId, $userDepartment, $userLevel);
+
+    $quizResultsRows = trytest_student_quiz_results_rows($db, $userId, $userLevel, $userDepartment);
 }
 
 $downloadsBadgeCount = $downloadsBadgeCount ?? 0;
