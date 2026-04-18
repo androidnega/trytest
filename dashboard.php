@@ -47,7 +47,7 @@ if ($isAdmin) {
 $avatarImport = 'https://api.dicebear.com/9.x/icons/svg?seed=import';
 $avatarAi = 'https://api.dicebear.com/9.x/icons/svg?seed=ai';
 $avatarManage = 'https://api.dicebear.com/9.x/icons/svg?seed=manage';
-$adminLoginIllustrationUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREtFCuK9bSv1zROMb1EGg0XTu9NWjfuLnbng&s';
+$adminLoginIllustrationUrl = 'https://thumbs.dreamstime.com/b/cartoon-illustration-girl-studying-online-using-laptop-headphones-comfortable-home-environment-girl-studying-376165006.jpg';
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };

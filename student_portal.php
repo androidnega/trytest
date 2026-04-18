@@ -426,7 +426,7 @@ $downloadsPageUrl = trytest_url('downloads');
 $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
-$loginHeroImageUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREtFCuK9bSv1zROMb1EGg0XTu9NWjfuLnbng&s';
+$loginHeroImageUrl = 'https://thumbs.dreamstime.com/b/cartoon-illustration-girl-studying-online-using-laptop-headphones-comfortable-home-environment-girl-studying-376165006.jpg';
 $studentPasswordOnlyView = !$isUserLoggedIn
     && $generatedPassword !== ''
     && $loginMode === 'index'
