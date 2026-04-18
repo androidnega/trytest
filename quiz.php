@@ -10,6 +10,9 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/student_theme.php';
 
+/** Viewport for all quiz UI states: lock pinch-zoom on mobile (user-scalable=no). */
+$trytestQuizViewport = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, viewport-fit=cover, user-scalable=no';
+
 if (empty($_SESSION['user_id']) || empty($_SESSION['user_level'])) {
     trytest_redirect(trytest_home_url());
 }
@@ -80,13 +83,14 @@ if ($schedulePhase === 'before') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Opens soon · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
+    <style>html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }</style>
 </head>
-<body class="flex min-h-screen items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
+<body class="flex min-h-screen touch-manipulation items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
     <div class="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
         <p class="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Not open yet</p>
         <h1 class="text-xl font-bold dark:text-zinc-100"><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
@@ -136,13 +140,14 @@ if ($schedulePhase === 'after') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Closed · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
+    <style>html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }</style>
 </head>
-<body class="flex min-h-screen items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
+<body class="flex min-h-screen touch-manipulation items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
     <div class="w-full max-w-md space-y-3 rounded-3xl border border-slate-200 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
         <p class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400">Quiz window closed</p>
         <h1 class="text-xl font-bold dark:text-zinc-100"><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
@@ -169,7 +174,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?> · Trytest</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
@@ -179,9 +184,9 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
     <style>
-        html { color-scheme: light; }
+        html { color-scheme: light; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         html.dark { color-scheme: dark; }
-        body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
         .trytest-quiz-intro-thumb {
             width: 7rem;
             height: 7rem;
@@ -317,7 +322,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         }
     </style>
 </head>
-<body class="min-h-screen bg-white pb-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
+<body class="min-h-screen touch-manipulation bg-white pb-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
 
 <div id="quizIntroOverlay" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white p-4 sm:p-6 dark:bg-zinc-950" role="dialog" aria-modal="true" aria-labelledby="quizIntroMsg"<?php echo $showQuizIntro ? '' : ' style="display:none;" aria-hidden="true"'; ?>>
     <div id="quizIntroMount" class="w-full max-w-lg"></div>
