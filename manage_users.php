@@ -62,6 +62,40 @@ $users = $db->query(
      GROUP BY u.id
      ORDER BY u.id DESC'
 )->fetchAll();
+
+$h = static function (string $s): string {
+    return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+};
+
+$rowsPayload = [];
+foreach ($users as $user) {
+    $attempts = (int) ($user['attempts'] ?? 0);
+    $quizzesTaken = (int) ($user['quizzes_taken'] ?? 0);
+    $totalPoints = (int) ($user['total_points'] ?? 0);
+    $avgPercent = (float) ($user['avg_percent'] ?? 0);
+    $bestPercent = (float) ($user['best_percent'] ?? 0);
+    $lastScore = isset($user['last_score']) ? (int) $user['last_score'] : null;
+    $lastTotal = isset($user['last_total']) ? (int) $user['last_total'] : null;
+    $lastQuizTitle = trim((string) ($user['last_quiz_title'] ?? ''));
+    $dept = trim((string) ($user['department'] ?? ''));
+
+    $rowsPayload[] = [
+        'id' => (int) $user['id'],
+        'index_number' => (string) $user['index_number'],
+        'level' => (string) $user['level'],
+        'department' => $dept,
+        'attempts' => $attempts,
+        'quizzes_taken' => $quizzesTaken,
+        'total_points' => $totalPoints,
+        'avg_percent' => $avgPercent,
+        'best_percent' => $bestPercent,
+        'last_quiz_title' => $lastQuizTitle,
+        'last_score' => $lastScore,
+        'last_total' => $lastTotal,
+        'last_login_at' => (string) ($user['last_login_at'] ?? ''),
+        'last_attempt_at' => (string) ($user['last_attempt_at'] ?? ''),
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,73 +105,184 @@ $users = $db->query(
     <title>Trytest — Manage Users</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen p-4">
-    <div class="max-w-5xl mx-auto py-6 space-y-4">
-        <div class="rounded-2xl border border-slate-200 bg-white p-5">
-            <div class="flex items-center justify-between gap-3">
-                <h1 class="text-xl font-bold text-slate-900">Users</h1>
-                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
+<body class="min-h-screen bg-slate-50 p-4 text-slate-900 antialiased">
+    <div class="mx-auto max-w-3xl space-y-4 py-6">
+        <header class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4">
+            <div>
+                <h1 class="text-lg font-semibold tracking-tight text-slate-900">Students</h1>
+                <p class="text-xs text-slate-500"><?php echo count($rowsPayload); ?> account<?php echo count($rowsPayload) === 1 ? '' : 's'; ?> · click a row for details</p>
             </div>
-            <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-        </div>
+            <a href="<?php echo $h(trytest_url('dashboard/manage_admin')); ?>" class="text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline">Back</a>
+        </header>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 class="font-semibold mb-1">All Students</h2>
-            <p class="text-xs text-slate-500 mb-3">Includes performance metrics per student.</p>
-            <div class="space-y-2 max-h-[70vh] overflow-auto">
-                <?php foreach ($users as $user): ?>
-                    <?php
-                    $attempts = (int) ($user['attempts'] ?? 0);
-                    $quizzesTaken = (int) ($user['quizzes_taken'] ?? 0);
-                    $totalPoints = (int) ($user['total_points'] ?? 0);
-                    $avgPercent = (float) ($user['avg_percent'] ?? 0);
-                    $bestPercent = (float) ($user['best_percent'] ?? 0);
-                    $lastScore = isset($user['last_score']) ? (int) $user['last_score'] : null;
-                    $lastTotal = isset($user['last_total']) ? (int) $user['last_total'] : null;
-                    $lastQuizTitle = trim((string) ($user['last_quiz_title'] ?? ''));
-                    ?>
-                    <div class="border rounded-lg p-3 text-sm space-y-2">
-                        <div class="flex items-start justify-between gap-2">
-                            <div>
-                                <p class="font-medium"><?php echo htmlspecialchars((string) $user['index_number'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <p class="text-slate-500 text-xs">Level <?php echo htmlspecialchars((string) $user['level'], ENT_QUOTES, 'UTF-8'); ?><?php $ud = trim((string) ($user['department'] ?? '')); if ($ud !== ''): ?> · <?php echo htmlspecialchars($ud, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></p>
-                            </div>
-                            <form method="post">
-                                <input type="hidden" name="action" value="delete_user">
-                                <input type="hidden" name="id" value="<?php echo (int) $user['id']; ?>">
-                                <button class="text-red-600 text-xs" onclick="return confirm('Delete this user?');">Delete</button>
-                            </form>
-                        </div>
+        <?php if ($message !== ''): ?>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><?php echo $h($message); ?></div>
+        <?php endif; ?>
 
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <div class="rounded border border-slate-200 px-2 py-1.5">
-                                <p class="text-slate-400">Attempts</p>
-                                <p class="font-semibold text-slate-700"><?php echo $attempts; ?></p>
-                            </div>
-                            <div class="rounded border border-slate-200 px-2 py-1.5">
-                                <p class="text-slate-400">Quizzes</p>
-                                <p class="font-semibold text-slate-700"><?php echo $quizzesTaken; ?></p>
-                            </div>
-                            <div class="rounded border border-slate-200 px-2 py-1.5">
-                                <p class="text-slate-400">Avg %</p>
-                                <p class="font-semibold text-slate-700"><?php echo number_format($avgPercent, 1); ?></p>
-                            </div>
-                            <div class="rounded border border-slate-200 px-2 py-1.5">
-                                <p class="text-slate-400">Best %</p>
-                                <p class="font-semibold text-slate-700"><?php echo number_format($bestPercent, 1); ?></p>
-                            </div>
-                        </div>
-
-                        <div class="text-xs text-slate-500">
-                            <p>Total points: <span class="font-medium text-slate-700"><?php echo $totalPoints; ?></span></p>
-                            <p>Last quiz: <span class="font-medium text-slate-700"><?php echo htmlspecialchars($lastQuizTitle !== '' ? $lastQuizTitle : '-', ENT_QUOTES, 'UTF-8'); ?></span><?php if ($lastScore !== null && $lastTotal !== null): ?> · <span class="font-medium text-slate-700"><?php echo $lastScore; ?>/<?php echo $lastTotal; ?></span><?php endif; ?></p>
-                            <p>Last login: <span class="font-medium text-slate-700"><?php echo htmlspecialchars((string) ($user['last_login_at'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></span></p>
-                            <p>Last attempt: <span class="font-medium text-slate-700"><?php echo htmlspecialchars((string) ($user['last_attempt_at'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></span></p>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+        <section class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <?php if ($rowsPayload === []): ?>
+                <p class="px-4 py-10 text-center text-sm text-slate-500">No students yet.</p>
+            <?php else: ?>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[20rem] text-left text-sm">
+                        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
+                            <tr>
+                                <th class="px-4 py-3">Index</th>
+                                <th class="hidden px-4 py-3 sm:table-cell">Level</th>
+                                <th class="hidden px-4 py-3 md:table-cell">Program</th>
+                                <th class="px-4 py-3 text-right">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <?php foreach ($rowsPayload as $row): ?>
+                                <tr
+                                    class="cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50"
+                                    tabindex="0"
+                                    role="button"
+                                    data-user="<?php echo $h(base64_encode(json_encode($row, JSON_THROW_ON_ERROR))); ?>"
+                                >
+                                    <td class="px-4 py-3 font-medium text-slate-900"><?php echo $h($row['index_number']); ?></td>
+                                    <td class="hidden px-4 py-3 text-slate-600 sm:table-cell"><?php echo $h($row['level']); ?></td>
+                                    <td class="hidden max-w-[10rem] truncate px-4 py-3 text-slate-600 md:table-cell"><?php echo $row['department'] !== '' ? $h($row['department']) : '—'; ?></td>
+                                    <td class="px-4 py-3 text-right tabular-nums text-slate-700"><?php echo (int) $row['total_points']; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </section>
     </div>
+
+    <div id="userModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" aria-hidden="true">
+        <div id="userModalBackdrop" class="absolute inset-0 bg-slate-900/40" tabindex="-1"></div>
+        <div
+            class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="userModalTitle"
+        >
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                <div class="min-w-0">
+                    <h2 id="userModalTitle" class="truncate text-base font-semibold text-slate-900"></h2>
+                    <p id="userModalSub" class="mt-0.5 text-xs text-slate-500"></p>
+                </div>
+                <button type="button" id="userModalClose" class="shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800" aria-label="Close">&times;</button>
+            </div>
+            <div class="max-h-[min(70vh,28rem)] overflow-y-auto px-4 py-3">
+                <dl id="userModalDl" class="grid grid-cols-1 gap-3 text-sm"></dl>
+            </div>
+            <div class="border-t border-slate-100 bg-slate-50 px-4 py-3">
+                <form method="post" id="userModalDeleteForm" class="flex flex-wrap items-center justify-between gap-2">
+                    <input type="hidden" name="action" value="delete_user">
+                    <input type="hidden" name="id" id="userModalDeleteId" value="">
+                    <p class="text-xs text-slate-500">Deleting removes all scores for this student.</p>
+                    <button type="submit" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Delete user</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function () {
+    var modal = document.getElementById('userModal');
+    var backdrop = document.getElementById('userModalBackdrop');
+    var closeBtn = document.getElementById('userModalClose');
+    var titleEl = document.getElementById('userModalTitle');
+    var subEl = document.getElementById('userModalSub');
+    var dlEl = document.getElementById('userModalDl');
+    var deleteId = document.getElementById('userModalDeleteId');
+    if (!modal || !backdrop || !closeBtn || !titleEl || !subEl || !dlEl || !deleteId) return;
+
+    function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function rowLabel(k) {
+        var m = {
+            attempts: 'Attempts',
+            quizzes_taken: 'Quizzes taken',
+            total_points: 'Total points',
+            avg_percent: 'Average score %',
+            best_percent: 'Best score %',
+            last_quiz_title: 'Last quiz',
+            last_score_line: 'Last score',
+            last_login_at: 'Last login',
+            last_attempt_at: 'Last attempt'
+        };
+        return m[k] || k;
+    }
+
+    function openModal(u) {
+        titleEl.textContent = u.index_number || 'Student';
+        var dept = u.department ? ' · ' + u.department : '';
+        subEl.textContent = 'Level ' + (u.level || '—') + dept;
+
+        var lastScoreLine = '—';
+        if (u.last_score != null && u.last_total != null) {
+            lastScoreLine = u.last_score + '/' + u.last_total;
+        }
+        var pairs = [
+            ['attempts', u.attempts],
+            ['quizzes_taken', u.quizzes_taken],
+            ['total_points', u.total_points],
+            ['avg_percent', typeof u.avg_percent === 'number' ? u.avg_percent.toFixed(1) : u.avg_percent],
+            ['best_percent', typeof u.best_percent === 'number' ? u.best_percent.toFixed(1) : u.best_percent],
+            ['last_quiz_title', u.last_quiz_title || '—'],
+            ['last_score_line', lastScoreLine],
+            ['last_login_at', u.last_login_at || '—'],
+            ['last_attempt_at', u.last_attempt_at || '—']
+        ];
+        dlEl.innerHTML = pairs.map(function (p) {
+            return '<div class="flex flex-col gap-0.5 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">'
+                + '<dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">' + esc(rowLabel(p[0])) + '</dt>'
+                + '<dd class="font-medium text-slate-900">' + esc(p[1]) + '</dd></div>';
+        }).join('');
+
+        deleteId.value = String(u.id);
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        closeBtn.focus();
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function onRowActivate(tr) {
+        var b64 = tr.getAttribute('data-user');
+        if (!b64) return;
+        try {
+            var json = atob(b64);
+            openModal(JSON.parse(json));
+        } catch (e) {}
+    }
+
+    document.querySelectorAll('tbody tr[data-user]').forEach(function (tr) {
+        tr.addEventListener('click', function () { onRowActivate(tr); });
+        tr.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onRowActivate(tr);
+            }
+        });
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+    });
+
+    document.getElementById('userModalDeleteForm').addEventListener('submit', function (e) {
+        if (!confirm('Delete this user and all their scores?')) e.preventDefault();
+    });
+})();
+    </script>
 </body>
 </html>
