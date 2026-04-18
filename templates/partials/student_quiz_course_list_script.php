@@ -7,6 +7,36 @@ declare(strict_types=1);
 ?>
 <script>
 (function () {
+    /** @return {'continue'|'retake'|'start'} */
+    function resumePlayLabelState(card) {
+        var quizId = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
+        var userIdVal = parseInt(card.getAttribute('data-user-id') || '0', 10);
+        var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
+        if (!quizId || !userIdVal) {
+            return hasAttempt ? 'retake' : 'start';
+        }
+        var key = 'trytest_quiz_resume_v1_' + String(userIdVal) + '_' + String(quizId);
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) {
+                return hasAttempt ? 'retake' : 'start';
+            }
+            var payload = JSON.parse(raw);
+            if (!payload || payload.v !== 1 || !Array.isArray(payload.orderedIds)) {
+                return hasAttempt ? 'retake' : 'start';
+            }
+            var total = payload.orderedIds.length || 0;
+            var idx = parseInt(String(payload.currentIndex || 0), 10);
+            if (isNaN(idx) || idx < 0) {
+                idx = 0;
+            }
+            if (total > 0 && idx > 0 && idx < total) {
+                return 'continue';
+            }
+        } catch (e) {}
+        return hasAttempt ? 'retake' : 'start';
+    }
+
     function setQuizResumeProgress() {
         document.querySelectorAll('.trytest-quiz-card').forEach(function (card) {
             var quizId = parseInt(card.getAttribute('data-quiz-id') || '0', 10);
@@ -138,19 +168,43 @@ declare(strict_types=1);
                 return;
             }
             if (s && now >= s && (!e || now <= e)) {
-                el.className =
-                    countdownBase() +
-                    'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-900/50';
+                var playState = resumePlayLabelState(card);
+                var playLabel =
+                    playState === 'continue'
+                        ? 'Continue'
+                        : playState === 'retake'
+                          ? 'Retake (resets points)'
+                          : 'Start now';
+                var wrapSuffix;
+                var linkClass;
+                var ariaLabel;
+                if (playState === 'continue') {
+                    wrapSuffix =
+                        'border-sky-400 bg-sky-100 text-sky-950 shadow-inner ring-1 ring-sky-200/80 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100 dark:ring-sky-900/50';
+                    linkClass =
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-sky-950 no-underline outline-none ring-0 transition hover:bg-sky-200/70 focus-visible:ring-2 focus-visible:ring-sky-600 dark:text-sky-100 dark:hover:bg-sky-900/40 dark:focus-visible:ring-sky-500';
+                    ariaLabel = 'Continue quiz';
+                } else if (playState === 'retake') {
+                    wrapSuffix =
+                        'border-amber-300 bg-amber-100 text-amber-950 shadow-inner ring-1 ring-amber-200/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-900/50';
+                    linkClass =
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-amber-950 no-underline outline-none ring-0 transition hover:bg-amber-200/70 focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-amber-100 dark:hover:bg-amber-900/40 dark:focus-visible:ring-amber-500';
+                    ariaLabel = 'Retake quiz';
+                } else {
+                    wrapSuffix =
+                        'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-900/50';
+                    linkClass =
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:focus-visible:ring-emerald-500';
+                    ariaLabel = 'Start quiz';
+                }
+                el.className = countdownBase() + wrapSuffix;
                 var playHref = card.getAttribute('data-quiz-href') || '';
-                var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
-                var playLabel = hasAttempt ? 'Retake (resets points)' : 'Start now';
                 el.textContent = '';
                 if (playHref) {
                     var link = document.createElement('a');
                     link.href = playHref;
-                    link.className =
-                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:focus-visible:ring-emerald-500';
-                    link.setAttribute('aria-label', 'Start quiz');
+                    link.className = linkClass;
+                    link.setAttribute('aria-label', ariaLabel);
                     link.textContent = playLabel;
                     el.appendChild(link);
                 } else {
