@@ -94,20 +94,25 @@ function trytest_youtube_embed_url_quiz_style(string $videoUrl): string
  */
 function trytest_youtube_downloads_gate_pick_video_url(array $settings): string
 {
+    $pool = [];
     foreach ((array) ($settings['quiz_ad_videos'] ?? []) as $u) {
         $s = trim((string) $u);
         if ($s !== '') {
-            return $s;
+            $pool[] = $s;
         }
     }
     foreach ((array) ($settings['dashboard_videos'] ?? []) as $u) {
         $s = trim((string) $u);
         if ($s !== '') {
-            return $s;
+            $pool[] = $s;
         }
     }
+    $pool = array_values(array_unique($pool));
+    if ($pool === []) {
+        return '';
+    }
 
-    return '';
+    return $pool[random_int(0, count($pool) - 1)];
 }
 
 /**
@@ -645,35 +650,53 @@ function trytest_youtube_dashboard_videos_html(array $settings, bool $compactLay
     if (!is_array($videos) || $videos === []) {
         return '';
     }
-    $cards = '';
-    foreach ($videos as $idx => $u) {
+    $valid = [];
+    foreach ($videos as $u) {
         $url = trim((string) $u);
-        $embed = trytest_youtube_embed_url($url);
-        if ($embed === '') {
+        if ($url === '') {
             continue;
         }
-        $cards .= '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white">'
-            . '<div class="aspect-video w-full bg-slate-50">'
-            . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Trytest video ' . (int) ($idx + 1) . '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
-            . '</div>'
-            . '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>'
-            . '</article>';
+        if (trytest_youtube_embed_url($url) === '') {
+            continue;
+        }
+        $valid[] = $url;
     }
-    if ($cards === '') {
+    $valid = array_values(array_unique($valid));
+    if ($valid === []) {
         return '';
     }
+
+    /** Repick a random clip every N dashboard loads; new login = new session = fresh pick on first load. */
+    $rotateEvery = 5;
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $n = (int) ($_SESSION['trytest_yt_dash_load_n'] ?? 0) + 1;
+    $_SESSION['trytest_yt_dash_load_n'] = $n;
+    if ($n === 1 || $n % $rotateEvery === 0 || empty($_SESSION['trytest_yt_dash_pick_url'])) {
+        $_SESSION['trytest_yt_dash_pick_url'] = $valid[random_int(0, count($valid) - 1)];
+    }
+    $url = trim((string) ($_SESSION['trytest_yt_dash_pick_url'] ?? ''));
+    if ($url === '' || trytest_youtube_embed_url($url) === '') {
+        return '';
+    }
+    $embed = trytest_youtube_embed_url($url);
+    $cards = '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white">'
+        . '<div class="aspect-video w-full bg-slate-50">'
+        . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Featured video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+        . '</div>'
+        . '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>'
+        . '</article>';
+
     $sectionClass = $compactLayout
         ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none'
         : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4';
-    $gridClass = $compactLayout
-        ? 'grid grid-cols-1 gap-2'
-        : 'grid grid-cols-1 gap-3 sm:grid-cols-2';
 
     return '<section class="' . htmlspecialchars($sectionClass, ENT_QUOTES, 'UTF-8') . '" aria-label="Dashboard videos">'
         . '<div class="mb-2 flex items-center justify-between gap-2">'
-        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Videos</h2>'
+        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Featured video</h2>'
         . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400">YouTube</span></div>'
-        . '<div class="' . htmlspecialchars($gridClass, ENT_QUOTES, 'UTF-8') . '">' . $cards . '</div>'
+        . '<div class="grid grid-cols-1 gap-2">' . $cards . '</div>'
         . '</section>';
 }
 

@@ -582,7 +582,10 @@
 
     function renderAdInterstitial(done) {
         var breakIndex = Math.floor(currentIndex / quizAdEvery);
-        var chosen = quizAdVideos[(breakIndex - 1) % quizAdVideos.length] || '';
+        var chosen =
+            quizAdVideos.length > 0
+                ? quizAdVideos[Math.floor(Math.random() * quizAdVideos.length)]
+                : '';
         var embed = youtubeEmbedUrl(chosen);
         if (!embed) {
             markAdBreakSeen(breakIndex);
