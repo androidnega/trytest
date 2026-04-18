@@ -386,6 +386,7 @@ $downloadsPageUrl = trytest_url('downloads');
 $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
+$loginHeroImageUrl = trytest_url('KofiEmma.jpg');
 
 $needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
 $studentDashboardFixedViewport = $isUserLoggedIn
@@ -437,7 +438,7 @@ if ($isUserLoggedIn) {
         ? 'h-svh max-h-svh max-w-[100vw] overflow-hidden bg-white text-slate-900 antialiased'
         : 'min-h-screen max-w-[100vw] overflow-x-hidden bg-white text-slate-900 antialiased';
 } else {
-    echo 'flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 text-slate-900 antialiased';
+    echo 'flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-4 text-slate-900 antialiased md:px-6 md:py-6';
 }
 ?>">
 <?php if ($isUserLoggedIn):
@@ -458,8 +459,20 @@ if ($isUserLoggedIn) {
     );
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
-    <div class="w-full max-w-md min-h-0 min-w-0">
-        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-lg">
+    <div class="flex w-full min-h-0 min-w-0 max-w-md flex-col items-stretch gap-4 md:max-w-4xl md:flex-row md:items-center md:gap-8">
+        <figure class="relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-44 md:order-2 md:h-[min(72vh,520px)] md:min-h-[300px] md:flex-1 md:max-w-none">
+            <img
+                src="<?php echo htmlspecialchars($loginHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                alt=""
+                class="absolute inset-0 h-full w-full object-cover object-center"
+                width="800"
+                height="600"
+                loading="eager"
+                decoding="async"
+            >
+        </figure>
+        <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col justify-center md:order-1 md:max-w-sm lg:max-w-md">
+            <div class="rounded-xl border border-slate-200 bg-white p-6">
             <h1 class="text-center text-xl font-bold text-slate-900">Trytest</h1>
             <p class="mt-1 text-center text-sm text-slate-600">Sign in with your index number.</p>
 
@@ -566,6 +579,7 @@ else: ?>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+            </div>
         </div>
     </div>
     <script>
