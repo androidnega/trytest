@@ -45,6 +45,38 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
  *
  * @return array{sql:string,params:list<string>}
  */
+/**
+ * Best-effort numeric level for matching (e.g. "Level 100", "Lv100" → "100").
+ */
+function trytest_student_level_canon(string $level): string
+{
+    $t = trim($level);
+    if ($t === '') {
+        return '';
+    }
+    if (preg_match('/(\d{1,4})\b/', $t, $m) === 1) {
+        return (string) (int) $m[1];
+    }
+
+    return strtolower($t);
+}
+
+/**
+ * Empty / null quiz level = visible to everyone in that course listing.
+ * Otherwise the quiz's level must match the student's level (canonically).
+ */
+function trytest_quiz_level_visible_to_student(?string $quizLevel, string $userLevel): bool
+{
+    $raw = trim((string) $quizLevel);
+    if ($raw === '') {
+        return true;
+    }
+    $q = trytest_student_level_canon($raw);
+    $u = trytest_student_level_canon($userLevel);
+
+    return $q !== '' && $u !== '' && $q === $u;
+}
+
 function trytest_student_documents_visibility_sql(string $tableAlias, string $userLevel, string $userDepartment): array
 {
     $a = preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableAlias) === 1 ? $tableAlias : 'd';
@@ -90,19 +122,22 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
 
     foreach ($courses as $course) {
         $quizStmt = $db->prepare(
-            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at,
+            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at, q.level AS quiz_level, q.created_at AS quiz_created_at,
              (SELECT COUNT(*) FROM questions qn WHERE qn.quiz_id = q.id AND qn.status = ?) AS question_count
              FROM quizzes q
              LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
              WHERE (q.course_id = ? OR qc.course_id = ?)
-               AND (q.level IS NULL OR q.level = ?)
              ORDER BY q.id DESC'
         );
-        $quizStmt->execute(['approved', (int) $course['id'], (int) $course['id'], $userLevel]);
-        $quizzes = $quizStmt->fetchAll();
-        foreach ($quizzes as $qi => $qz) {
+        $quizStmt->execute(['approved', (int) $course['id'], (int) $course['id']]);
+        $quizzes = [];
+        foreach ($quizStmt->fetchAll() as $qz) {
+            if (!trytest_quiz_level_visible_to_student(isset($qz['quiz_level']) ? (string) $qz['quiz_level'] : null, $userLevel)) {
+                continue;
+            }
             $qid = (int) ($qz['id'] ?? 0);
-            $quizzes[$qi]['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
+            $qz['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
+            $quizzes[] = $qz;
         }
         $coursesWithQuizzes[] = array_merge($course, ['quizzes' => $quizzes]);
     }
@@ -247,8 +282,7 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
         return false;
     }
 
-    $sql = 'SELECT 1 FROM quizzes q WHERE q.id = ?
-        AND (q.level IS NULL OR TRIM(COALESCE(q.level, \'\')) = \'\' OR q.level = ?)
+    $sql = 'SELECT q.level FROM quizzes q WHERE q.id = ?
         AND (
             EXISTS (
                 SELECT 1 FROM courses c
@@ -264,9 +298,13 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
         )
         LIMIT 1';
     $st = $db->prepare($sql);
-    $st->execute([$quizId, $userLevel, $userLevel, $userDepartment, $userLevel, $userDepartment]);
+    $st->execute([$quizId, $userLevel, $userDepartment, $userLevel, $userDepartment]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return false;
+    }
 
-    return (bool) $st->fetchColumn();
+    return trytest_quiz_level_visible_to_student(isset($row['level']) ? (string) $row['level'] : null, $userLevel);
 }
 
 /**
@@ -498,15 +536,17 @@ function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel,
             continue;
         }
         $quizStmt = $db->prepare(
-            'SELECT DISTINCT q.id, q.quiz_starts_at, q.quiz_ends_at
+            'SELECT DISTINCT q.id, q.quiz_starts_at, q.quiz_ends_at, q.level AS quiz_level
              FROM quizzes q
              LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
              WHERE (q.course_id = ? OR qc.course_id = ?)
-               AND (q.level IS NULL OR q.level = ?)
              ORDER BY q.id DESC'
         );
-        $quizStmt->execute([$cid, $cid, $userLevel]);
+        $quizStmt->execute([$cid, $cid]);
         foreach ($quizStmt->fetchAll(PDO::FETCH_ASSOC) as $qz) {
+            if (!trytest_quiz_level_visible_to_student(isset($qz['quiz_level']) ? (string) $qz['quiz_level'] : null, $userLevel)) {
+                continue;
+            }
             $qid = (int) ($qz['id'] ?? 0);
             if ($qid < 1) {
                 continue;
@@ -523,4 +563,211 @@ function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel,
     }
 
     return $out;
+}
+
+/**
+ * Flatten dashboard course rows into unique quizzes with schedule + attempt flags.
+ *
+ * @return list<array<string,mixed>>
+ */
+function trytest_student_encouragement_quiz_rows(array $coursesWithQuizzes, ?int $now = null): array
+{
+    $now = $now ?? time();
+    $byId = [];
+    foreach ($coursesWithQuizzes as $course) {
+        $code = trim((string) ($course['code'] ?? ''));
+        foreach ((array) ($course['quizzes'] ?? []) as $qz) {
+            $qid = (int) ($qz['id'] ?? 0);
+            if ($qid < 1) {
+                continue;
+            }
+            $qcount = (int) ($qz['question_count'] ?? 0);
+            if ($qcount < 1) {
+                continue;
+            }
+            if (isset($byId[$qid])) {
+                continue;
+            }
+            $stRaw = trim((string) ($qz['quiz_starts_at'] ?? ''));
+            $enRaw = trim((string) ($qz['quiz_ends_at'] ?? ''));
+            $stNull = $stRaw !== '' ? $stRaw : null;
+            $enNull = $enRaw !== '' ? $enRaw : null;
+            $phase = trytest_quiz_schedule_phase($stNull, $enNull, $now);
+            $stTs = $stRaw !== '' ? strtotime($stRaw) : false;
+            $enTs = $enRaw !== '' ? strtotime($enRaw) : false;
+            $byId[$qid] = [
+                'quiz_id' => $qid,
+                'quiz_title' => trim((string) ($qz['title'] ?? '')) !== '' ? trim((string) ($qz['title'] ?? '')) : 'Quiz',
+                'course_code' => $code,
+                'user_has_attempt' => !empty($qz['user_has_attempt']),
+                'phase' => $phase,
+                'start_ts' => ($stTs !== false && $stTs > 0) ? (int) $stTs : null,
+                'end_ts' => ($enTs !== false && $enTs > 0) ? (int) $enTs : null,
+            ];
+        }
+    }
+
+    return array_values($byId);
+}
+
+/**
+ * Pick a quiz to anchor “next paper” encouragement (upcoming / open practice first).
+ *
+ * @param list<array<string,mixed>> $rows
+ * @return array<string,mixed>|null
+ */
+function trytest_student_pick_next_paper_quiz(array $rows, ?int $now = null): ?array
+{
+    $now = $now ?? time();
+    if ($rows === []) {
+        return null;
+    }
+    $rank = static function (array $q) use ($now): array {
+        $attempted = !empty($q['user_has_attempt']);
+        $phase = (string) ($q['phase'] ?? 'unset');
+        $start = $q['start_ts'] ?? null;
+        $end = $q['end_ts'] ?? null;
+        if (!$attempted && $phase === 'before') {
+            $soon = $start !== null ? max(0, (int) $start - $now) : 86_400 * 365;
+
+            return [0, $soon, (int) ($q['quiz_id'] ?? 0)];
+        }
+        if (!$attempted && $phase === 'open') {
+            $urgent = $end !== null ? max(0, (int) $end - $now) : 86_400 * 365;
+
+            return [1, $urgent, (int) ($q['quiz_id'] ?? 0)];
+        }
+        if (!$attempted && $phase === 'unset') {
+            return [2, 0, (int) ($q['quiz_id'] ?? 0)];
+        }
+        if (!$attempted && $phase === 'after') {
+            return [3, 0, (int) ($q['quiz_id'] ?? 0)];
+        }
+        if ($attempted && ($phase === 'open' || $phase === 'unset')) {
+            return [4, 0, (int) ($q['quiz_id'] ?? 0)];
+        }
+        if ($attempted && $phase === 'before') {
+            $soon = $start !== null ? max(0, (int) $start - $now) : 86_400 * 365;
+
+            return [5, $soon, (int) ($q['quiz_id'] ?? 0)];
+        }
+
+        return [6, 0, (int) ($q['quiz_id'] ?? 0)];
+    };
+    usort($rows, static function (array $a, array $b) use ($rank): int {
+        $ra = $rank($a);
+        $rb = $rank($b);
+        foreach ([0, 1, 2] as $i) {
+            if ($ra[$i] !== $rb[$i]) {
+                return $ra[$i] <=> $rb[$i];
+            }
+        }
+
+        return 0;
+    });
+
+    return $rows[0] ?? null;
+}
+
+/**
+ * Cheer-up copy for the student dashboard, tied to a real quiz when possible.
+ * Wording rotates by day + user + quiz so it feels fresh.
+ *
+ * @return array{lead:string,body:string,quiz_id:int,context:string}
+ */
+function trytest_student_dashboard_encouragement(
+    array $coursesWithQuizzes,
+    int $userId,
+    string $studentShortName,
+    ?int $now = null
+): array {
+    $now = $now ?? time();
+    $dayKey = date('Y-m-d', $now);
+    $name = trim($studentShortName) !== '' ? trim($studentShortName) : 'there';
+    $rows = trytest_student_encouragement_quiz_rows($coursesWithQuizzes, $now);
+    $pick = trytest_student_pick_next_paper_quiz($rows, $now);
+    $quizId = $pick !== null ? (int) ($pick['quiz_id'] ?? 0) : 0;
+    $seed = (int) sprintf('%u', crc32((string) $userId . '|' . $dayKey . '|' . $quizId . '|' . count($rows)));
+
+    $paper = $pick !== null ? (string) ($pick['quiz_title'] ?? 'Quiz') : 'your next paper';
+    $code = $pick !== null ? trim((string) ($pick['course_code'] ?? '')) : '';
+    $suffix = $code !== '' ? ' (' . $code . ')' : '';
+    $phase = $pick !== null ? (string) ($pick['phase'] ?? 'unset') : '';
+    $attempted = $pick !== null && !empty($pick['user_has_attempt']);
+    $whenHint = '';
+    if ($pick !== null && ($pick['start_ts'] ?? null) !== null && $now < (int) $pick['start_ts']) {
+        $whenHint = ' It opens ' . date('l, M j', (int) $pick['start_ts']) . '.';
+    } elseif ($pick !== null && ($pick['end_ts'] ?? null) !== null && $phase === 'open' && $now < (int) $pick['end_ts']) {
+        $whenHint = ' Window closes ' . date('l, M j', (int) $pick['end_ts']) . '.';
+    }
+
+    $openers = [
+        'Small steps add up,',
+        'You are allowed to feel nervous and still do well,',
+        'Deep breath —',
+        'Campus energy is loud, but your focus is yours,',
+        'Progress is not a straight line,',
+        'Showing up already counts,',
+        'You have more going for you than you think,',
+    ];
+    $middlesPaper = [
+        'your next sit-down with **PAPER** is a chance to show what you know — not a verdict on who you are.',
+        'when **PAPER** comes around, trust the revision you have already done and answer calmly.',
+        'treat **PAPER** like practice with stakes: steady pacing, clear working, and a kind voice in your head.',
+        'for **PAPER**, read carefully, breathe between questions, and let your preparation carry you.',
+        '**PAPER** is one chapter — give it your honest best and be proud of the effort either way.',
+        'line up your materials, sleep, and snacks — **PAPER** goes smoother when your body is on your side.',
+        'before **PAPER**, skim your weak topics once more, then stop — fresh mind beats last-minute panic.',
+    ];
+    $middlesReview = [
+        'another pass on **PAPER** still counts — nudge the rough spots, then reset before the real paper.',
+        '**PAPER** is open: use it as rehearsal — same focus you want on exam day, lighter pressure.',
+        'you have met **PAPER** before; this round is about polish, pacing, and believing the trend line.',
+        'let **PAPER** remind you what clicks — note one takeaway after each attempt and celebrate small wins.',
+        'steady repeats on **PAPER** build exam muscle more than any single cram session ever could.',
+    ];
+    $middlesGeneric = [
+        'your next assessment is a chance to show what you know — not a verdict on who you are.',
+        'trust the revision you have already done and answer calmly when the paper lands.',
+        'treat the next paper like practice with stakes: steady pacing, clear working, and a kind voice in your head.',
+        'read carefully, breathe between questions, and let your preparation carry you.',
+        'one paper is one chapter — give it your honest best and be proud of the effort either way.',
+        'line up sleep and snacks — things go smoother when your body is on your side.',
+        'skim weak topics once more, then stop — a fresh mind beats last-minute panic.',
+    ];
+    $closers = [
+        'Wishing you calm, clarity, and a steady hand.',
+        'Rooting for you — you have prepared more than you realize.',
+        'May the questions play to your strengths.',
+        'Go in hydrated, rested, and ready to think.',
+        'You have got this — one question at a time.',
+        'Good luck — we are cheering you on from here.',
+        'Trust yourself; you belong in that room.',
+    ];
+
+    $op = $openers[$seed % count($openers)];
+    if ($pick === null) {
+        $midPool = $middlesGeneric;
+        $ix = intdiv($seed, 3) % count($midPool);
+        $mid = $midPool[$ix];
+    } elseif ($attempted && ($phase === 'open' || $phase === 'unset')) {
+        $ix = intdiv($seed, 3) % count($middlesReview);
+        $mid = str_replace('**PAPER**', $paper . $suffix, $middlesReview[$ix]);
+    } else {
+        $ix = intdiv($seed, 3) % count($middlesPaper);
+        $mid = str_replace('**PAPER**', $paper . $suffix, $middlesPaper[$ix]);
+    }
+    $cl = $closers[intdiv($seed, 11) % count($closers)];
+
+    $lead = $op . ' ' . $name . '.';
+    $body = trim(preg_replace('/\s+/u', ' ', $mid . ' ' . $whenHint . ' ' . $cl));
+
+    $context = $pick === null ? 'no_quiz' : ($attempted ? 'retry' : 'fresh');
+
+    return [
+        'lead' => $lead,
+        'body' => $body,
+        'quiz_id' => $quizId,
+        'context' => $context,
+    ];
 }

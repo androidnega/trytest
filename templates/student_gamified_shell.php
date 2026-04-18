@@ -23,6 +23,8 @@ declare(strict_types=1);
 /** @var string $quizDoneYoutubeHtml */
 /** @var string $dashboardYoutubeVideosHtml */
 /** @var array<string,mixed>|null $doneComparison */
+/** @var array{lead:string,body:string,quiz_id:int,context:string}|null $dashboardEncouragement */
+/** @var string $quizUrlBase */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -166,6 +168,32 @@ $navClass = static function (bool $on): string {
         <?php endif; ?>
 
         <?php if ($tabHome && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))): ?>
+            <?php
+            $enc = is_array($dashboardEncouragement ?? null) ? $dashboardEncouragement : null;
+            $encQuizId = $enc !== null ? max(0, (int) ($enc['quiz_id'] ?? 0)) : 0;
+            ?>
+            <?php if ($enc !== null): ?>
+                <section class="mb-5 overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-amber-50/50 p-4 shadow-sm" aria-labelledby="dash-cheer-title">
+                    <div class="flex gap-3">
+                        <span class="shrink-0 text-2xl leading-none" aria-hidden="true"><?php
+                            $cheerIcons = ['✨', '🌿', '📘', '☀️', '🎯', '💪', '🧠'];
+                            echo $h($cheerIcons[abs(crc32((string) ($enc['lead'] ?? '') . '|' . (string) $userId)) % count($cheerIcons)]);
+                        ?></span>
+                        <div class="min-w-0 flex-1">
+                            <h2 id="dash-cheer-title" class="text-sm font-bold leading-snug text-[#2C6A7D]"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
+                            <p class="mt-1.5 text-[13px] leading-relaxed text-slate-700"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <?php if ($encQuizId > 0): ?>
+                                    <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $encQuizId); ?>" class="inline-flex items-center rounded-lg bg-[#2C6A7D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#24586a]">Open linked quiz</a>
+                                <?php endif; ?>
+                                <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                                    <a href="<?php echo $h($quizzesPageUrl); ?>" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:border-[#2C6A7D]/40">All quizzes</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            <?php endif; ?>
             <section class="mb-6" aria-label="Quick links">
                 <div class="grid grid-cols-2 gap-3">
                     <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-amber-200/80 hover:shadow-md">

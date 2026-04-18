@@ -256,6 +256,7 @@ $totalPoints = 0;
 $levelLeaderboardRows = [];
 $doneBlock = null;
 $doneComparison = null;
+$dashboardEncouragement = null;
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
     $activeTab = 'home';
@@ -270,6 +271,12 @@ if ($isUserLoggedIn) {
     $totalPoints = (int) $ptsStmt->fetchColumn();
 
     $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
+
+    $dashboardEncouragement = trytest_student_dashboard_encouragement(
+        $coursesWithQuizzes,
+        $userId,
+        trytest_student_display_name((string) ($_SESSION['user_index_number'] ?? ''))
+    );
 
     $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment, 40);
 
