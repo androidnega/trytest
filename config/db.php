@@ -348,7 +348,9 @@ foreach ($quizColsCreated as $column) {
     }
 }
 if (!$hasQuizCreatedAt) {
-    $db->exec('ALTER TABLE quizzes ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))');
+    $db->exec('ALTER TABLE quizzes ADD COLUMN created_at TEXT');
+    // Legacy rows: do not flood the “new quiz” home badge after this migration ships.
+    $db->exec("UPDATE quizzes SET created_at = '2000-01-01 00:00:00' WHERE created_at IS NULL OR TRIM(COALESCE(created_at, '')) = ''");
 }
 
 $db->exec('

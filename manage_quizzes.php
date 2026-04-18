@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $durationCreate = isset($_POST['duration_minutes']) ? max(0, (int) $_POST['duration_minutes']) : 0;
                 $durationCreateSql = $durationCreate > 0 ? $durationCreate : null;
                 $db->prepare(
-                    'INSERT INTO quizzes (title, level, course_id, quiz_starts_at, quiz_ends_at, duration_minutes) VALUES (?, ?, ?, ?, ?, ?)'
+                    'INSERT INTO quizzes (title, level, course_id, quiz_starts_at, quiz_ends_at, duration_minutes, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'))'
                 )->execute([$title, $level, $courseId, $startsSql, $endsSql, $durationCreateSql]);
                 $quizId = (int) $db->lastInsertId();
                 $db->prepare('INSERT OR IGNORE INTO quiz_courses (quiz_id, course_id) VALUES (?, ?)')->execute([$quizId, $courseId]);
