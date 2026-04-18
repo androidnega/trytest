@@ -50,6 +50,21 @@ function trytest_decode_json_block(string $raw): ?array
         if (isset($decoded['questions']) && is_array($decoded['questions'])) {
             return array_values($decoded['questions']);
         }
+        // Gemini-style buckets: mcq_questions, fill_in_questions, theory_questions
+        $bucketOrder = ['mcq_questions', 'fill_in_questions', 'theory_questions', 'fill_questions'];
+        $merged = [];
+        foreach ($bucketOrder as $bk) {
+            if (!empty($decoded[$bk]) && is_array($decoded[$bk])) {
+                foreach ($decoded[$bk] as $row) {
+                    if (is_array($row)) {
+                        $merged[] = $row;
+                    }
+                }
+            }
+        }
+        if ($merged !== []) {
+            return $merged;
+        }
         // If one object was provided instead of an array, normalize to list.
         if (array_keys($decoded) !== range(0, count($decoded) - 1)) {
             return [$decoded];
@@ -269,7 +284,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
                 <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs and import in one clean step.</p>
-                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items, or <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>. Use <code class="rounded bg-slate-100 px-1">type</code> <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code> (<code class="rounded bg-slate-100 px-1">____</code> in stem + <code class="rounded bg-slate-100 px-1">answer</code>), or <code class="rounded bg-slate-100 px-1">theory</code>. For theory you may add <code class="rounded bg-slate-100 px-1">keywords</code> (array) and/or <code class="rounded bg-slate-100 px-1">accept</code> (alternate phrases); <code class="rounded bg-slate-100 px-1">answer</code> can be a string or array (first = canonical). Marking: substring match on any accept → correct; else ≥50% of keywords found in the student text → correct; some keywords → partially correct.</p>
+                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items; <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>; or bucketed objects <code class="rounded bg-slate-100 px-1">mcq_questions</code>, <code class="rounded bg-slate-100 px-1">fill_in_questions</code>, <code class="rounded bg-slate-100 px-1">theory_questions</code> (and optional <code class="rounded bg-slate-100 px-1">fill_questions</code>) which are merged in that order. Use <code class="rounded bg-slate-100 px-1">type</code> <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code> (<code class="rounded bg-slate-100 px-1">____</code> + <code class="rounded bg-slate-100 px-1">answer</code>), or <code class="rounded bg-slate-100 px-1">theory</code> with optional <code class="rounded bg-slate-100 px-1">keywords</code> / <code class="rounded bg-slate-100 px-1">accept</code> and <code class="rounded bg-slate-100 px-1">answer</code> string or array.</p>
             </div>
             <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>
