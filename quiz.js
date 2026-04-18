@@ -747,7 +747,7 @@
             '<div class="aspect-video w-full"><iframe id="quizAdIframe" class="h-full w-full" src="' +
             escapeAttr(embed) +
             '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>' +
-            '<button type="button" id="quizAdUnmuteBtn" class="w-full rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700">Tap for sound</button>' +
+            '<button type="button" id="quizAdUnmuteBtn" aria-pressed="false" class="w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700">Tap for sound</button>' +
             '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white dark:bg-zinc-700">Continue in ' +
             wait +
             's</button>' +
@@ -756,13 +756,26 @@
         var adIframe = document.getElementById('quizAdIframe');
         var unmuteBtn = document.getElementById('quizAdUnmuteBtn');
         if (unmuteBtn && adIframe) {
+            var adMuted = true;
+            var clsMuted =
+                'w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700';
+            var clsUnmuted =
+                'w-full cursor-pointer rounded-xl border border-emerald-500/90 bg-emerald-900/35 px-3 py-2.5 text-sm font-semibold text-emerald-50 hover:bg-emerald-800/50 dark:border-emerald-500/70 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/45';
             unmuteBtn.addEventListener('click', function () {
-                sendYoutubeIframeCommand(adIframe, 'unMute');
-                sendYoutubeIframeCommand(adIframe, 'setVolume', [100]);
-                unmuteBtn.textContent = 'Sound on';
-                unmuteBtn.disabled = true;
-                unmuteBtn.className =
-                    'w-full cursor-default rounded-xl border border-emerald-600/80 bg-emerald-950/40 px-3 py-2.5 text-sm font-semibold text-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30';
+                adMuted = !adMuted;
+                if (!adMuted) {
+                    sendYoutubeIframeCommand(adIframe, 'unMute');
+                    sendYoutubeIframeCommand(adIframe, 'setVolume', [100]);
+                    unmuteBtn.textContent = 'Tap to mute';
+                    unmuteBtn.setAttribute('aria-pressed', 'true');
+                    unmuteBtn.className = clsUnmuted;
+                } else {
+                    sendYoutubeIframeCommand(adIframe, 'mute');
+                    sendYoutubeIframeCommand(adIframe, 'setVolume', [0]);
+                    unmuteBtn.textContent = 'Tap for sound';
+                    unmuteBtn.setAttribute('aria-pressed', 'false');
+                    unmuteBtn.className = clsMuted;
+                }
             });
         }
         var btn = document.getElementById('adContinueBtn');
