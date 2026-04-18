@@ -883,19 +883,24 @@
 
     function renderMcqOptions(q) {
         const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
-        const parts = [];
+        const entries = [];
         keys.forEach(function (k) {
             const text = q[k];
-            if (text && String(text).trim() !== '') {
-                const safe = escapeHtml(String(text));
-                parts.push(
-                    '<button type="button" class="option w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-base font-medium text-slate-800 transition-all duration-300 hover:bg-slate-200 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
-                        escapeAttr(String(text)) +
-                        '">' +
-                        safe +
-                        '</button>'
-                );
+            if (text != null && String(text).trim() !== '') {
+                entries.push(String(text));
             }
+        });
+        shuffleInPlace(entries);
+        const parts = [];
+        entries.forEach(function (text) {
+            const safe = escapeHtml(String(text));
+            parts.push(
+                '<button type="button" class="option w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-base font-medium text-slate-800 transition-all duration-300 hover:bg-slate-200 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
+                    escapeAttr(String(text)) +
+                    '">' +
+                    safe +
+                    '</button>'
+            );
         });
         return '<div class="space-y-3" id="optionsWrap">' + parts.join('') + '</div>';
     }
