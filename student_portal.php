@@ -386,8 +386,7 @@ $downloadsPageUrl = trytest_url('downloads');
 $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
-/** Vector-style login illustration (local SVG — always loads, scales crisply). */
-$loginHeroImageUrl = trytest_url('login-illustration.svg');
+$loginHeroImageUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREtFCuK9bSv1zROMb1EGg0XTu9NWjfuLnbng&s';
 
 $needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
 $studentDashboardFixedViewport = $isUserLoggedIn
@@ -409,9 +408,7 @@ $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <?php if ($isUserLoggedIn): ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <?php endif; ?>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
@@ -460,126 +457,186 @@ if ($isUserLoggedIn) {
     );
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
-    <div class="flex w-full min-h-0 min-w-0 max-w-md flex-col items-stretch gap-4 md:max-w-4xl md:flex-row md:items-center md:gap-8">
-        <figure class="relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-indigo-50/50 sm:h-44 md:order-2 md:h-[min(72vh,520px)] md:min-h-[300px] md:flex-1 md:max-w-none">
-            <img
-                src="<?php echo htmlspecialchars($loginHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                alt=""
-                class="absolute inset-0 h-full w-full object-contain object-center p-2 sm:p-3 md:p-6"
-                width="612"
-                height="612"
-                loading="eager"
-                decoding="async"
-            >
-        </figure>
-        <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col justify-center md:order-1 md:max-w-sm lg:max-w-md">
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <h1 class="text-center text-xl font-bold text-slate-900">Trytest</h1>
-            <p class="mt-1 text-center text-sm text-slate-600">Sign in with your index number.</p>
+    <div class="w-full max-w-md min-w-0">
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div class="relative h-36 w-full border-b border-slate-100 bg-slate-50 sm:h-40">
+                <img
+                    src="<?php echo htmlspecialchars($loginHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                    alt=""
+                    class="h-full w-full object-contain object-center p-2 sm:p-3"
+                    width="400"
+                    height="300"
+                    loading="eager"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                >
+            </div>
+            <div class="p-5 sm:p-6">
+                <h1 class="flex items-center justify-center gap-2 text-lg font-bold text-slate-900">
+                    <i class="fa-solid fa-graduation-cap text-indigo-600" aria-hidden="true"></i>
+                    Trytest
+                </h1>
 
-            <?php if ($pendingShareQuizId > 0): ?>
-                <div class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-xs leading-snug text-indigo-900">
-                    Quiz link ready — sign in to open it (level and program must match).
-                </div>
-            <?php endif; ?>
+                <?php if ($pendingShareQuizId > 0): ?>
+                    <p class="mt-3 flex items-center justify-center gap-2 text-center text-xs text-indigo-800">
+                        <i class="fa-solid fa-link shrink-0" aria-hidden="true"></i>
+                        <span>Quiz link — sign in to open.</span>
+                    </p>
+                <?php endif; ?>
 
-            <?php if ($error !== ''): ?>
-                <div class="mt-4 rounded-lg bg-red-100 px-3 py-2 text-xs leading-snug text-red-700 break-words"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
-            <?php endif; ?>
-            <?php if ($message !== ''): ?>
-                <div class="mt-4 rounded-lg bg-emerald-100 px-3 py-2 text-xs leading-snug text-emerald-800 break-words">
-                    <?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?>
-                    <?php if ($generatedPassword !== ''): ?>
-                        <span class="mt-2 block rounded-md bg-white/80 px-2 py-1.5 text-center font-mono text-base font-bold tracking-widest text-slate-900"><?php echo htmlspecialchars($generatedPassword, ENT_QUOTES, 'UTF-8'); ?></span>
-                        <span class="mt-1 block text-[11px] text-emerald-900/80">Your Trytest password (4 digits). Use it on the next step.</span>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($loginMode === 'reset'): ?>
-                <div class="mt-5 space-y-3">
-                    <p class="text-center text-xs text-slate-600">Enter your index for a new 4-digit Trytest password.</p>
-                    <form method="post" class="space-y-3">
-                        <input type="hidden" name="action" value="reset_password">
-                        <?php if ($pendingShareQuizId > 0): ?>
-                            <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
-                        <?php endif; ?>
-                        <input class="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
-                        <button class="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">Reset password</button>
-                    </form>
-                    <p class="text-center text-sm"><a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">Back to sign in</a></p>
-                </div>
-            <?php else: ?>
-                <div class="mt-5 space-y-3">
-                    <?php if ($loginMode === 'index'): ?>
-                        <h2 class="text-center text-sm font-semibold text-slate-900">Sign in</h2>
-                        <form method="post" class="space-y-3" id="formCheckIndex">
-                            <input type="hidden" name="action" value="check_index">
-                            <?php if ($pendingShareQuizId > 0): ?>
-                                <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
-                            <?php endif; ?>
-                            <input class="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <button class="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">Continue</button>
-                        </form>
-                        <p class="text-center text-sm"><a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>?view=reset">Forgot password?</a></p>
-                    <?php elseif ($loginMode === 'existing'): ?>
-                        <h2 class="text-center text-sm font-semibold text-slate-900">Password</h2>
-                        <p class="text-center text-xs text-slate-600">Index <span class="font-semibold"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span><?php if ($existingUserLevel !== ''): ?> · Lv&nbsp;<?php echo htmlspecialchars($existingUserLevel, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></p>
-                        <form method="post" class="space-y-3" id="formLoginExisting">
-                            <input type="hidden" name="action" value="login_existing">
-                            <?php if ($pendingShareQuizId > 0): ?>
-                                <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
-                            <?php endif; ?>
-                            <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
-                            <div>
-                                <label for="studentPassword" class="mb-1 block text-center text-xs font-medium text-slate-600">4-digit password</label>
-                                <input id="studentPassword" class="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center font-mono text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500" type="password" name="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" maxlength="4" placeholder="••••" required title="Up to 4 digits — your Trytest password">
-                            </div>
-                            <label class="flex cursor-pointer items-center justify-center gap-2 text-center text-xs text-slate-600">
-                                <input type="checkbox" name="remember_me" value="1" id="rememberMe" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                Remember on this device
-                            </label>
-                            <button class="w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white" type="submit">Sign in</button>
-                        </form>
-                        <p class="text-center text-xs text-slate-600">
-                            <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">Other index</a>
-                            <span class="text-slate-300"> · </span>
-                            <a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>?view=reset">Forgot?</a>
+                <?php if ($error !== ''): ?>
+                    <p class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 break-words">
+                        <i class="fa-solid fa-circle-exclamation mt-0.5 shrink-0" aria-hidden="true"></i>
+                        <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
+                    </p>
+                <?php endif; ?>
+                <?php if ($message !== ''): ?>
+                    <div class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900 break-words">
+                        <p class="flex items-start gap-2">
+                            <i class="fa-solid fa-circle-check mt-0.5 shrink-0" aria-hidden="true"></i>
+                            <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                         </p>
-                    <?php else: ?>
-                        <h2 class="text-center text-sm font-semibold text-slate-900">New account</h2>
-                        <p class="text-center text-xs text-slate-600"><span class="font-semibold"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span></p>
-                        <form method="post" class="space-y-2">
-                            <input type="hidden" name="action" value="register_new">
+                        <?php if ($generatedPassword !== ''): ?>
+                            <p class="mt-2 text-center font-mono text-lg font-bold tracking-widest text-slate-900"><?php echo htmlspecialchars($generatedPassword, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <p class="mt-1 flex items-center justify-center gap-1 text-center text-[11px] text-emerald-800/90">
+                                <i class="fa-solid fa-key" aria-hidden="true"></i>
+                                <span>4-digit password for next step</span>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($loginMode === 'reset'): ?>
+                    <div class="mt-5 space-y-3">
+                        <p class="flex items-center justify-center gap-2 text-center text-xs text-slate-600">
+                            <i class="fa-solid fa-key text-indigo-500" aria-hidden="true"></i>
+                            <span>New code by index</span>
+                        </p>
+                        <form method="post" class="space-y-3">
+                            <input type="hidden" name="action" value="reset_password">
                             <?php if ($pendingShareQuizId > 0): ?>
                                 <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
                             <?php endif; ?>
-                            <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
-                            <select class="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" name="level" required>
-                                <option value="">Level</option>
-                                <option value="100">100</option>
-                                <option value="200">200</option>
-                                <option value="300">300</option>
-                                <option value="400">400</option>
-                            </select>
-                            <label class="block text-center text-xs font-medium text-slate-600">Program<?php if ($departmentOptions): ?> <span class="text-red-600">*</span><?php else: ?> <span class="text-slate-400">(optional)</span><?php endif; ?></label>
-                            <select class="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" name="department" <?php echo $departmentOptions ? 'required' : ''; ?>>
-                                <option value=""><?php echo $departmentOptions ? 'Select program…' : 'Any program'; ?></option>
-                                <?php foreach ($departmentOptions as $depOpt): ?>
-                                    <option value="<?php echo htmlspecialchars((string) ($depOpt['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($depOpt['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if (!$departmentOptions): ?>
-                                <p class="text-center text-[10px] leading-snug text-slate-500">Until programs are set up, courses for your level are shown.</p>
-                            <?php else: ?>
-                                <p class="text-center text-[10px] leading-snug text-slate-500">Matches quizzes and files to your class.</p>
-                            <?php endif; ?>
-                            <button class="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">Create account</button>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-hashtag"></i></span>
+                                <input class="w-full min-w-0 rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
+                            </div>
+                            <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">
+                                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                                Reset
+                            </button>
                         </form>
-                        <p class="text-center text-sm"><a class="text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">Use another index</a></p>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
+                        <p class="text-center text-sm">
+                            <a class="inline-flex items-center justify-center gap-1 text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
+                                Back
+                            </a>
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <div class="mt-5 space-y-3">
+                        <?php if ($loginMode === 'index'): ?>
+                            <form method="post" class="space-y-3" id="formCheckIndex">
+                                <input type="hidden" name="action" value="check_index">
+                                <?php if ($pendingShareQuizId > 0): ?>
+                                    <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                <?php endif; ?>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-id-card"></i></span>
+                                    <input class="w-full min-w-0 rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="index_number" placeholder="Index" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                </div>
+                                <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">
+                                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                                    Continue
+                                </button>
+                            </form>
+                            <p class="text-center text-sm">
+                                <a class="inline-flex items-center justify-center gap-1 text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>?view=reset">
+                                    <i class="fa-solid fa-unlock-keyhole text-xs" aria-hidden="true"></i>
+                                    Forgot password
+                                </a>
+                            </p>
+                        <?php elseif ($loginMode === 'existing'): ?>
+                            <p class="flex items-center justify-center gap-2 text-center text-xs text-slate-600">
+                                <i class="fa-solid fa-id-card text-slate-400" aria-hidden="true"></i>
+                                <span class="font-medium"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span><?php if ($existingUserLevel !== ''): ?><span class="text-slate-300">·</span><span>Lv&nbsp;<?php echo htmlspecialchars($existingUserLevel, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                            </p>
+                            <form method="post" class="space-y-3" id="formLoginExisting">
+                                <input type="hidden" name="action" value="login_existing">
+                                <?php if ($pendingShareQuizId > 0): ?>
+                                    <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                <?php endif; ?>
+                                <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-lock"></i></span>
+                                    <input id="studentPassword" class="w-full min-w-0 rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-center font-mono text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500" type="password" name="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" maxlength="4" placeholder="••••" required title="4-digit Trytest password">
+                                </div>
+                                <label class="flex cursor-pointer items-center justify-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="remember_me" value="1" id="rememberMe" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                    <i class="fa-regular fa-bookmark text-slate-400" aria-hidden="true"></i>
+                                    <span>Remember device</span>
+                                </label>
+                                <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white" type="submit">
+                                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+                                    Sign in
+                                </button>
+                            </form>
+                            <p class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-slate-600">
+                                <a class="inline-flex items-center gap-1 text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <i class="fa-solid fa-rotate-left text-[10px]" aria-hidden="true"></i>
+                                    Other index
+                                </a>
+                                <a class="inline-flex items-center gap-1 text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>?view=reset">
+                                    <i class="fa-solid fa-unlock-keyhole text-[10px]" aria-hidden="true"></i>
+                                    Forgot
+                                </a>
+                            </p>
+                        <?php else: ?>
+                            <p class="flex items-center justify-center gap-2 text-xs text-slate-600">
+                                <i class="fa-solid fa-user-plus text-indigo-500" aria-hidden="true"></i>
+                                <span class="font-medium"><?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?></span>
+                            </p>
+                            <form method="post" class="space-y-2">
+                                <input type="hidden" name="action" value="register_new">
+                                <?php if ($pendingShareQuizId > 0): ?>
+                                    <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                                <?php endif; ?>
+                                <input type="hidden" name="index_number" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+                                    <select class="w-full min-w-0 appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" name="level" required>
+                                        <option value="">Level</option>
+                                        <option value="100">100</option>
+                                        <option value="200">200</option>
+                                        <option value="300">300</option>
+                                        <option value="400">400</option>
+                                    </select>
+                                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                                </div>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-building"></i></span>
+                                    <select class="w-full min-w-0 appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" name="department" <?php echo $departmentOptions ? 'required' : ''; ?>>
+                                        <option value=""><?php echo $departmentOptions ? 'Program' : 'Program (optional)'; ?></option>
+                                        <?php foreach ($departmentOptions as $depOpt): ?>
+                                            <option value="<?php echo htmlspecialchars((string) ($depOpt['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($depOpt['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                                </div>
+                                <button class="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">
+                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                    Create
+                                </button>
+                            </form>
+                            <p class="text-center text-sm">
+                                <a class="inline-flex items-center justify-center gap-1 text-indigo-600 hover:underline" href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
+                                    Other index
+                                </a>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
