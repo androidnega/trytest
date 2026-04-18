@@ -16,6 +16,7 @@ if ($quizId < 1) {
 
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/question_play_type.php';
 
 $userLevel = (string) ($_SESSION['user_level'] ?? '');
 $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
@@ -82,5 +83,7 @@ if ($row === false) {
     echo json_encode(['ok' => false, 'error' => 'question_not_found'], JSON_THROW_ON_ERROR);
     exit;
 }
+
+$row['play_type'] = trytest_question_play_type($row);
 
 echo json_encode(['ok' => true, 'question' => $row], JSON_THROW_ON_ERROR);

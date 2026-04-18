@@ -695,10 +695,9 @@ function trytest_student_pick_next_paper_quiz(array $rows, ?int $now = null): ?a
 }
 
 /**
- * Cheer-up copy for the student dashboard, tied to a real quiz when possible.
- * Wording rotates by day + user + quiz so it feels fresh.
+ * Short dashboard note + solid background token (rotates ~every 10 minutes).
  *
- * @return array{lead:string,body:string,quiz_id:int,context:string}
+ * @return array{lead:string,body:string,quiz_id:int,context:string,surface:string}
  */
 function trytest_student_dashboard_encouragement(
     array $coursesWithQuizzes,
@@ -707,92 +706,58 @@ function trytest_student_dashboard_encouragement(
     ?int $now = null
 ): array {
     $now = $now ?? time();
-    $dayKey = date('Y-m-d', $now);
     $name = trim($studentShortName) !== '' ? trim($studentShortName) : 'there';
     $rows = trytest_student_encouragement_quiz_rows($coursesWithQuizzes, $now);
     $pick = trytest_student_pick_next_paper_quiz($rows, $now);
     $quizId = $pick !== null ? (int) ($pick['quiz_id'] ?? 0) : 0;
-    $seed = (int) sprintf('%u', crc32((string) $userId . '|' . $dayKey . '|' . $quizId . '|' . count($rows)));
+    $seed = (int) sprintf('%u', crc32((string) $userId . '|' . (string) intdiv($now, 600) . '|' . $quizId));
 
-    $paper = $pick !== null ? (string) ($pick['quiz_title'] ?? 'Quiz') : 'your next paper';
-    $code = $pick !== null ? trim((string) ($pick['course_code'] ?? '')) : '';
-    $suffix = $code !== '' ? ' (' . $code . ')' : '';
+    /** Solid light fills (Trytest palette — no gradients). */
+    $surfaces = ['#D8EFEF', '#FCE8E9', '#E2E8F0', '#EDE9D6'];
+    $surface = $surfaces[$seed % count($surfaces)];
+
+    $paper = $pick !== null ? (string) ($pick['quiz_title'] ?? 'Quiz') : '';
+    if (strlen($paper) > 42) {
+        $paper = substr($paper, 0, 39) . '…';
+    }
     $phase = $pick !== null ? (string) ($pick['phase'] ?? 'unset') : '';
     $attempted = $pick !== null && !empty($pick['user_has_attempt']);
     $whenHint = '';
     if ($pick !== null && ($pick['start_ts'] ?? null) !== null && $now < (int) $pick['start_ts']) {
-        $whenHint = ' It opens ' . date('l, M j', (int) $pick['start_ts']) . '.';
+        $whenHint = 'Opens ' . date('M j', (int) $pick['start_ts']) . '.';
     } elseif ($pick !== null && ($pick['end_ts'] ?? null) !== null && $phase === 'open' && $now < (int) $pick['end_ts']) {
-        $whenHint = ' Window closes ' . date('l, M j', (int) $pick['end_ts']) . '.';
+        $whenHint = 'Closes ' . date('M j', (int) $pick['end_ts']) . '.';
     }
 
-    $openers = [
-        'Small steps add up,',
-        'You are allowed to feel nervous and still do well,',
-        'Deep breath —',
-        'Campus energy is loud, but your focus is yours,',
-        'Progress is not a straight line,',
-        'Showing up already counts,',
-        'You have more going for you than you think,',
+    $leads = [
+        'Hi, ' . $name . '.',
+        'Hey, ' . $name . '.',
+        'Ready, ' . $name . '?',
     ];
-    $middlesPaper = [
-        'your next sit-down with **PAPER** is a chance to show what you know — not a verdict on who you are.',
-        'when **PAPER** comes around, trust the revision you have already done and answer calmly.',
-        'treat **PAPER** like practice with stakes: steady pacing, clear working, and a kind voice in your head.',
-        'for **PAPER**, read carefully, breathe between questions, and let your preparation carry you.',
-        '**PAPER** is one chapter — give it your honest best and be proud of the effort either way.',
-        'line up your materials, sleep, and snacks — **PAPER** goes smoother when your body is on your side.',
-        'before **PAPER**, skim your weak topics once more, then stop — fresh mind beats last-minute panic.',
-    ];
-    $middlesReview = [
-        'another pass on **PAPER** still counts — nudge the rough spots, then reset before the real paper.',
-        '**PAPER** is open: use it as rehearsal — same focus you want on exam day, lighter pressure.',
-        'you have met **PAPER** before; this round is about polish, pacing, and believing the trend line.',
-        'let **PAPER** remind you what clicks — note one takeaway after each attempt and celebrate small wins.',
-        'steady repeats on **PAPER** build exam muscle more than any single cram session ever could.',
-    ];
-    $middlesGeneric = [
-        'your next assessment is a chance to show what you know — not a verdict on who you are.',
-        'trust the revision you have already done and answer calmly when the paper lands.',
-        'treat the next paper like practice with stakes: steady pacing, clear working, and a kind voice in your head.',
-        'read carefully, breathe between questions, and let your preparation carry you.',
-        'one paper is one chapter — give it your honest best and be proud of the effort either way.',
-        'line up sleep and snacks — things go smoother when your body is on your side.',
-        'skim weak topics once more, then stop — a fresh mind beats last-minute panic.',
-    ];
-    $closers = [
-        'Wishing you calm, clarity, and a steady hand.',
-        'Rooting for you — you have prepared more than you realize.',
-        'May the questions play to your strengths.',
-        'Go in hydrated, rested, and ready to think.',
-        'You have got this — one question at a time.',
-        'Good luck — we are cheering you on from here.',
-        'Trust yourself; you belong in that room.',
-    ];
+    $lead = $leads[$seed % count($leads)];
 
-    $op = $openers[$seed % count($openers)];
     if ($pick === null) {
-        $midPool = $middlesGeneric;
-        $ix = intdiv($seed, 3) % count($midPool);
-        $mid = $midPool[$ix];
+        $bodies = [
+            'Open Quizzes or Files when you are set.',
+            'Your hub is below — one tap each.',
+            'Pick Files or Quizzes to continue.',
+        ];
+        $body = $bodies[intdiv($seed, 2) % count($bodies)];
     } elseif ($attempted && ($phase === 'open' || $phase === 'unset')) {
-        $ix = intdiv($seed, 3) % count($middlesReview);
-        $mid = str_replace('**PAPER**', $paper . $suffix, $middlesReview[$ix]);
+        $body = 'Retry **PAPER** to improve your score.' . ($whenHint !== '' ? ' ' . $whenHint : '');
+        $body = str_replace('**PAPER**', $paper, $body);
     } else {
-        $ix = intdiv($seed, 3) % count($middlesPaper);
-        $mid = str_replace('**PAPER**', $paper . $suffix, $middlesPaper[$ix]);
+        $body = 'Next: **PAPER**.' . ($whenHint !== '' ? ' ' . $whenHint : '');
+        $body = str_replace('**PAPER**', $paper, $body);
     }
-    $cl = $closers[intdiv($seed, 11) % count($closers)];
-
-    $lead = $op . ' ' . $name . '.';
-    $body = trim(preg_replace('/\s+/u', ' ', $mid . ' ' . $whenHint . ' ' . $cl));
 
     $context = $pick === null ? 'no_quiz' : ($attempted ? 'retry' : 'fresh');
 
     return [
         'lead' => $lead,
-        'body' => $body,
+        'body' => trim(preg_replace('/\s+/u', ' ', $body)),
         'quiz_id' => $quizId,
         'context' => $context,
+        'surface' => $surface,
     ];
 }

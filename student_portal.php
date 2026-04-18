@@ -363,9 +363,6 @@ $quizDoneYoutubeHtml = '';
 if (is_array($doneBlock) && !empty($doneBlock['quiz_id'])) {
     $quizDoneYoutubeHtml = trytest_youtube_quiz_complete_subscribe_html($ytSettings);
 }
-$dashboardYoutubeVideosHtml = trytest_youtube_dashboard_videos_html($ytSettings);
-$dashboardHasVideos = $isUserLoggedIn && trim((string) ($dashboardYoutubeVideosHtml ?? '')) !== '';
-
 $heroImageUrl = 'https://media.istockphoto.com/id/1359362604/vector/woman-filling-form.jpg?s=612x612&w=0&k=20&c=tUIAiwUal8wNbSU2M-6o5nw7eK3kMNho8yFQUQ8I1O0=';
 $dashboardUrl = $isUserLoggedIn ? trytest_url('dashboard') : trytest_home_url();
 $quizUrlBase = trytest_url('quiz');
@@ -387,7 +384,7 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     <script src="https://cdn.tailwindcss.com"></script>
     <style> body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; } </style>
 </head>
-<body class="<?php echo $isUserLoggedIn ? 'min-h-screen bg-white text-slate-900 antialiased' : 'bg-white min-h-screen text-slate-900'; ?>">
+<body class="<?php echo $isUserLoggedIn ? 'min-h-screen max-w-[100vw] overflow-x-hidden bg-white text-slate-900 antialiased' : 'bg-white min-h-screen text-slate-900'; ?>">
 <?php if ($isUserLoggedIn):
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
@@ -397,7 +394,6 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
-    $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>

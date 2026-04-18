@@ -15,15 +15,13 @@ declare(strict_types=1);
 /** @var list<array<string,mixed>> $coursesWithQuizzes */
 /** @var list<array<string,mixed>> $levelLeaderboardRows */
 /** @var string $quizzesPageUrl */
-/** @var bool $dashboardHasVideos */
 /** @var list<array<string,mixed>> $departmentOptions */
 /** @var bool $needsDepartmentSetup */
 /** @var string $departmentUpdateError */
 /** @var array<string,mixed>|null $doneBlock */
 /** @var string $quizDoneYoutubeHtml */
-/** @var string $dashboardYoutubeVideosHtml */
 /** @var array<string,mixed>|null $doneComparison */
-/** @var array{lead:string,body:string,quiz_id:int,context:string}|null $dashboardEncouragement */
+/** @var array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null $dashboardEncouragement */
 /** @var int $newQuizBadgeCount */
 /** @var string $quizUrlBase */
 $h = static function (string $s): string {
@@ -37,7 +35,6 @@ $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
 $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
 $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
-$dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $newQuizBadgeCount = max(0, (int) ($newQuizBadgeCount ?? 0));
 $downloadsNavBadge = '';
@@ -56,19 +53,26 @@ foreach ($coursesWithQuizzes as $courseRow) {
     $totalQuizCards += count((array) ($courseRow['quizzes'] ?? []));
 }
 $quizzesPageUrl = trim((string) ($quizzesPageUrl ?? ''));
-$dashboardHasVideos = !empty($dashboardHasVideos);
 
 $navClass = static function (bool $on): string {
     return $on
         ? 'flex flex-1 flex-col items-center gap-1 py-2 text-[#E50914]'
         : 'flex flex-1 flex-col items-center gap-1 py-2 text-slate-500 hover:text-slate-700';
 };
+
+$dashViewportLock = $tabHome && (!is_array($doneBlock ?? null) || empty(($doneBlock ?? [])['quiz_id'] ?? null)) && !$needsDepartmentSetup;
+$shellOuter = $dashViewportLock
+    ? 'h-[100dvh] max-h-[100dvh] flex flex-col overflow-x-hidden overflow-y-hidden bg-white text-slate-900'
+    : 'min-h-screen bg-white text-slate-900 pb-24 md:pb-8';
+$mainCls = $dashViewportLock
+    ? 'mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:px-4 md:pb-3'
+    : 'mx-auto w-full max-w-5xl px-4 pt-4 pb-24 md:pb-8';
 ?>
-<div class="min-h-screen bg-white text-slate-900 pb-24 md:pb-8">
-    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+<div class="<?php echo $h($shellOuter); ?>">
+    <header class="<?php echo $dashViewportLock ? 'shrink-0' : 'sticky top-0'; ?> z-30 border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4">
             <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-slate-100 to-slate-200 ring-1 ring-slate-200/80 [&>svg]:h-full [&>svg]:w-full sm:h-11 sm:w-11">
+                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 [&>svg]:h-full [&>svg]:w-full sm:h-10 sm:w-10">
                     <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
                 </div>
                 <div class="min-w-0">
@@ -105,7 +109,7 @@ $navClass = static function (bool $on): string {
         </div>
     </header>
 
-    <main class="mx-auto w-full max-w-5xl px-4 pt-4">
+    <main class="<?php echo $h($mainCls); ?>">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm" role="region" aria-labelledby="dept-setup-title">
                 <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950">Choose your program</h2>
@@ -173,83 +177,69 @@ $navClass = static function (bool $on): string {
             <?php
             $enc = is_array($dashboardEncouragement ?? null) ? $dashboardEncouragement : null;
             $encQuizId = $enc !== null ? max(0, (int) ($enc['quiz_id'] ?? 0)) : 0;
+            $encSurface = $enc !== null ? trim((string) ($enc['surface'] ?? '#D8EFEF')) : '#D8EFEF';
+            if ($encSurface === '' || !preg_match('/^#[0-9A-Fa-f]{6}$/', $encSurface)) {
+                $encSurface = '#D8EFEF';
+            }
             ?>
             <?php if ($enc !== null): ?>
-                <section class="mb-5 overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-amber-50/50 p-4 shadow-sm" aria-labelledby="dash-cheer-title">
-                    <div class="flex gap-3">
-                        <span class="shrink-0 text-2xl leading-none" aria-hidden="true"><?php
-                            $cheerIcons = ['✨', '🌿', '📘', '☀️', '🎯', '💪', '🧠'];
-                            echo $h($cheerIcons[abs(crc32((string) ($enc['lead'] ?? '') . '|' . (string) $userId)) % count($cheerIcons)]);
-                        ?></span>
-                        <div class="min-w-0 flex-1">
-                            <h2 id="dash-cheer-title" class="text-sm font-bold leading-snug text-[#2C6A7D]"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
-                            <p class="mt-1.5 text-[13px] leading-relaxed text-slate-700"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
-                            <div class="mt-3 flex flex-wrap gap-2">
-                                <?php if ($encQuizId > 0): ?>
-                                    <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $encQuizId); ?>" class="inline-flex items-center rounded-lg bg-[#2C6A7D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#24586a]">Open linked quiz</a>
-                                <?php endif; ?>
-                                <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                                    <a href="<?php echo $h($quizzesPageUrl); ?>" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:border-[#2C6A7D]/40">All quizzes</a>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+                <section id="trytest-dash-cheer" style="background-color: <?php echo $h($encSurface); ?>" class="mb-2 shrink-0 rounded-xl border border-slate-900/10 px-3 py-2 text-slate-900 shadow-none" aria-labelledby="dash-cheer-title">
+                    <h2 id="dash-cheer-title" class="text-xs font-bold leading-tight"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
+                    <p class="mt-0.5 text-[11px] leading-snug text-slate-800"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
+                    <div class="mt-1.5 flex flex-wrap gap-1.5">
+                        <?php if ($encQuizId > 0): ?>
+                            <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $encQuizId); ?>" class="inline-flex items-center rounded-md bg-[#2C6A7D] px-2 py-1 text-[10px] font-bold text-white hover:bg-[#24586a]">Open quiz</a>
+                        <?php endif; ?>
+                        <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                            <a href="<?php echo $h($quizzesPageUrl); ?>" class="inline-flex items-center rounded-md bg-[#1e293b] px-2 py-1 text-[10px] font-semibold text-white hover:bg-slate-800">All quizzes</a>
+                        <?php endif; ?>
                     </div>
                 </section>
             <?php endif; ?>
             <style>
                 @keyframes trytest-quiz-card-breathe {
-                    0%, 100% { transform: scale(1); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
-                    50% { transform: scale(1.02); box-shadow: 0 10px 28px rgba(229, 9, 20, 0.14); }
+                    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 9, 20, 0.12); }
+                    50% { transform: scale(1.02); box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.15); }
                 }
-                .trytest-quiz-home-card--pulse {
-                    animation: trytest-quiz-card-breathe 2.8s ease-in-out infinite;
-                }
+                .trytest-quiz-home-card--pulse { animation: trytest-quiz-card-breathe 2.8s ease-in-out infinite; }
             </style>
-            <section class="mb-6" aria-label="Quick links">
-                <div class="grid grid-cols-2 gap-3">
-                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-amber-200/80 hover:shadow-md">
-                        <span class="text-2xl leading-none" aria-hidden="true">🏆</span>
-                        <span class="mt-2 text-sm font-bold text-slate-900">Leaderboard</span>
-                        <span class="mt-0.5 text-[11px] text-slate-500">Level ranks</span>
+            <section class="<?php echo $dashViewportLock ? 'flex min-h-0 flex-1 flex-col' : 'mb-6'; ?>" aria-label="Quick links">
+                <div class="grid min-h-0 min-w-0 flex-1 grid-cols-3 gap-1.5 sm:gap-2 <?php echo $dashViewportLock ? 'content-stretch' : ''; ?>">
+                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-0 min-w-0 flex-col items-center justify-center rounded-xl bg-[#D8EFEF] px-1.5 py-2 text-center text-slate-900 ring-1 ring-slate-900/5 transition hover:opacity-95">
+                        <span class="text-lg leading-none" aria-hidden="true">🏆</span>
+                        <span class="mt-1 text-[11px] font-bold leading-tight">Rank</span>
+                        <span class="text-[9px] leading-tight text-slate-700">Board</span>
                     </a>
-                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#2C6A7D]/25 hover:shadow-md">
+                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative flex min-h-0 min-w-0 flex-col items-center justify-center rounded-xl bg-[#C5E3E5] px-1.5 py-2 text-center text-slate-900 ring-1 ring-slate-900/5 transition hover:opacity-95">
                         <?php if ($downloadsBadgeCount > 0): ?>
-                            <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                            <span class="absolute right-1 top-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
                         <?php endif; ?>
-                        <span class="text-2xl leading-none" aria-hidden="true">📥</span>
-                        <span class="mt-2 text-sm font-bold text-slate-900">Files</span>
-                        <span class="mt-0.5 text-[11px] text-slate-500">Downloads</span>
+                        <span class="text-lg leading-none" aria-hidden="true">📥</span>
+                        <span class="mt-1 text-[11px] font-bold leading-tight">Files</span>
+                        <span class="text-[9px] leading-tight text-slate-700">PDFs</span>
                     </a>
-                    <?php if ($dashboardHasVideos): ?>
-                        <a href="#section-dashboard-videos" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-red-200/80 hover:shadow-md">
-                            <span class="text-2xl leading-none" aria-hidden="true">▶️</span>
-                            <span class="mt-2 text-sm font-bold text-slate-900">Videos</span>
-                            <span class="mt-0.5 text-[11px] text-slate-500">Watch</span>
-                        </a>
-                    <?php endif; ?>
                     <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                         <?php
-                        $quizCardClass = 'relative flex min-h-[112px] flex-col items-center justify-center rounded-2xl border bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#E50914]/30 hover:shadow-md ';
-                        $quizCardClass .= $newQuizBadgeCount > 0
-                            ? 'trytest-quiz-home-card--pulse border-2 border-[#E50914]/25 ring-1 ring-[#E50914]/15'
-                            : 'border border-slate-200';
+                        $quizCardClass = 'relative flex min-h-0 min-w-0 flex-col items-center justify-center rounded-xl px-1.5 py-2 text-center ring-1 ring-slate-900/5 transition hover:opacity-95 bg-[#FCE8E9] text-slate-900 ';
+                        $quizCardClass .= $newQuizBadgeCount > 0 ? 'trytest-quiz-home-card--pulse' : '';
                         ?>
                         <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>">
                             <?php if ($newQuizBadgeCount > 0): ?>
-                                <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] max-w-[4.5rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold leading-tight text-white" title="New quizzes since you last opened the list"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                <span class="absolute right-1 top-1 inline-flex h-4 min-w-[1rem] max-w-[3rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white" title="New since last quiz list visit"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?></span>
                             <?php endif; ?>
-                            <span class="text-2xl leading-none" aria-hidden="true">📝</span>
-                            <span class="mt-2 text-sm font-bold text-slate-900">Quizzes</span>
-                            <span class="mt-0.5 text-[11px] text-slate-500"><?php echo (int) $totalQuizCards; ?> available</span>
+                            <span class="text-lg leading-none" aria-hidden="true">📝</span>
+                            <span class="mt-1 text-[11px] font-bold leading-tight">Quizzes</span>
+                            <span class="text-[9px] leading-tight text-slate-700"><?php echo (int) $totalQuizCards; ?> set<?php echo (int) $totalQuizCards === 1 ? '' : 's'; ?></span>
                         </a>
+                    <?php else: ?>
+                        <div class="flex min-h-0 min-w-0 flex-col items-center justify-center rounded-xl bg-[#EDE9D6] px-1.5 py-2 text-center text-slate-600 ring-1 ring-slate-900/5">
+                            <span class="text-lg leading-none opacity-50" aria-hidden="true">📝</span>
+                            <span class="mt-1 text-[11px] font-semibold leading-tight">Quizzes</span>
+                            <span class="text-[9px] leading-tight">Soon</span>
+                        </div>
                     <?php endif; ?>
                 </div>
             </section>
-            <?php if ($dashboardYoutubeVideosHtml !== ''): ?>
-                <div id="section-dashboard-videos" class="scroll-mt-24">
-                    <?php echo $dashboardYoutubeVideosHtml; ?>
-                </div>
-            <?php endif; ?>
         <?php endif; ?>
 
         <?php if ($tabRank): ?>
@@ -303,5 +293,30 @@ $navClass = static function (bool $on): string {
         btn.setAttribute('aria-expanded', 'false');
     });
     menu.addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+(function () {
+    var root = document.getElementById('trytest-dash-cheer');
+    if (!root) return;
+    var k = 'trytest_cheer_suppress_until';
+    var until = 0;
+    try { until = parseInt(sessionStorage.getItem(k) || '0', 10); } catch (e) {}
+    if (until > Date.now()) {
+        if (root.parentNode) root.parentNode.removeChild(root);
+        return;
+    }
+    function remove() {
+        if (root && root.parentNode) root.parentNode.removeChild(root);
+    }
+    function clearKey() {
+        try { sessionStorage.removeItem(k); } catch (e) {}
+    }
+    var tmo = setTimeout(function () {
+        clearKey();
+        remove();
+    }, 600000);
+    window.addEventListener('pagehide', function () {
+        clearTimeout(tmo);
+        try { sessionStorage.setItem(k, String(Date.now() + 600000)); } catch (e) {}
+    }, { passive: true });
 })();
 </script>

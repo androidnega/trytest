@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 session_start();
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/question_play_type.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -86,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $d = trim((string) ($_POST['option_d'] ?? ''));
         if ($id < 1 || $selectedQuizId < 1) {
             $error = 'Edit failed. Missing quiz or question.';
-        } elseif ($question === '' || $correct === '' || $a === '' || $b === '' || $c === '' || $d === '') {
-            $error = 'Edit failed. All fields are required.';
+        } elseif ($question === '' || $correct === '') {
+            $error = 'Edit failed. Question and correct answer are required.';
         } else {
             $chk = $db->prepare('SELECT id FROM questions WHERE id = ? AND quiz_id = ? AND status IN (\'pending\', \'approved\')');
             $chk->execute([$id, $selectedQuizId]);
@@ -166,6 +167,7 @@ if ($selectedQuizId > 0) {
             <section class="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
                 <h2 class="font-semibold">Question Set &amp; Review Pool</h2>
                 <p class="text-xs text-slate-500">To load new items into the review pool, use <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_exam'), ENT_QUOTES, 'UTF-8'); ?>">Import exam</a> or <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_json'), ENT_QUOTES, 'UTF-8'); ?>">Import JSON</a>. Here you pick the quiz set, approve or edit, and export.</p>
+                <p class="text-xs text-slate-600">Play mode is detected automatically: use <code class="rounded bg-slate-100 px-1">____</code> in the stem for fill-in-the-blank (multiple blanks: separate model answers with <code class="rounded bg-slate-100 px-1">|</code>); add options A–D for MCQ; leave options empty for short theory.</p>
                 <form method="get" class="space-y-2">
                     <label class="text-xs text-slate-500">Quiz set</label>
                     <div class="flex gap-2">
@@ -199,13 +201,14 @@ if ($selectedQuizId > 0) {
                     <form method="post" class="border rounded-lg p-3 space-y-2">
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500"><?php echo htmlspecialchars(trytest_question_play_type($q), ENT_QUOTES, 'UTF-8'); ?></p>
                         <div class="grid gap-2 md:grid-cols-2">
                             <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
                             <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option A (MCQ)">
+                            <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option B">
+                            <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option C">
+                            <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option D">
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button name="action" value="approve_one" class="rounded bg-emerald-600 px-3 py-1.5 text-xs text-white">Accept</button>
@@ -227,14 +230,14 @@ if ($selectedQuizId > 0) {
                     <form method="post" class="border rounded-lg p-3 space-y-2 text-sm" data-q-item>
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
-                        <p class="text-xs font-semibold text-slate-500">#<?php echo (int) ($idx + 1); ?> · approved</p>
+                        <p class="text-xs font-semibold text-slate-500">#<?php echo (int) ($idx + 1); ?> · approved · <span class="text-indigo-600"><?php echo htmlspecialchars(trytest_question_play_type($q), ENT_QUOTES, 'UTF-8'); ?></span></p>
                         <div class="grid gap-2 md:grid-cols-2">
                             <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
                             <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option A (MCQ)">
+                            <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option B">
+                            <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option C">
+                            <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option D">
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button name="action" value="save_edit" class="rounded bg-slate-900 px-3 py-1.5 text-xs text-white">Save changes</button>

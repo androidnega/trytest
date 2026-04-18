@@ -551,6 +551,26 @@
         });
     }
 
+    function detectPlayType(q) {
+        const stem = String(q.question || '');
+        if (stem.indexOf('____') !== -1) {
+            return 'fill';
+        }
+        const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
+        for (let i = 0; i < keys.length; i++) {
+            const t = q[keys[i]];
+            if (t != null && String(t).trim() !== '') {
+                return 'mcq';
+            }
+        }
+        return 'theory';
+    }
+
+    function blankCountInStem(stem) {
+        const m = String(stem || '').match(/____/g);
+        return m ? m.length : 0;
+    }
+
     function renderMcqOptions(q) {
         const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
         const parts = [];
@@ -582,42 +602,86 @@
         }
     }
 
-    function bindFillHandlers(q) {
-        const input = document.getElementById('fillInput');
-        const submit = document.getElementById('fillSubmit');
-        if (input) input.focus();
+    function collectFreeResponseInputs() {
+        const theory = document.getElementById('theoryInput');
+        if (theory) {
+            return [theory];
+        }
+        return Array.prototype.slice.call(document.querySelectorAll('.fill-blank-input'));
+    }
 
-        function onFillSubmit() {
+    function bindFreeResponseHandlers(q) {
+        const submit = document.getElementById('frSubmit');
+        const inputs = collectFreeResponseInputs();
+        if (inputs[0]) {
+            inputs[0].focus();
+        }
+
+        function onFreeSubmit() {
             if (locked) return;
-            if (!input || !submit) return;
-            checkFill(input, submit, input.value, q.correct_answer);
+            if (!submit) return;
+            checkFreeResponse(q, submit);
         }
 
-        if (submit) submit.addEventListener('click', onFillSubmit);
-        if (input) {
-            input.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') onFillSubmit();
-            });
+        if (submit) {
+            submit.addEventListener('click', onFreeSubmit);
         }
+        inputs.forEach(function (inp) {
+            inp.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.shiftKey) return;
+                const isMultiline = inp.tagName === 'TEXTAREA';
+                if (isMultiline) return;
+                e.preventDefault();
+                onFreeSubmit();
+            });
+        });
     }
 
     function renderFillQuestion(q) {
-        const questionRaw = String(q.question || '');
-        const safeQuestion = escapeHtml(questionRaw);
-        const inlineInput =
-            '<input type="text" id="fillInput" autocomplete="off" ' +
-            'class="inline-block align-middle border-b-2 border-slate-400 bg-white px-2 py-1 mx-1 w-32 text-center text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-0 transition-all" ' +
-            'placeholder="answer">';
-        const questionWithBlank = safeQuestion.includes('___')
-            ? safeQuestion.replace('___', inlineInput)
-            : safeQuestion + ' ' + inlineInput;
-
+        const raw = String(q.question || '');
+        const parts = raw.split('____');
+        const inputClass =
+            'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border-2 border-slate-200 bg-white px-2 py-2 text-center text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 sm:max-w-[16rem]';
+        let inner =
+            '<div class="mb-6 text-left text-base font-medium leading-relaxed text-slate-900 md:text-lg">';
+        if (parts.length < 2) {
+            inner += escapeHtml(raw);
+            inner +=
+                ' <input type="text" autocomplete="off" aria-label="Answer" class="' +
+                inputClass +
+                '" placeholder="…" />';
+        } else {
+            for (let i = 0; i < parts.length; i++) {
+                inner += '<span class="align-baseline">' + escapeHtml(parts[i]) + '</span>';
+                if (i < parts.length - 1) {
+                    inner +=
+                        '<input type="text" inputmode="text" autocomplete="off" aria-label="Blank ' +
+                        (i + 1) +
+                        '" class="' +
+                        inputClass +
+                        '" placeholder="…" />';
+                }
+            }
+        }
+        inner += '</div>';
         questionBox.innerHTML =
-            '<h2 class="mb-6 text-left text-lg font-bold leading-snug text-slate-900">' +
-            questionWithBlank +
+            inner +
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] transition-all duration-300">Check answer</button>';
+        bindFreeResponseHandlers(q);
+    }
+
+    function renderTheoryQuestion(q) {
+        const prompt = escapeHtml(String(q.question || ''));
+        questionBox.innerHTML =
+            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-slate-900">' +
+            prompt +
             '</h2>' +
-            '<button type="button" id="fillSubmit" class="w-full rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] transition-all duration-300">Check</button>';
-        bindFillHandlers(q);
+            '<label for="theoryInput" class="mb-1.5 block text-xs font-medium text-slate-600">Your answer</label>' +
+            '<textarea id="theoryInput" rows="3" maxlength="2000" autocomplete="off" ' +
+            'class="w-full min-h-[88px] resize-y rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35" ' +
+            'placeholder="Type your answer…"></textarea>' +
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] transition-all duration-300">Check answer</button>';
+        bindFreeResponseHandlers(q);
     }
 
     function showLoadedQuestion(q) {
@@ -630,18 +694,23 @@
             quizCard.classList.remove('quiz-card--wrong', 'quiz-card--correct');
         }
 
-        const type = (q.question_type || q.type || 'mcq').toLowerCase();
-        const title =
-            '<h2 class="mb-4 text-left text-lg font-bold leading-snug text-slate-900">' +
-            escapeHtml(String(q.question)) +
-            '</h2>';
+        const playType = String(q.play_type || detectPlayType(q)).toLowerCase();
 
-        if (type === 'fill') {
+        if (playType === 'fill') {
             renderFillQuestion(q);
             saveQuizResume();
             return;
         }
+        if (playType === 'theory') {
+            renderTheoryQuestion(q);
+            saveQuizResume();
+            return;
+        }
 
+        const title =
+            '<h2 class="mb-4 text-left text-lg font-bold leading-snug text-slate-900">' +
+            escapeHtml(String(q.question)) +
+            '</h2>';
         questionBox.innerHTML = title + renderMcqOptions(q);
         bindMcqHandlers(q);
         saveQuizResume();
@@ -701,6 +770,24 @@
             .map(function (a) { return normalize(a); })
             .filter(Boolean);
         return answers.some(function (a) { return userAnswer === a; });
+    }
+
+    function isFillTheoryCorrect(userParts, correct, stem) {
+        const n = userParts.length;
+        const blanks = blankCountInStem(stem);
+        if (blanks <= 1 || n <= 1) {
+            return isCorrectAnswer(userParts[0] || '', correct);
+        }
+        const segs = String(correct || '').split('|');
+        if (segs.length !== n) {
+            return false;
+        }
+        for (let i = 0; i < n; i++) {
+            if (!isCorrectAnswer(userParts[i], segs[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     function disableAllOptions() {
@@ -763,26 +850,44 @@
         });
     }
 
-    function checkFill(input, submit, selected, correct) {
+    function checkFreeResponse(q, submit) {
+        const inputs = collectFreeResponseInputs();
+        if (!submit || !inputs.length) return;
+
         locked = true;
-        input.disabled = true;
+        inputs.forEach(function (inp) {
+            inp.disabled = true;
+        });
         submit.disabled = true;
 
-        const ok = isCorrectAnswer(selected, correct);
+        const userParts = inputs.map(function (inp) {
+            return inp.value;
+        });
+        const ok = isFillTheoryCorrect(userParts, q.correct_answer, q.question);
+
+        function setInputState(good) {
+            inputs.forEach(function (inp) {
+                inp.classList.remove('ring-2', 'ring-red-500', 'border-red-500', 'ring-emerald-500', 'border-emerald-500');
+                if (good) {
+                    inp.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
+                } else {
+                    inp.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+                }
+            });
+        }
 
         if (ok) {
-            input.classList.remove('ring-red-500', 'border-red-500');
-            input.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
+            setInputState(true);
             submit.className =
-                'w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-base font-semibold text-white success-pop shadow-sm';
+                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-base font-semibold text-white success-pop shadow-sm';
             submit.innerHTML = 'Correct <span aria-hidden="true">✅</span>';
             score++;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
-            input.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+            setInputState(false);
             submit.className =
-                'w-full rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-base font-semibold text-white shadow-sm';
+                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-base font-semibold text-white shadow-sm';
             submit.innerHTML = 'Wrong <span aria-hidden="true">❌</span>';
             if (navigator.vibrate) {
                 navigator.vibrate(200);
@@ -893,10 +998,11 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        const input = document.getElementById('fillInput');
-        const btn = document.getElementById('fillSubmit');
-        if (!input || !btn) return;
+        if (e.key !== 'Enter' || e.shiftKey) return;
+        const btn = document.getElementById('frSubmit');
+        if (!btn || btn.disabled) return;
+        const ae = document.activeElement;
+        if (!ae || !ae.classList || !ae.classList.contains('fill-blank-input')) return;
         e.preventDefault();
         btn.click();
     });
