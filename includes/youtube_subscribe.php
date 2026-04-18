@@ -637,18 +637,19 @@ function trytest_youtube_promo_banner_html(array $settings): string
 }
 
 /**
- * Student dashboard YouTube gallery block.
+ * Valid dashboard video page URLs (must embed).
  *
  * @param array<string,mixed> $settings
+ * @return list<string>
  */
-function trytest_youtube_dashboard_videos_html(array $settings, bool $compactLayout = false): string
+function trytest_youtube_dashboard_valid_embed_urls(array $settings): array
 {
     if (empty($settings['dashboard_videos_enabled'])) {
-        return '';
+        return [];
     }
     $videos = $settings['dashboard_videos'] ?? [];
     if (!is_array($videos) || $videos === []) {
-        return '';
+        return [];
     }
     $valid = [];
     foreach ($videos as $u) {
@@ -661,12 +662,22 @@ function trytest_youtube_dashboard_videos_html(array $settings, bool $compactLay
         }
         $valid[] = $url;
     }
-    $valid = array_values(array_unique($valid));
+
+    return array_values(array_unique($valid));
+}
+
+/**
+ * Resolves the session-picked dashboard video URL (rotates every N video views).
+ * Call only when actually rendering the video block.
+ *
+ * @param list<string> $valid
+ */
+function trytest_youtube_dashboard_resolve_session_video_url(array $valid): string
+{
     if ($valid === []) {
         return '';
     }
-
-    /** Repick a random clip every N dashboard loads; new login = new session = fresh pick on first load. */
+    /** Repick a random clip every N dashboard video loads. */
     $rotateEvery = 5;
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -677,27 +688,71 @@ function trytest_youtube_dashboard_videos_html(array $settings, bool $compactLay
         $_SESSION['trytest_yt_dash_pick_url'] = $valid[random_int(0, count($valid) - 1)];
     }
     $url = trim((string) ($_SESSION['trytest_yt_dash_pick_url'] ?? ''));
-    if ($url === '' || trytest_youtube_embed_url($url) === '') {
+
+    return $url !== '' && trytest_youtube_embed_url($url) !== '' ? $url : '';
+}
+
+/**
+ * Inner card only (iframe + compact footer when requested).
+ */
+function trytest_youtube_dashboard_video_card_html(string $pageUrl, bool $compactLayout = false): string
+{
+    $embed = trytest_youtube_embed_url($pageUrl);
+    if ($embed === '') {
         return '';
     }
-    $embed = trytest_youtube_embed_url($url);
-    $cards = '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white">'
+    $footer = $compactLayout
+        ? '<div class="flex items-center justify-end border-t border-slate-100 px-2 py-1"><a class="text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:underline" href="'
+            . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">YouTube</a></div>'
+        : '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="'
+            . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>';
+
+    return '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white">'
         . '<div class="aspect-video w-full bg-slate-50">'
         . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Featured video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
         . '</div>'
-        . '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>'
+        . $footer
         . '</article>';
+}
 
+/**
+ * Full section wrapper + one video card.
+ */
+function trytest_youtube_dashboard_video_section_html(string $pageUrl, bool $compactLayout = false): string
+{
+    $cards = trytest_youtube_dashboard_video_card_html($pageUrl, $compactLayout);
+    if ($cards === '') {
+        return '';
+    }
     $sectionClass = $compactLayout
         ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none'
         : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4';
 
     return '<section class="' . htmlspecialchars($sectionClass, ENT_QUOTES, 'UTF-8') . '" aria-label="Dashboard videos">'
-        . '<div class="mb-2 flex items-center justify-between gap-2">'
+        . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
         . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Featured video</h2>'
         . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400">YouTube</span></div>'
         . '<div class="grid grid-cols-1 gap-2">' . $cards . '</div>'
         . '</section>';
+}
+
+/**
+ * Student dashboard YouTube gallery block.
+ *
+ * @param array<string,mixed> $settings
+ */
+function trytest_youtube_dashboard_videos_html(array $settings, bool $compactLayout = false): string
+{
+    $valid = trytest_youtube_dashboard_valid_embed_urls($settings);
+    if ($valid === []) {
+        return '';
+    }
+    $url = trytest_youtube_dashboard_resolve_session_video_url($valid);
+    if ($url === '') {
+        return '';
+    }
+
+    return trytest_youtube_dashboard_video_section_html($url, $compactLayout);
 }
 
 /**
