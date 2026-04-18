@@ -79,6 +79,23 @@ foreach ($users as $user) {
     $lastQuizTitle = trim((string) ($user['last_quiz_title'] ?? ''));
     $dept = trim((string) ($user['department'] ?? ''));
 
+    $searchBlob = implode(' ', [
+        (string) $user['index_number'],
+        (string) $user['level'],
+        $dept,
+        (string) $totalPoints,
+        (string) $attempts,
+        (string) $quizzesTaken,
+        (string) $avgPercent,
+        (string) $bestPercent,
+        $lastQuizTitle,
+        (string) ($user['last_login_at'] ?? ''),
+        (string) ($user['last_attempt_at'] ?? ''),
+    ]);
+    $searchHaystack = function_exists('mb_strtolower')
+        ? mb_strtolower($searchBlob, 'UTF-8')
+        : strtolower($searchBlob);
+
     $rowsPayload[] = [
         'id' => (int) $user['id'],
         'index_number' => (string) $user['index_number'],
@@ -94,6 +111,7 @@ foreach ($users as $user) {
         'last_total' => $lastTotal,
         'last_login_at' => (string) ($user['last_login_at'] ?? ''),
         'last_attempt_at' => (string) ($user['last_attempt_at'] ?? ''),
+        '_search' => $searchHaystack,
     ];
 }
 ?>
@@ -123,6 +141,18 @@ foreach ($users as $user) {
             <?php if ($rowsPayload === []): ?>
                 <p class="px-4 py-10 text-center text-sm text-slate-500">No students yet.</p>
             <?php else: ?>
+                <div class="border-b border-slate-100 px-4 py-3">
+                    <label for="studentSearch" class="sr-only">Search students</label>
+                    <input
+                        type="search"
+                        id="studentSearch"
+                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                        placeholder="Search index, level, program, points, dates…"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <p id="studentSearchMeta" class="mt-1.5 text-xs text-slate-500" aria-live="polite"></p>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[20rem] text-left text-sm">
                         <thead class="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -133,13 +163,19 @@ foreach ($users as $user) {
                                 <th class="px-4 py-3 text-right">Points</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody id="studentTbody" class="divide-y divide-slate-100">
                             <?php foreach ($rowsPayload as $row): ?>
+                                <?php
+                                $rowForJson = $row;
+                                unset($rowForJson['_search']);
+                                $searchAttr = (string) ($row['_search'] ?? '');
+                                ?>
                                 <tr
                                     class="cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50"
                                     tabindex="0"
                                     role="button"
-                                    data-user="<?php echo $h(base64_encode(json_encode($row, JSON_THROW_ON_ERROR))); ?>"
+                                    data-user="<?php echo $h(base64_encode(json_encode($rowForJson, JSON_THROW_ON_ERROR))); ?>"
+                                    data-search="<?php echo $h($searchAttr); ?>"
                                 >
                                     <td class="px-4 py-3 font-medium text-slate-900"><?php echo $h($row['index_number']); ?></td>
                                     <td class="hidden px-4 py-3 text-slate-600 sm:table-cell"><?php echo $h($row['level']); ?></td>
@@ -147,6 +183,9 @@ foreach ($users as $user) {
                                     <td class="px-4 py-3 text-right tabular-nums text-slate-700"><?php echo (int) $row['total_points']; ?></td>
                                 </tr>
                             <?php endforeach; ?>
+                            <tr id="studentSearchEmpty" class="hidden">
+                                <td colspan="4" class="px-4 py-8 text-center text-sm text-slate-500">No students match your search.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -192,6 +231,10 @@ foreach ($users as $user) {
     var subEl = document.getElementById('userModalSub');
     var dlEl = document.getElementById('userModalDl');
     var deleteId = document.getElementById('userModalDeleteId');
+    var searchInput = document.getElementById('studentSearch');
+    var studentTbody = document.getElementById('studentTbody');
+    var searchMeta = document.getElementById('studentSearchMeta');
+    var searchEmpty = document.getElementById('studentSearchEmpty');
     if (!modal || !backdrop || !closeBtn || !titleEl || !subEl || !dlEl || !deleteId) return;
 
     function esc(s) {
@@ -263,7 +306,36 @@ foreach ($users as $user) {
         } catch (e) {}
     }
 
-    document.querySelectorAll('tbody tr[data-user]').forEach(function (tr) {
+    function applyStudentSearch() {
+        if (!studentTbody || !searchMeta) return;
+        var q = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
+        var rows = studentTbody.querySelectorAll('tr[data-user]');
+        var n = 0;
+        for (var i = 0; i < rows.length; i++) {
+            var tr = rows[i];
+            var hay = tr.getAttribute('data-search') || '';
+            var ok = !q || hay.indexOf(q) !== -1;
+            tr.classList.toggle('hidden', !ok);
+            if (ok) n++;
+        }
+        if (searchEmpty) searchEmpty.classList.toggle('hidden', n !== 0);
+        if (rows.length === 0) {
+            searchMeta.textContent = '';
+        } else if (!q) {
+            searchMeta.textContent = 'Showing all ' + rows.length + ' student' + (rows.length === 1 ? '' : 's');
+        } else {
+            searchMeta.textContent = n === 0
+                ? 'No matches'
+                : ('Showing ' + n + ' of ' + rows.length);
+        }
+    }
+
+    if (searchInput && studentTbody) {
+        searchInput.addEventListener('input', applyStudentSearch);
+        applyStudentSearch();
+    }
+
+    document.querySelectorAll('#studentTbody tr[data-user]').forEach(function (tr) {
         tr.addEventListener('click', function () { onRowActivate(tr); });
         tr.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' || e.key === ' ') {
