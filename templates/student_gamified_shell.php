@@ -59,18 +59,10 @@ $navClass = static function (bool $on): string {
         ? 'flex flex-1 flex-col items-center gap-1 py-2 text-[#E50914]'
         : 'flex flex-1 flex-col items-center gap-1 py-2 text-slate-500 hover:text-slate-700';
 };
-
-$dashViewportLock = $tabHome && (!is_array($doneBlock ?? null) || empty(($doneBlock ?? [])['quiz_id'] ?? null)) && !$needsDepartmentSetup;
-$shellOuter = $dashViewportLock
-    ? 'h-[100dvh] max-h-[100dvh] flex flex-col overflow-x-hidden overflow-y-hidden bg-white text-slate-900'
-    : 'min-h-screen bg-white text-slate-900 pb-24 md:pb-8';
-$mainCls = $dashViewportLock
-    ? 'mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2 pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:px-4 md:pb-3'
-    : 'mx-auto w-full max-w-5xl px-4 pt-4 pb-24 md:pb-8';
 ?>
-<div class="<?php echo $h($shellOuter); ?>">
-    <header class="<?php echo $dashViewportLock ? 'shrink-0' : 'sticky top-0'; ?> z-30 border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4">
+<div class="min-h-screen bg-white pb-24 text-slate-900 md:pb-8">
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
             <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                 <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 [&>svg]:h-full [&>svg]:w-full sm:h-10 sm:w-10">
                     <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
@@ -109,7 +101,7 @@ $mainCls = $dashViewportLock
         </div>
     </header>
 
-    <main class="<?php echo $h($mainCls); ?>">
+    <main class="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 md:pb-8">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm" role="region" aria-labelledby="dept-setup-title">
                 <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950">Choose your program</h2>
@@ -183,7 +175,7 @@ $mainCls = $dashViewportLock
             }
             ?>
             <?php if ($enc !== null): ?>
-                <section id="trytest-dash-cheer" style="background-color: <?php echo $h($encSurface); ?>" class="mb-2 shrink-0 rounded-xl border border-slate-900/10 px-3 py-2 text-slate-900 shadow-none" aria-labelledby="dash-cheer-title">
+                <section id="trytest-dash-cheer" style="background-color: <?php echo $h($encSurface); ?>" class="mb-4 rounded-xl border border-slate-900/10 px-3 py-2.5 text-slate-900 shadow-none" aria-labelledby="dash-cheer-title">
                     <h2 id="dash-cheer-title" class="text-xs font-bold leading-tight"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
                     <p class="mt-0.5 text-[11px] leading-snug text-slate-800"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
                     <div class="mt-1.5 flex flex-wrap gap-1.5">
@@ -203,42 +195,43 @@ $mainCls = $dashViewportLock
                 }
                 .trytest-quiz-home-card--pulse { animation: trytest-quiz-card-breathe 2.8s ease-in-out infinite; }
             </style>
-            <section class="shrink-0 <?php echo $dashViewportLock ? '' : 'mb-6'; ?>" aria-label="Quick links">
-                <div class="grid w-full min-w-0 auto-rows-auto grid-cols-3 gap-1.5 sm:gap-2">
-                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-0 min-w-0 flex-row items-center justify-center gap-1 rounded-lg bg-[#D8EFEF] px-2 py-1.5 text-slate-900 ring-1 ring-slate-900/5 transition hover:opacity-95">
-                        <span class="shrink-0 text-sm leading-none" aria-hidden="true">🏆</span>
-                        <span class="min-w-0 truncate text-center text-[10px] font-bold leading-none">Leaderboard</span>
+            <section class="mb-6" aria-label="Quick links">
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-[100px] flex-col items-center justify-center rounded-2xl bg-[#D8EFEF] px-3 py-3 text-center text-slate-900 shadow-sm ring-1 ring-slate-900/5 transition active:opacity-90">
+                        <span class="text-2xl leading-none" aria-hidden="true">🏆</span>
+                        <span class="mt-2 text-sm font-bold leading-tight">Leaderboard</span>
+                        <span class="mt-0.5 text-xs text-slate-700">Level ranks</span>
                     </a>
-                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative flex min-h-0 min-w-0 flex-row items-center justify-center gap-1 rounded-lg bg-[#C5E3E5] px-2 py-1.5 text-slate-900 ring-1 ring-slate-900/5 transition hover:opacity-95">
+                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative flex min-h-[100px] flex-col items-center justify-center rounded-2xl bg-[#C5E3E5] px-3 py-3 text-center text-slate-900 shadow-sm ring-1 ring-slate-900/5 transition active:opacity-90">
                         <?php if ($downloadsBadgeCount > 0): ?>
-                            <span class="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                            <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
                         <?php endif; ?>
-                        <span class="shrink-0 text-sm leading-none" aria-hidden="true">📥</span>
-                        <span class="min-w-0 truncate text-center text-[10px] font-bold leading-none">Files</span>
+                        <span class="text-2xl leading-none" aria-hidden="true">📥</span>
+                        <span class="mt-2 text-sm font-bold leading-tight">Files</span>
+                        <span class="mt-0.5 text-xs text-slate-700">Downloads</span>
                     </a>
                     <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                         <?php
-                        $quizCardClass = 'relative flex min-h-0 min-w-0 flex-row items-center justify-center gap-1 rounded-lg px-2 py-1.5 ring-1 ring-slate-900/5 transition hover:opacity-95 bg-[#FCE8E9] text-slate-900 ';
+                        $quizCardClass = 'relative col-span-2 flex min-h-[100px] flex-col items-center justify-center rounded-2xl px-3 py-3 text-center shadow-sm ring-1 ring-slate-900/5 transition active:opacity-90 bg-[#FCE8E9] text-slate-900 ';
                         $quizCardClass .= $newQuizBadgeCount > 0 ? 'trytest-quiz-home-card--pulse' : '';
                         ?>
-                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>" title="<?php echo (int) $totalQuizCards; ?> quiz set(s)<?php echo $newQuizBadgeCount > 0 ? ' · ' . (int) $newQuizBadgeCount . ' new' : ''; ?>">
+                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>">
                             <?php if ($newQuizBadgeCount > 0): ?>
-                                <span class="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?></span>
+                                <span class="absolute right-3 top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
                             <?php endif; ?>
-                            <span class="shrink-0 text-sm leading-none" aria-hidden="true">📝</span>
-                            <span class="min-w-0 truncate text-center text-[10px] font-bold leading-none">Quizzes&nbsp;<?php echo (int) $totalQuizCards; ?></span>
+                            <span class="text-2xl leading-none" aria-hidden="true">📝</span>
+                            <span class="mt-2 text-sm font-bold leading-tight">Quizzes</span>
+                            <span class="mt-0.5 text-xs text-slate-700"><?php echo (int) $totalQuizCards; ?> available</span>
                         </a>
                     <?php else: ?>
-                        <div class="flex min-h-0 min-w-0 flex-row items-center justify-center gap-1 rounded-lg bg-[#EDE9D6] px-2 py-1.5 text-slate-600 ring-1 ring-slate-900/5">
-                            <span class="shrink-0 text-sm leading-none opacity-50" aria-hidden="true">📝</span>
-                            <span class="min-w-0 truncate text-center text-[10px] font-semibold leading-none">Quizzes soon</span>
+                        <div class="col-span-2 flex min-h-[88px] flex-col items-center justify-center rounded-2xl bg-[#EDE9D6] px-3 py-3 text-center text-slate-600 shadow-sm ring-1 ring-slate-900/5">
+                            <span class="text-2xl leading-none opacity-60" aria-hidden="true">📝</span>
+                            <span class="mt-2 text-sm font-semibold leading-tight">Quizzes</span>
+                            <span class="mt-0.5 text-xs">None for your program yet</span>
                         </div>
                     <?php endif; ?>
                 </div>
             </section>
-            <?php if ($dashViewportLock): ?>
-                <div class="min-h-0 min-w-0 flex-1" aria-hidden="true"></div>
-            <?php endif; ?>
         <?php endif; ?>
 
         <?php if ($tabRank): ?>
