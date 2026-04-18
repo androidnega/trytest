@@ -14,6 +14,38 @@ $jsonTextContinue = '';
 $selectedQuizId = '';
 
 /**
+ * Turn one decoded JSON value (object or list) into a flat list of question rows.
+ *
+ * @param array<string, mixed> $decoded
+ * @return list<array<string, mixed>>
+ */
+function trytest_json_value_to_question_rows(array $decoded): array
+{
+    if (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        return array_values($decoded['questions']);
+    }
+    $bucketOrder = ['mcq_questions', 'fill_in_questions', 'theory_questions', 'fill_questions'];
+    $merged = [];
+    foreach ($bucketOrder as $bk) {
+        if (!empty($decoded[$bk]) && is_array($decoded[$bk])) {
+            foreach ($decoded[$bk] as $row) {
+                if (is_array($row)) {
+                    $merged[] = $row;
+                }
+            }
+        }
+    }
+    if ($merged !== []) {
+        return $merged;
+    }
+    if (array_keys($decoded) !== range(0, count($decoded) - 1)) {
+        return [$decoded];
+    }
+
+    return $decoded;
+}
+
+/**
  * @return list<array<string, mixed>>|null
  */
 function trytest_decode_json_block(string $raw): ?array
@@ -46,30 +78,29 @@ function trytest_decode_json_block(string $raw): ?array
 
     $decoded = json_decode($text, true);
     if (is_array($decoded)) {
-        // { "questions": [ {...}, ... ] } from AI tools
-        if (isset($decoded['questions']) && is_array($decoded['questions'])) {
-            return array_values($decoded['questions']);
-        }
-        // Gemini-style buckets: mcq_questions, fill_in_questions, theory_questions
-        $bucketOrder = ['mcq_questions', 'fill_in_questions', 'theory_questions', 'fill_questions'];
-        $merged = [];
-        foreach ($bucketOrder as $bk) {
-            if (!empty($decoded[$bk]) && is_array($decoded[$bk])) {
-                foreach ($decoded[$bk] as $row) {
-                    if (is_array($row)) {
-                        $merged[] = $row;
-                    }
+        return trytest_json_value_to_question_rows($decoded);
+    }
+
+    // Multiple top-level objects: { "questions":[...] }{ "questions":[...] } (invalid single JSON, common from Gemini)
+    if (str_starts_with($text, '{')) {
+        $chunks = preg_split('/(?<=\})\s*(?=\{)/', $text);
+        if (is_array($chunks) && count($chunks) > 1) {
+            $merged = [];
+            foreach ($chunks as $chunk) {
+                $chunk = trim((string) $chunk);
+                if ($chunk === '') {
+                    continue;
                 }
+                $piece = json_decode($chunk, true);
+                if (!is_array($piece)) {
+                    continue;
+                }
+                $merged = array_merge($merged, trytest_json_value_to_question_rows($piece));
+            }
+            if ($merged !== []) {
+                return $merged;
             }
         }
-        if ($merged !== []) {
-            return $merged;
-        }
-        // If one object was provided instead of an array, normalize to list.
-        if (array_keys($decoded) !== range(0, count($decoded) - 1)) {
-            return [$decoded];
-        }
-        return $decoded;
     }
 
     // Accept object fragments separated by commas/newlines.
@@ -109,10 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $part1 = trytest_decode_json_block($jsonText);
                 $part2 = trytest_decode_json_block($jsonTextContinue);
-                if ($part1 === null || $part2 === null) {
-                    $error = 'Invalid JSON format. Ensure each part is valid JSON array/object.';
+                if ($part1 === null) {
+                    $error = 'Invalid JSON in Part 1. Use a single array, one object with "questions", bucket keys (mcq_questions, …), or multiple objects like {...}{...} pasted together.';
+                } elseif ($jsonTextContinue !== '' && $part2 === null) {
+                    $error = 'Invalid JSON in Part 2 (continuation).';
                 } else {
-                    $data = array_merge($part1, $part2);
+                    $data = array_merge($part1, $part2 ?? []);
                     $stmt = $db->prepare(
                         'INSERT INTO questions (quiz_id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric, status)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
