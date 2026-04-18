@@ -180,6 +180,18 @@ if (!$hasQuestionStatus) {
     $db->exec('ALTER TABLE questions ADD COLUMN status TEXT NOT NULL DEFAULT \'approved\'');
 }
 
+$questionColsRubric = $db->query('PRAGMA table_info(questions)')->fetchAll();
+$hasTheoryRubric = false;
+foreach ($questionColsRubric as $column) {
+    if (($column['name'] ?? '') === 'theory_rubric') {
+        $hasTheoryRubric = true;
+        break;
+    }
+}
+if (!$hasTheoryRubric) {
+    $db->exec('ALTER TABLE questions ADD COLUMN theory_rubric TEXT');
+}
+
 $quizColsSchedule = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
 $hasQuizStartsAt = false;
 $hasQuizEndsAt = false;

@@ -17,6 +17,7 @@ if ($quizId < 1) {
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/question_play_type.php';
+require_once __DIR__ . '/includes/theory_rubric.php';
 
 $userLevel = (string) ($_SESSION['user_level'] ?? '');
 $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
@@ -72,7 +73,7 @@ if ($questionId < 1) {
 }
 
 $stmt = $db->prepare(
-    'SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer
+    'SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric
      FROM questions WHERE id = ? AND quiz_id = ? AND status = ?'
 );
 $stmt->execute([$questionId, $quizId, 'approved']);
@@ -83,6 +84,11 @@ if ($row === false) {
     echo json_encode(['ok' => false, 'error' => 'question_not_found'], JSON_THROW_ON_ERROR);
     exit;
 }
+
+$rubric = trytest_theory_rubric_decode(isset($row['theory_rubric']) ? (string) $row['theory_rubric'] : null);
+$row['theory_keywords'] = $rubric['keywords'];
+$row['theory_accept'] = $rubric['accept'];
+unset($row['theory_rubric']);
 
 $row['play_type'] = trytest_question_play_type($row);
 

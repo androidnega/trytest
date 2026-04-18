@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/theory_rubric.php';
 
 $error = '';
 $message = '';
@@ -98,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $data = array_merge($part1, $part2);
                     $stmt = $db->prepare(
-                        'INSERT INTO questions (quiz_id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, status)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                        'INSERT INTO questions (quiz_id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric, status)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                     );
 
                     $imported = 0;
@@ -112,12 +113,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue;
                             }
                             $question = trim((string) ($item['question'] ?? ''));
-                            $options = $item['options'] ?? null;
-                            $answer = trim((string) ($item['answer'] ?? ''));
-
-                            if ($question === '' || $answer === '') {
+                            if ($question === '') {
                                 continue;
                             }
+                            $options = $item['options'] ?? null;
+                            $answerRaw = $item['answer'] ?? null;
+                            $answerField = '';
+                            $extraAcceptFromAnswer = [];
+                            if (is_array($answerRaw)) {
+                                $parts = array_values(
+                                    array_filter(
+                                        array_map(static fn ($x) => trim((string) $x), $answerRaw),
+                                        static fn ($x) => $x !== ''
+                                    )
+                                );
+                                $answerField = $parts[0] ?? '';
+                                $extraAcceptFromAnswer = array_slice($parts, 1);
+                            } else {
+                                $answerField = trim((string) $answerRaw);
+                            }
+                            $kwIn = $item['keywords'] ?? [];
+                            if (!is_array($kwIn)) {
+                                $kwIn = [];
+                            }
+                            $accIn = $item['accept'] ?? $item['acceptable_answers'] ?? [];
+                            if (!is_array($accIn)) {
+                                $accIn = [];
+                            }
+                            $accIn = array_merge($accIn, $extraAcceptFromAnswer);
 
                             $typeRaw = strtolower(trim((string) ($item['type'] ?? '')));
                             $type = $typeRaw;
@@ -145,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             if ($type === 'mcq') {
-                                if (!is_array($options) || count($options) < 4) {
+                                if ($answerField === '' || !is_array($options) || count($options) < 4) {
                                     continue;
                                 }
                                 $optA = trim((string) ($options[0] ?? ''));
@@ -156,24 +179,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'mcq', $question, $optA, $optB, $optC, $optD, $answer, 'pending']);
+                                $stmt->execute([$quizId, 'mcq', $question, $optA, $optB, $optC, $optD, $answerField, null, 'pending']);
                                 $imported++;
                                 continue;
                             }
 
                             if ($type === 'fill') {
-                                if (strpos($question, '____') === false) {
+                                if ($answerField === '' || strpos($question, '____') === false) {
                                     continue;
                                 }
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'fill', $question, '', '', '', '', $answer, 'pending']);
+                                $stmt->execute([$quizId, 'fill', $question, '', '', '', '', $answerField, null, 'pending']);
                                 $imported++;
                                 continue;
                             }
 
                             if ($type === 'theory') {
+                                if ($answerField === '' && $kwIn === [] && $accIn === []) {
+                                    continue;
+                                }
+                                $answerFromKeywordsOnly = false;
+                                if ($answerField === '' && $accIn !== []) {
+                                    $answerField = trim((string) ($accIn[0] ?? ''));
+                                    $accIn = array_values(
+                                        array_filter(
+                                            array_map('trim', array_slice($accIn, 1)),
+                                            static fn ($x) => $x !== ''
+                                        )
+                                    );
+                                }
+                                if ($answerField === '' && $kwIn !== []) {
+                                    $joined = implode(', ', array_map('trim', $kwIn));
+                                    $answerField = strlen($joined) > 220 ? substr($joined, 0, 217) . '...' : $joined;
+                                    $answerFromKeywordsOnly = true;
+                                }
+                                $acceptForRubric = $accIn;
+                                if ($answerField !== '' && !$answerFromKeywordsOnly) {
+                                    array_unshift($acceptForRubric, $answerField);
+                                }
+                                $rubricJson = trytest_theory_rubric_encode(
+                                    array_map(static fn ($x) => trim((string) $x), $kwIn),
+                                    array_map(static fn ($x) => trim((string) $x), $acceptForRubric)
+                                );
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'theory', $question, '', '', '', '', $answer, 'pending']);
+                                $stmt->execute([$quizId, 'theory', $question, '', '', '', '', $answerField, $rubricJson, 'pending']);
                                 $imported++;
                             }
                         }
@@ -220,7 +269,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
                 <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs and import in one clean step.</p>
-                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items, or <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>. Each item needs <code class="rounded bg-slate-100 px-1">question</code> and <code class="rounded bg-slate-100 px-1">answer</code>. Use <code class="rounded bg-slate-100 px-1">type</code> as <code class="rounded bg-slate-100 px-1">mcq</code> (with four <code class="rounded bg-slate-100 px-1">options</code>), <code class="rounded bg-slate-100 px-1">fill</code> (stem must contain <code class="rounded bg-slate-100 px-1">____</code>), or <code class="rounded bg-slate-100 px-1">theory</code>. If <code class="rounded bg-slate-100 px-1">type</code> is omitted, it is inferred from the stem and options.</p>
+                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items, or <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>. Use <code class="rounded bg-slate-100 px-1">type</code> <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code> (<code class="rounded bg-slate-100 px-1">____</code> in stem + <code class="rounded bg-slate-100 px-1">answer</code>), or <code class="rounded bg-slate-100 px-1">theory</code>. For theory you may add <code class="rounded bg-slate-100 px-1">keywords</code> (array) and/or <code class="rounded bg-slate-100 px-1">accept</code> (alternate phrases); <code class="rounded bg-slate-100 px-1">answer</code> can be a string or array (first = canonical). Marking: substring match on any accept → correct; else ≥50% of keywords found in the student text → correct; some keywords → partially correct.</p>
             </div>
             <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>

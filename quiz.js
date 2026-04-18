@@ -790,6 +790,61 @@
         return true;
     }
 
+    const THEORY_PASS_PCT = 50;
+
+    function theoryAcceptHit(normUser, acceptList) {
+        for (let i = 0; i < acceptList.length; i++) {
+            const p = normalize(acceptList[i]);
+            if (!p) continue;
+            if (normUser.indexOf(p) !== -1) return true;
+            if (normUser.length > 0 && normUser.length <= p.length && p.indexOf(normUser) !== -1) return true;
+        }
+        return false;
+    }
+
+    function theoryKeywordScore(normUser, keywords) {
+        const matched = [];
+        const missing = [];
+        for (let i = 0; i < keywords.length; i++) {
+            const k = normalize(keywords[i]);
+            if (!k) continue;
+            if (normUser.indexOf(k) !== -1) matched.push(String(keywords[i]));
+            else missing.push(String(keywords[i]));
+        }
+        const total = keywords.length;
+        const pct = total === 0 ? 0 : (matched.length / total) * 100;
+        return { matched, missing, pct, total };
+    }
+
+    /**
+     * @returns {{ verdict: 'correct'|'partial'|'wrong', pct: number, missing: string[], acceptHit: boolean }}
+     */
+    function evaluateTheory(userText, q) {
+        const normUser = normalize(userText);
+        const kw = Array.isArray(q.theory_keywords) ? q.theory_keywords : [];
+        const acc = Array.isArray(q.theory_accept) ? q.theory_accept : [];
+
+        if (kw.length === 0 && acc.length === 0) {
+            const ex = isCorrectAnswer(userText, q.correct_answer);
+            return { verdict: ex ? 'correct' : 'wrong', pct: ex ? 100 : 0, missing: [], acceptHit: ex };
+        }
+        if (theoryAcceptHit(normUser, acc)) {
+            return { verdict: 'correct', pct: 100, missing: [], acceptHit: true };
+        }
+        if (kw.length > 0) {
+            const sc = theoryKeywordScore(normUser, kw);
+            if (sc.pct >= THEORY_PASS_PCT) {
+                return { verdict: 'correct', pct: sc.pct, missing: sc.missing, acceptHit: false };
+            }
+            if (sc.matched.length > 0) {
+                return { verdict: 'partial', pct: sc.pct, missing: sc.missing, acceptHit: false };
+            }
+            return { verdict: 'wrong', pct: 0, missing: sc.missing, acceptHit: false };
+        }
+        const ex2 = isCorrectAnswer(userText, q.correct_answer);
+        return { verdict: ex2 ? 'correct' : 'wrong', pct: ex2 ? 100 : 0, missing: [], acceptHit: ex2 };
+    }
+
     function disableAllOptions() {
         document.querySelectorAll('.option').forEach(function (b) {
             b.disabled = true;
@@ -863,29 +918,63 @@
         const userParts = inputs.map(function (inp) {
             return inp.value;
         });
-        const ok = isFillTheoryCorrect(userParts, q.correct_answer, q.question);
+        const isTheory = !!document.getElementById('theoryInput');
+        let verdict = 'wrong';
+        let feedbackLine = '';
 
-        function setInputState(good) {
+        function setFreeInputState(v) {
             inputs.forEach(function (inp) {
-                inp.classList.remove('ring-2', 'ring-red-500', 'border-red-500', 'ring-emerald-500', 'border-emerald-500');
-                if (good) {
+                inp.classList.remove(
+                    'ring-2',
+                    'ring-red-500',
+                    'border-red-500',
+                    'ring-emerald-500',
+                    'border-emerald-500',
+                    'ring-amber-500',
+                    'border-amber-500'
+                );
+                if (v === 'correct') {
                     inp.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
+                } else if (v === 'partial') {
+                    inp.classList.add('ring-2', 'ring-amber-500', 'border-amber-500');
                 } else {
                     inp.classList.add('ring-2', 'ring-red-500', 'border-red-500');
                 }
             });
         }
 
-        if (ok) {
-            setInputState(true);
+        if (isTheory) {
+            const ev = evaluateTheory(userParts[0] || '', q);
+            verdict = ev.verdict;
+            if (verdict === 'partial' && ev.missing && ev.missing.length) {
+                feedbackLine =
+                    '<p class="mt-2 text-sm text-amber-900/90">Missing key ideas: ' +
+                    escapeHtml(ev.missing.slice(0, 4).join(', ')) +
+                    '.</p>';
+            } else if (verdict === 'partial') {
+                feedbackLine =
+                    '<p class="mt-2 text-sm text-amber-900/90">Close — add a bit more detail.</p>';
+            }
+        } else {
+            const okFill = isFillTheoryCorrect(userParts, q.correct_answer, q.question);
+            verdict = okFill ? 'correct' : 'wrong';
+        }
+
+        if (verdict === 'correct') {
+            setFreeInputState('correct');
             submit.className =
                 'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-base font-semibold text-white success-pop shadow-sm';
             submit.innerHTML = 'Correct <span aria-hidden="true">✅</span>';
             score++;
             setScoreDisplay();
             triggerCardCorrectFeedback();
+        } else if (verdict === 'partial') {
+            setFreeInputState('partial');
+            submit.className =
+                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-amber-600 bg-amber-500 p-4 text-base font-semibold text-white shadow-sm';
+            submit.innerHTML = 'Partially correct <span aria-hidden="true">◆</span>';
         } else {
-            setInputState(false);
+            setFreeInputState('wrong');
             submit.className =
                 'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-base font-semibold text-white shadow-sm';
             submit.innerHTML = 'Wrong <span aria-hidden="true">❌</span>';
@@ -896,6 +985,9 @@
         }
 
         renderNextButton();
+        if (feedbackLine) {
+            submit.insertAdjacentHTML('afterend', feedbackLine);
+        }
     }
 
     function advance() {
