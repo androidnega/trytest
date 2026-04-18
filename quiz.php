@@ -46,11 +46,11 @@ $priorAttemptStmt = $db->prepare('SELECT 1 FROM scores WHERE quiz_id = ? AND use
 $priorAttemptStmt->execute([$quizId, (int) ($_SESSION['user_id'] ?? 0)]);
 $hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
 
-require_once __DIR__ . '/includes/exam_quotes_unique.php';
+require_once __DIR__ . '/includes/exam_short_messages.php';
 $studentIdForIntro = (int) ($_SESSION['user_id'] ?? 0);
-$examWelcomeQuote = trytest_exam_quote_for_quiz($studentIdForIntro, $quizId);
+$examWelcomeQuote = trytest_exam_short_message_for_quiz($studentIdForIntro, $quizId);
 $examWelcomeImageUrl = trytest_url('KofiEmma.jpg');
-$quizIntroSeconds = 5;
+$quizIntroSeconds = 10;
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
 $ytSettings = trytest_youtube_settings();
@@ -178,12 +178,15 @@ if ($durationSec > 0) {
     <style>
         :root { color-scheme: light; }
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
-        .trytest-exam-welcome-img {
-            max-height: min(52vh, 280px);
+        .trytest-quiz-intro-thumb {
+            width: 7rem;
+            height: 7rem;
+            object-fit: cover;
         }
         @media (min-width: 640px) {
-            .trytest-exam-welcome-img {
-                max-height: 300px;
+            .trytest-quiz-intro-thumb {
+                width: 8rem;
+                height: 8rem;
             }
         }
         @keyframes success-pop {
@@ -294,6 +297,11 @@ if ($durationSec > 0) {
 </head>
 <body class="min-h-screen bg-white text-slate-900 pb-6">
 
+<div id="quizIntroOverlay" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quizIntroMsg">
+    <div id="quizIntroMount" class="w-full max-w-lg"></div>
+</div>
+
+<div id="quizAppShell" class="min-h-screen">
 <div class="sticky top-0 z-30 border-b border-slate-200 bg-white backdrop-blur">
     <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 hover:bg-slate-100" aria-label="Back to dashboard">←</a>
@@ -337,6 +345,7 @@ if ($durationSec > 0) {
         <div id="questionBox"></div>
     </div>
 </main>
+</div>
 
 <script>
 window.QUIZ_CONFIG = {

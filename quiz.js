@@ -402,90 +402,95 @@
         }
     }
 
+    function hideQuizIntroOverlay() {
+        var ov = document.getElementById('quizIntroOverlay');
+        if (ov) {
+            ov.style.display = 'none';
+            ov.setAttribute('aria-hidden', 'true');
+        }
+        if (document.body) {
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
     function beginQuizFromIntro() {
         if (quizIntroFinished) {
             return;
         }
+        var contBtn = document.getElementById('quizIntroContinue');
+        if (contBtn && contBtn.disabled) {
+            return;
+        }
         quizIntroFinished = true;
         clearQuizIntroInterval();
+        hideQuizIntroOverlay();
         start();
     }
 
     function renderQuizIntro() {
-        if (!questionBox) {
-            beginQuizFromIntro();
+        var mount = document.getElementById('quizIntroMount');
+        if (!mount) {
+            hideQuizIntroOverlay();
+            start();
             return;
         }
-        setStatus('Welcome', 'ok');
-        if (progressLabel) {
-            progressLabel.textContent = 'Before you begin';
+        if (document.body) {
+            document.body.classList.add('overflow-hidden');
         }
-        if (progressBar) {
-            progressBar.style.width = '0%';
-        }
-        if (totalValue) {
-            totalValue.textContent = '—';
-        }
-        if (scoreValue) {
-            scoreValue.textContent = '0';
+        var ov = document.getElementById('quizIntroOverlay');
+        if (ov) {
+            ov.style.display = '';
+            ov.removeAttribute('aria-hidden');
         }
         var img = examWelcomeImage;
         var quote =
-            examWelcomeQuote.trim() !== ''
-                ? examWelcomeQuote
-                : 'Read carefully, trust your preparation, and answer with clear steps.';
-        questionBox.innerHTML =
-            '<div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-md sm:p-6">' +
-            '<div class="flex flex-col gap-5 sm:flex-row sm:items-stretch sm:gap-6">' +
-            '<div class="mx-auto w-full max-w-[280px] shrink-0 sm:mx-0 sm:max-w-[42%] sm:w-[260px]">' +
-            '<div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner">' +
+            examWelcomeQuote.trim() !== '' ? examWelcomeQuote : 'Good luck on this quiz.';
+        mount.innerHTML =
+            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-3 shadow-md sm:p-4">' +
+            '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
             '<img src="' +
             escapeAttr(img) +
-            '" alt="" class="trytest-exam-welcome-img block w-full object-cover object-[center_20%]" width="520" height="650" loading="eager" />' +
-            '<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/50 via-slate-900/10 to-transparent pt-14 pb-1 sm:pt-16"></div>' +
-            '<div class="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3">' +
-            '<div class="rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-center shadow-md backdrop-blur-sm">' +
-            '<p class="text-[9px] font-extrabold uppercase tracking-widest text-[#2C6A7D]">You belong here</p>' +
-            '<p class="mt-0.5 text-[11px] font-bold leading-snug text-slate-900">Breathe in focus. Breathe out doubt.</p>' +
-            '</div></div></div></div>' +
-            '<div class="flex min-h-0 flex-1 flex-col justify-center rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">' +
-            '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Exam floor</p>' +
-            '<p class="mt-3 text-[15px] font-medium leading-relaxed text-slate-900 sm:text-[17px]">' +
+            '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100 shadow-sm" width="128" height="128" loading="eager" />' +
+            '<p id="quizIntroMsg" class="min-w-0 flex-1 text-left text-sm font-semibold leading-snug text-slate-800 sm:text-base">' +
             escapeHtml(quote) +
             '</p>' +
-            '<p class="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">The timer begins when the <span class="font-semibold text-slate-800">first question</span> loads.</p>' +
             '</div></div>' +
-            '<div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">' +
-            '<p id="quizIntroAuto" class="text-center text-sm font-semibold tabular-nums text-slate-600 sm:text-left"></p>' +
-            '<button type="button" id="quizIntroContinue" class="w-full rounded-2xl border-2 border-[#2C6A7D] bg-white py-3.5 text-sm font-bold text-[#2C6A7D] shadow-sm transition hover:bg-slate-50 active:scale-[0.99] sm:order-first sm:w-auto sm:min-w-[148px]">Continue</button>' +
-            '</div></div>';
-        var autoEl = document.getElementById('quizIntroAuto');
+            '<div class="mx-auto mt-6 w-full max-w-md text-center">' +
+            '<p id="quizIntroWait" class="mb-3 min-h-[1.25rem] text-xs font-medium tabular-nums text-slate-500 sm:text-sm"></p>' +
+            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5">' +
+            'Continue' +
+            '</button></div>';
+
+        var waitEl = document.getElementById('quizIntroWait');
         var contBtn = document.getElementById('quizIntroContinue');
-        var left = quizIntroSeconds;
-        if (autoEl) {
-            autoEl.textContent = 'Starting in ' + left + 's…';
+        var remain = quizIntroSeconds;
+
+        function refreshWait() {
+            if (waitEl) {
+                waitEl.textContent = remain > 0 ? 'You can continue in ' + remain + 's' : '';
+            }
         }
+        refreshWait();
+
         quizIntroIntervalId = setInterval(function () {
-            left -= 1;
-            if (left <= 0) {
+            remain -= 1;
+            if (remain <= 0) {
                 clearQuizIntroInterval();
-                if (autoEl) {
-                    autoEl.textContent = 'Starting…';
+                refreshWait();
+                if (contBtn) {
+                    contBtn.disabled = false;
+                    contBtn.className =
+                        'w-full cursor-pointer rounded-2xl bg-[#E50914] py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5';
                 }
-                beginQuizFromIntro();
                 return;
             }
-            if (autoEl) {
-                autoEl.textContent = 'Starting in ' + left + 's…';
-            }
+            refreshWait();
         }, 1000);
+
         if (contBtn) {
             contBtn.addEventListener('click', function () {
-                if (quizIntroFinished) {
+                if (quizIntroFinished || contBtn.disabled) {
                     return;
-                }
-                if (autoEl) {
-                    autoEl.textContent = 'Starting…';
                 }
                 beginQuizFromIntro();
             });
