@@ -94,6 +94,11 @@
             .map(function (x) { return parseInt(String(x), 10); })
             .filter(function (x) { return !isNaN(x) && x > 0; });
         quizClockStarted = false;
+        timerPaused = false;
+        if (timerHandle) {
+            clearInterval(timerHandle);
+            timerHandle = null;
+        }
         setScoreDisplay();
         if (totalValue) totalValue.textContent = String(orderedIds.length);
         setFrozenTimerLabel();
@@ -800,11 +805,10 @@
 
     function loadQuestionIds() {
         return fetchJson(apiUrl({ quiz_id: String(quizId) })).then(function (data) {
-            attachTimerSyncFromResponse(data);
             if (!data.ok || !Array.isArray(data.ids)) {
                 throw new Error('bad_response');
             }
-            return data.ids;
+            return data;
         });
     }
 
@@ -1375,7 +1379,8 @@
 
         resetPriorAttemptIfNeeded()
             .then(loadQuestionIds)
-            .then(function (ids) {
+            .then(function (boot) {
+                var ids = boot.ids;
                 if (!ids.length) {
                     questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">No questions in this quiz yet.</p>';
                     progressLabel.textContent = '';
@@ -1390,12 +1395,14 @@
                 } catch (e) {}
                 var saved = parseResumePayload(raw);
                 if (saved && applyResume(saved, ids)) {
+                    attachTimerSyncFromResponse(boot);
                     progressLabel.textContent = 'Resuming where you left off…';
                     setStatus('In Progress', 'ok');
                     startDurationSyncPolling();
                     showQuestionAtCurrentIndex();
                     return;
                 }
+                attachTimerSyncFromResponse(boot);
                 remainingSeconds = durationCapSeconds;
                 setFrozenTimerLabel();
                 orderedIds = shuffleInPlace(ids.slice());
@@ -1427,10 +1434,21 @@
 
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') {
+            pauseTimer();
             saveQuizResume();
+            return;
+        }
+        if (document.visibilityState === 'visible') {
+            resumeTimer();
         }
     });
-    window.addEventListener('pagehide', saveQuizResume);
+    window.addEventListener('pagehide', function () {
+        pauseTimer();
+        saveQuizResume();
+    });
+    window.addEventListener('beforeunload', function () {
+        saveQuizResume();
+    });
 
     if (showQuizIntro) {
         renderQuizIntro();
