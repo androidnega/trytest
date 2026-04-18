@@ -204,11 +204,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     <div class="mt-4"><?php echo $quizDoneYoutubeHtml; ?></div>
                 <?php endif; ?>
                 <?php if (empty($doneBlock['can_retry'])): ?>
-                    <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts.</p>
+                    <p class="mt-3 text-center text-xs text-slate-500">This quiz is no longer accepting new attempts. Your last score is still listed under <a href="<?php echo $h(rtrim($dashboardUrl, '/') . '?tab=results'); ?>" class="font-semibold text-[#2C6A7D] underline">My results</a>.</p>
                 <?php else: ?>
-                    <p class="mt-3 text-center text-xs text-slate-500">To retake later, open <strong>Quizzes</strong> from the home screen. Starting again resets your previous points for this quiz.</p>
+                    <p class="mt-3 text-center text-xs text-slate-500">This quiz is removed from your <strong>Quizzes</strong> list now that you have a score. Open <a href="<?php echo $h(rtrim($dashboardUrl, '/') . '?tab=results'); ?>" class="font-semibold text-[#2C6A7D] underline">My results</a> anytime for <strong>Try again</strong> (that clears your score first).</p>
                 <?php endif; ?>
-                <a href="<?php echo $h($dashboardUrl); ?>" class="mt-3 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
+                <a href="<?php echo $h(rtrim($dashboardUrl, '/') . '?tab=results'); ?>" class="mt-3 block w-full rounded-xl border-2 border-[#2C6A7D] bg-white py-3 text-center text-sm font-bold text-[#2C6A7D] hover:bg-slate-50">My results</a>
+                <a href="<?php echo $h($dashboardUrl); ?>" class="mt-2 block w-full rounded-xl bg-[#E50914] py-3 text-center text-sm font-bold text-white">Back to home</a>
             </section>
 
             <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-4">

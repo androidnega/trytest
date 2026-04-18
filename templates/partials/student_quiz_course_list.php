@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /** @var callable $h */
 /** @var string $quizUrlBase */
+/** @var string $dashboardUrl */
 /** @var int $userId */
 /** @var list<array<string,mixed>> $coursesWithQuizzes */
 
@@ -66,7 +67,11 @@ declare(strict_types=1);
                     </article>
                 <?php endforeach; ?>
                 <?php if (empty($course['quizzes'])): ?>
-                    <p class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-400"><?php echo $h((string) ($course['code'] ?? '')); ?> has no quizzes yet.</p>
+                    <p class="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-500">
+                        <?php echo $h((string) ($course['code'] ?? '')); ?> — nothing left to start here.
+                        <a href="<?php echo $h(rtrim($dashboardUrl, '/') . '?tab=results'); ?>" class="font-semibold text-[#2C6A7D] underline">My results</a>
+                        has finished quizzes and <strong>Try again</strong>.
+                    </p>
                 <?php endif; ?>
             <?php endforeach; ?>
         </div>

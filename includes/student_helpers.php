@@ -139,7 +139,10 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
                 continue;
             }
             $qid = (int) ($qz['id'] ?? 0);
-            $qz['user_has_attempt'] = $qid > 0 && !empty($attemptedQuizIds[$qid]);
+            if ($qid > 0 && $userId > 0 && !empty($attemptedQuizIds[$qid])) {
+                continue;
+            }
+            $qz['user_has_attempt'] = false;
             $quizzes[] = $qz;
         }
         $coursesWithQuizzes[] = array_merge($course, ['quizzes' => $quizzes]);
@@ -318,10 +321,16 @@ function trytest_student_quiz_results_rows(PDO $db, int $userId, string $userLev
         'SELECT s.quiz_id AS quiz_id, q.title AS title, s.score AS score, s.total AS total, s.created_at AS created_at
          FROM scores s
          INNER JOIN quizzes q ON q.id = s.quiz_id
+         INNER JOIN (
+             SELECT quiz_id, MAX(id) AS latest_score_id
+             FROM scores
+             WHERE user_id = ?
+             GROUP BY quiz_id
+         ) z ON z.latest_score_id = s.id
          WHERE s.user_id = ?
          ORDER BY datetime(s.created_at) DESC, s.id DESC'
     );
-    $stmt->execute([$userId]);
+    $stmt->execute([$userId, $userId]);
     $out = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $qid = (int) ($r['quiz_id'] ?? 0);
