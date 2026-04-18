@@ -436,7 +436,12 @@ if ($isUserLoggedIn) {
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
-    $dashboardFeaturedHtml = trytest_student_dashboard_featured_html($ytSettings, !empty($studentDashboardFixedViewport));
+    $showHomeFeatured = $activeTab === 'home' && (!is_array($doneBlock) || empty($doneBlock['quiz_id']));
+    $dashboardFeaturedHtml = trytest_student_dashboard_featured_html(
+        $ytSettings,
+        !empty($studentDashboardFixedViewport),
+        $showHomeFeatured
+    );
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">

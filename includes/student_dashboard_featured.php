@@ -14,7 +14,8 @@ function trytest_student_dashboard_quote_image_url(): string
 }
 
 /**
- * Alternates featured "video" vs "quote" on each new login session when dashboard clips exist.
+ * Picks "video" vs "quote" when dashboard clips exist: random on first home view, then often
+ * refreshes on each return to home (so refresh / other tabs / back to home feel dynamic).
  * Without clips, always "quote".
  */
 function trytest_student_dashboard_featured_kind_resolve(bool $videoAvailable): string
@@ -25,31 +26,20 @@ function trytest_student_dashboard_featured_kind_resolve(bool $videoAvailable): 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    if (isset($_SESSION['trytest_dash_feat_kind'])) {
-        $k = (string) $_SESSION['trytest_dash_feat_kind'];
+    $raw = $_SESSION['trytest_dash_feat_kind'] ?? null;
+    $current = is_string($raw) && ($raw === 'video' || $raw === 'quote') ? $raw : null;
+    // ~53% chance per home visit to repick video vs quote (two independent rolls).
+    $reroll = $current === null
+        || random_int(1, 100) <= 40
+        || random_int(1, 100) <= 22;
+    if ($reroll) {
+        $kind = random_int(0, 1) === 0 ? 'video' : 'quote';
+        $_SESSION['trytest_dash_feat_kind'] = $kind;
 
-        return ($k === 'video' || $k === 'quote') ? $k : 'quote';
+        return $kind;
     }
-    $prev = isset($_COOKIE['trytest_dash_feat']) ? (string) $_COOKIE['trytest_dash_feat'] : '';
-    if ($prev !== 'video' && $prev !== 'quote') {
-        $kind = 'quote';
-    } else {
-        $kind = $prev === 'video' ? 'quote' : 'video';
-    }
-    $_SESSION['trytest_dash_feat_kind'] = $kind;
-    $base = trytest_base_path();
-    $cookiePath = $base === '' ? '/' : $base;
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-    setcookie('trytest_dash_feat', $kind, [
-        'expires' => time() + 365 * 24 * 3600,
-        'path' => $cookiePath,
-        'secure' => $secure,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
 
-    return $kind;
+    return $current;
 }
 
 function trytest_student_dashboard_featured_quote_section_html(bool $compactLayout, string $twoLineQuote): string
@@ -93,7 +83,7 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
         . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
         . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Words for you</h2>'
         . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400">Trytest</span></div>'
-        . '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">'
+        . '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80">'
         . '<div class="flex flex-row items-center ' . htmlspecialchars($gap, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($pad, ENT_QUOTES, 'UTF-8') . '">'
         . $imgBlock
         . '<div class="min-w-0 flex-1 text-left">' . $body . '</div>'
@@ -106,8 +96,11 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
  *
  * @param array<string, mixed> $ytSettings
  */
-function trytest_student_dashboard_featured_html(array $ytSettings, bool $compactLayout): string
+function trytest_student_dashboard_featured_html(array $ytSettings, bool $compactLayout, bool $homeTabActive): string
 {
+    if (!$homeTabActive) {
+        return '';
+    }
     $valid = trytest_youtube_dashboard_valid_embed_urls($ytSettings);
     $videoOk = $valid !== [];
     $kind = trytest_student_dashboard_featured_kind_resolve($videoOk);

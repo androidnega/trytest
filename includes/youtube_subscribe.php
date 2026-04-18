@@ -707,7 +707,7 @@ function trytest_youtube_dashboard_video_card_html(string $pageUrl, bool $compac
         : '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="'
             . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>';
 
-    return '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white">'
+    return '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80">'
         . '<div class="aspect-video w-full bg-slate-50">'
         . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Featured video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
         . '</div>'
