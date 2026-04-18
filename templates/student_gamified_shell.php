@@ -84,6 +84,9 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 <p class="truncate text-[10px] text-slate-500">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
             </div>
             <div class="flex shrink-0 items-center gap-2">
+                <button type="button" id="dashboardRefreshBtn" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-slate-700 shadow-sm ring-1 ring-slate-200/80 hover:bg-gray-200/90 active:bg-gray-200" aria-label="Refresh dashboard">
+                    <i class="fa-solid fa-rotate-right text-[15px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
+                </button>
                 <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 [&>svg]:h-full [&>svg]:w-full">
                     <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
                 </div>
@@ -118,6 +121,9 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 </div>
             </div>
             <div class="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+                <button type="button" id="dashboardRefreshBtn" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-slate-700 shadow-sm ring-1 ring-slate-200/80 hover:bg-gray-200/90 active:bg-gray-200" aria-label="Refresh dashboard">
+                    <i class="fa-solid fa-rotate-right text-[15px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
+                </button>
                 <div class="relative shrink-0">
                     <button type="button" id="profileMenuBtn" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-700 hover:bg-slate-200 sm:h-10 sm:w-10" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
                     <div id="profileMenu" class="hidden absolute right-0 mt-2 max-h-[min(16rem,45svh)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-lg" role="menu">
@@ -426,6 +432,19 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         btn.setAttribute('aria-expanded', 'false');
     });
     menu.addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+(function () {
+    var refreshBtn = document.getElementById('dashboardRefreshBtn');
+    var refreshIcon = document.getElementById('dashboardRefreshIcon');
+    if (!refreshBtn) return;
+    refreshBtn.addEventListener('click', function () {
+        if (refreshIcon) {
+            refreshIcon.classList.add('animate-spin');
+        }
+        window.setTimeout(function () {
+            window.location.reload();
+        }, 450);
+    });
 })();
 (function () {
     var root = document.getElementById('trytest-dash-cheer');
