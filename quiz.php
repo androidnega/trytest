@@ -10,8 +10,8 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/student_theme.php';
 
-/** Viewport for all quiz UI states: lock pinch-zoom on mobile (user-scalable=no). */
-$trytestQuizViewport = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, viewport-fit=cover, user-scalable=no';
+/** Viewport for all quiz UI states: lock pinch-zoom on mobile (user-scalable=no, shrink-to-fit). */
+$trytestQuizViewport = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no';
 
 if (empty($_SESSION['user_id']) || empty($_SESSION['user_level'])) {
     trytest_redirect(trytest_home_url());
@@ -80,7 +80,7 @@ if ($schedulePhase === 'before') {
     $openLabel = $openTs ? date('M j, Y g:i A', $openTs) : '';
     ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
@@ -88,7 +88,7 @@ if ($schedulePhase === 'before') {
     <title>Opens soon · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
-    <style>html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }</style>
+    <style>html.quiz-no-zoom, html.quiz-no-zoom body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }</style>
 </head>
 <body class="flex min-h-screen touch-manipulation items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
     <div class="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
@@ -128,6 +128,14 @@ if ($schedulePhase === 'before') {
         setInterval(tick, 1000);
     })();
     </script>
+    <script>
+    (function () {
+        function blockGesture(e) { e.preventDefault(); }
+        document.addEventListener('gesturestart', blockGesture, { passive: false });
+        document.addEventListener('gesturechange', blockGesture, { passive: false });
+        document.addEventListener('gestureend', blockGesture, { passive: false });
+    })();
+    </script>
 </body>
 </html>
     <?php
@@ -137,7 +145,7 @@ if ($schedulePhase === 'before') {
 if ($schedulePhase === 'after') {
     ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
@@ -145,7 +153,7 @@ if ($schedulePhase === 'after') {
     <title>Closed · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
-    <style>html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }</style>
+    <style>html.quiz-no-zoom, html.quiz-no-zoom body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }</style>
 </head>
 <body class="flex min-h-screen touch-manipulation items-center justify-center bg-white p-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
     <div class="w-full max-w-md space-y-3 rounded-3xl border border-slate-200 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
@@ -158,6 +166,14 @@ if ($schedulePhase === 'after') {
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="mt-4 inline-block w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">Back to dashboard</a>
     </div>
     <?php trytest_student_theme_controller_script(); ?>
+    <script>
+    (function () {
+        function blockGesture(e) { e.preventDefault(); }
+        document.addEventListener('gesturestart', blockGesture, { passive: false });
+        document.addEventListener('gesturechange', blockGesture, { passive: false });
+        document.addEventListener('gestureend', blockGesture, { passive: false });
+    })();
+    </script>
 </body>
 </html>
     <?php
@@ -171,7 +187,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
@@ -184,9 +200,21 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
     <style>
-        html { color-scheme: light; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+        html.quiz-no-zoom,
+        html.quiz-no-zoom body {
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        html { color-scheme: light; }
         html.dark { color-scheme: dark; }
-        body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+        body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+        #quizAppShell input[type='text'],
+        #quizAppShell input.fill-blank-input,
+        #quizAppShell textarea {
+            font-size: 16px !important;
+            line-height: 1.35;
+        }
         .trytest-quiz-intro-thumb {
             width: 7rem;
             height: 7rem;
@@ -332,7 +360,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <div id="quizOutroMount" class="w-full max-w-lg"></div>
 </div>
 
-<div id="quizAppShell" class="min-h-screen dark:bg-zinc-950">
+<div id="quizAppShell" class="min-h-screen touch-manipulation dark:bg-zinc-950">
 <div class="sticky top-0 z-30 border-b border-slate-200 bg-white backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
     <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 hover:bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-label="Back to dashboard">←</a>
@@ -372,7 +400,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         </div>
     </div>
 
-    <div class="relative overflow-visible rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-300 dark:border-zinc-700 dark:bg-zinc-900" id="quizCard">
+    <div class="relative touch-manipulation overflow-visible rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-300 dark:border-zinc-700 dark:bg-zinc-900" id="quizCard">
         <div id="questionBox"></div>
     </div>
 </main>
@@ -397,6 +425,18 @@ window.QUIZ_CONFIG = {
     quizAuthorName: <?php echo json_encode($quizAuthorName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
+</script>
+<script>
+(function () {
+    function blockGesture(e) {
+        e.preventDefault();
+    }
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('gesturestart', blockGesture, { passive: false });
+        document.addEventListener('gesturechange', blockGesture, { passive: false });
+        document.addEventListener('gestureend', blockGesture, { passive: false });
+    }
+})();
 </script>
 <?php trytest_student_theme_controller_script(); ?>
 <script src="<?php echo htmlspecialchars(trytest_url('quiz.js?v=' . (string) @filemtime(__DIR__ . '/quiz.js')), ENT_QUOTES, 'UTF-8'); ?>"></script>

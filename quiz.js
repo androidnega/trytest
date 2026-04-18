@@ -644,7 +644,11 @@
         });
     }
 
-    function youtubeEmbedUrl(rawUrl) {
+    /**
+     * @param {string} rawUrl
+     * @param {boolean} [forQuizAd] Muted autoplay + enablejsapi for in-quiz ad breaks (tap to unmute).
+     */
+    function youtubeEmbedUrl(rawUrl, forQuizAd) {
         var u = String(rawUrl || '').trim();
         if (!u) return '';
         try {
@@ -661,10 +665,33 @@
                 }
             }
             if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return '';
-            return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?rel=0&autoplay=1';
+            var qs = 'rel=0&autoplay=1&playsinline=1';
+            if (forQuizAd) {
+                qs += '&mute=1&enablejsapi=1';
+                try {
+                    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+                        qs += '&origin=' + encodeURIComponent(window.location.origin);
+                    }
+                } catch (e2) {}
+            }
+            return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?' + qs;
         } catch (e) {
             return '';
         }
+    }
+
+    function sendYoutubeIframeCommand(iframe, func, args) {
+        if (!iframe || !iframe.contentWindow) return;
+        try {
+            iframe.contentWindow.postMessage(
+                JSON.stringify({
+                    event: 'command',
+                    func: func,
+                    args: args === undefined ? [] : args,
+                }),
+                '*'
+            );
+        } catch (e) {}
     }
 
     function hasSeenAdBreak(index) {
@@ -691,7 +718,7 @@
             quizAdVideos.length > 0
                 ? quizAdVideos[Math.floor(Math.random() * quizAdVideos.length)]
                 : '';
-        var embed = youtubeEmbedUrl(chosen);
+        var embed = youtubeEmbedUrl(chosen, true);
         if (!embed) {
             markAdBreakSeen(breakIndex);
             done();
@@ -701,7 +728,7 @@
         pauseTimer();
         setStatus('Watch required', 'ok');
         questionBox.innerHTML =
-            '<div class="space-y-3">' +
+            '<div class="touch-manipulation space-y-3">' +
             '<p class="text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Video break</p>' +
             '<h2 class="text-lg font-bold text-slate-900 dark:text-zinc-100">Watch this video to continue</h2>' +
             '<p class="text-sm text-slate-600 dark:text-zinc-400">You reached question ' +
@@ -710,15 +737,27 @@
             wait +
             's</span>.</p>' +
             '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-zinc-700">' +
-            '<div class="aspect-video w-full"><iframe class="h-full w-full" src="' +
+            '<div class="aspect-video w-full"><iframe id="quizAdIframe" class="h-full w-full" src="' +
             escapeAttr(embed) +
-            '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' +
-            '</div>' +
+            '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>' +
+            '<button type="button" id="quizAdUnmuteBtn" class="w-full rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700">Tap for sound</button>' +
             '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white dark:bg-zinc-700">Continue in ' +
             wait +
             's</button>' +
             '</div>';
         var countdownEl = document.getElementById('adCountdown');
+        var adIframe = document.getElementById('quizAdIframe');
+        var unmuteBtn = document.getElementById('quizAdUnmuteBtn');
+        if (unmuteBtn && adIframe) {
+            unmuteBtn.addEventListener('click', function () {
+                sendYoutubeIframeCommand(adIframe, 'unMute');
+                sendYoutubeIframeCommand(adIframe, 'setVolume', [100]);
+                unmuteBtn.textContent = 'Sound on';
+                unmuteBtn.disabled = true;
+                unmuteBtn.className =
+                    'w-full cursor-default rounded-xl border border-emerald-600/80 bg-emerald-950/40 px-3 py-2.5 text-sm font-semibold text-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30';
+            });
+        }
         var btn = document.getElementById('adContinueBtn');
         var t = wait;
         var unlockTimer = setInterval(function () {
