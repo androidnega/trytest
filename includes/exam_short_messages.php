@@ -70,3 +70,16 @@ function trytest_exam_short_message_for_quiz(int $userId, int $quizId): string
 
     return $pool[$ix];
 }
+
+/**
+ * Random short exam line (not too long) for welcome card.
+ */
+function trytest_exam_short_random_message(): string
+{
+    $pool = trytest_exam_short_messages_pool();
+    if ($pool === []) {
+        return 'Good luck on this quiz.';
+    }
+
+    return $pool[random_int(0, count($pool) - 1)];
+}

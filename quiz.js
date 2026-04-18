@@ -10,8 +10,11 @@
     const priorAttempt = !!cfg.priorAttempt;
     const resetAttemptUrl = String(cfg.resetAttemptUrl || '');
     const quizIntroSeconds = Math.max(1, Math.min(60, Number(cfg.quizIntroSeconds || 5)));
+    const showQuizIntro = !!cfg.showQuizIntro;
     const examWelcomeQuote = String(cfg.examWelcomeQuote || '');
     const examWelcomeImage = String(cfg.examWelcomeImage || '');
+    const examOutroImage = String(cfg.examOutroImage || examWelcomeImage);
+    const quizAuthorName = String(cfg.quizAuthorName || '');
 
     function trytestWebPrefix() {
         var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
@@ -445,19 +448,26 @@
         var img = examWelcomeImage;
         var quote =
             examWelcomeQuote.trim() !== '' ? examWelcomeQuote : 'Good luck on this quiz.';
+        var author = quizAuthorName.trim();
         mount.innerHTML =
-            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-3 shadow-md sm:p-4">' +
+            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4">' +
             '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
             '<img src="' +
             escapeAttr(img) +
-            '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100 shadow-sm" width="128" height="128" loading="eager" />' +
-            '<p id="quizIntroMsg" class="min-w-0 flex-1 text-left text-sm font-semibold leading-snug text-slate-800 sm:text-base">' +
+            '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100" width="128" height="128" loading="eager" />' +
+            '<div class="min-w-0 flex-1 text-left">' +
+            '<p id="quizIntroMsg" class="text-sm font-semibold leading-snug text-slate-800 sm:text-base">' +
             escapeHtml(quote) +
             '</p>' +
-            '</div></div>' +
+            (author !== ''
+                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm">' +
+                  escapeHtml(author) +
+                  '</p>'
+                : '') +
+            '</div></div></div>' +
             '<div class="mx-auto mt-6 w-full max-w-md text-center">' +
             '<p id="quizIntroWait" class="mb-3 min-h-[1.25rem] text-xs font-medium tabular-nums text-slate-500 sm:text-sm"></p>' +
-            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5">' +
+            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-300 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5">' +
             'Continue' +
             '</button></div>';
 
@@ -480,7 +490,7 @@
                 if (contBtn) {
                     contBtn.disabled = false;
                     contBtn.className =
-                        'w-full cursor-pointer rounded-2xl bg-[#E50914] py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5';
+                        'w-full cursor-pointer rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5';
                 }
                 return;
             }
@@ -1123,16 +1133,69 @@
         saveScore();
     }
 
+    function showQuizOutroThenRedirect(doneUrl, finalScore, finalTotal) {
+        var mount = document.getElementById('quizOutroMount');
+        var ov = document.getElementById('quizOutroOverlay');
+        if (!ov || !mount) {
+            window.location.href = doneUrl;
+            return;
+        }
+        if (document.body) {
+            document.body.classList.add('overflow-hidden');
+        }
+        ov.style.display = 'flex';
+        ov.removeAttribute('aria-hidden');
+        var img = examOutroImage;
+        var author = quizAuthorName.trim();
+        mount.innerHTML =
+            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4">' +
+            '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
+            '<img src="' +
+            escapeAttr(img) +
+            '" alt="" class="trytest-quiz-outro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100" width="144" height="144" loading="eager" />' +
+            '<div class="min-w-0 flex-1 text-left">' +
+            '<p class="text-sm font-semibold leading-snug text-slate-800 sm:text-base">Nice work — your results are next.</p>' +
+            '<p class="mt-1 text-xs tabular-nums text-slate-600 sm:text-sm">Score ' +
+            escapeHtml(String(finalScore)) +
+            ' / ' +
+            escapeHtml(String(finalTotal)) +
+            '</p>' +
+            (author !== ''
+                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm">' +
+                  escapeHtml(author) +
+                  '</p>'
+                : '') +
+            '</div></div></div>' +
+            '<div class="mx-auto mt-6 w-full max-w-md">' +
+            '<button type="button" id="quizOutroContinue" class="w-full rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5">' +
+            'Continue to results' +
+            '</button></div>';
+        var gone = false;
+        var go = function () {
+            if (gone) {
+                return;
+            }
+            gone = true;
+            window.location.href = doneUrl;
+        };
+        var b = document.getElementById('quizOutroContinue');
+        if (b) {
+            b.addEventListener('click', go);
+        }
+    }
+
     function saveScore() {
         if (!quizId || orderedIds.length < 1) return;
         var doneUrl = absTrytestPath('?done=' + encodeURIComponent(String(quizId)));
+        var finalScore = score;
+        var finalTotal = orderedIds.length;
         fetch(absTrytestPath('save_score'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 quiz_id: quizId,
-                score: score,
-                total: orderedIds.length,
+                score: finalScore,
+                total: finalTotal,
             }),
         })
             .then(function (res) {
@@ -1141,7 +1204,7 @@
                 });
             })
             .finally(function () {
-                window.location.href = doneUrl;
+                showQuizOutroThenRedirect(doneUrl, finalScore, finalTotal);
             });
     }
 
@@ -1214,6 +1277,10 @@
     });
     window.addEventListener('pagehide', saveQuizResume);
 
-    // Always show image + quote first; quiz (and resume, if any) runs only after Continue or countdown.
-    renderQuizIntro();
+    if (showQuizIntro) {
+        renderQuizIntro();
+    } else {
+        hideQuizIntroOverlay();
+        start();
+    }
 })();

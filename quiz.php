@@ -48,8 +48,15 @@ $hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
 
 require_once __DIR__ . '/includes/exam_short_messages.php';
 $studentIdForIntro = (int) ($_SESSION['user_id'] ?? 0);
-$examWelcomeQuote = trytest_exam_short_message_for_quiz($studentIdForIntro, $quizId);
+$lifetimeScoresStmt = $db->prepare('SELECT COUNT(*) FROM scores WHERE user_id = ?');
+$lifetimeScoresStmt->execute([$studentIdForIntro]);
+$lifetimeScoreCount = (int) $lifetimeScoresStmt->fetchColumn();
+$showQuizIntro = $lifetimeScoreCount === 0;
+$examWelcomeQuote = trytest_exam_short_random_message();
 $examWelcomeImageUrl = trytest_url('KofiEmma.jpg');
+$outroFile = __DIR__ . '/Emmanuel_outro.jpg';
+$examOutroImageUrl = is_file($outroFile) ? trytest_url('Emmanuel_outro.jpg') : $examWelcomeImageUrl;
+$quizAuthorName = 'Emmanuel K Kwofie';
 $quizIntroSeconds = 10;
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
@@ -189,6 +196,17 @@ if ($durationSec > 0) {
                 height: 8rem;
             }
         }
+        .trytest-quiz-outro-thumb {
+            width: 7.5rem;
+            height: 7.5rem;
+            object-fit: cover;
+        }
+        @media (min-width: 640px) {
+            .trytest-quiz-outro-thumb {
+                width: 9rem;
+                height: 9rem;
+            }
+        }
         @keyframes success-pop {
             0% { transform: scale(1); }
             40% { transform: scale(1.06); }
@@ -297,8 +315,12 @@ if ($durationSec > 0) {
 </head>
 <body class="min-h-screen bg-white text-slate-900 pb-6">
 
-<div id="quizIntroOverlay" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quizIntroMsg">
+<div id="quizIntroOverlay" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quizIntroMsg"<?php echo $showQuizIntro ? '' : ' style="display:none;" aria-hidden="true"'; ?>>
     <div id="quizIntroMount" class="w-full max-w-lg"></div>
+</div>
+
+<div id="quizOutroOverlay" class="fixed inset-0 z-[210] flex flex-col items-center justify-center bg-white p-4 sm:p-6" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+    <div id="quizOutroMount" class="w-full max-w-lg"></div>
 </div>
 
 <div id="quizAppShell" class="min-h-screen">
@@ -359,8 +381,11 @@ window.QUIZ_CONFIG = {
     priorAttempt: <?php echo json_encode($hasPriorAttempt, JSON_THROW_ON_ERROR); ?>,
     resetAttemptUrl: <?php echo json_encode(trytest_url('reset_quiz_attempt'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
     quizIntroSeconds: <?php echo json_encode($quizIntroSeconds, JSON_THROW_ON_ERROR); ?>,
+    showQuizIntro: <?php echo json_encode($showQuizIntro, JSON_THROW_ON_ERROR); ?>,
     examWelcomeQuote: <?php echo json_encode($examWelcomeQuote, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
-    examWelcomeImage: <?php echo json_encode($examWelcomeImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
+    examWelcomeImage: <?php echo json_encode($examWelcomeImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    examOutroImage: <?php echo json_encode($examOutroImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    quizAuthorName: <?php echo json_encode($quizAuthorName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
