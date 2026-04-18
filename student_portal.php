@@ -47,6 +47,19 @@ if ($viewReset && $_SERVER['REQUEST_METHOD'] !== 'POST') {
     $loginMode = 'reset';
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$viewReset && empty($_SESSION['user_id']) && !empty($_SESSION['trytest_login_resume']) && is_array($_SESSION['trytest_login_resume'])) {
+    $resume = $_SESSION['trytest_login_resume'];
+    unset($_SESSION['trytest_login_resume']);
+    if (($resume['mode'] ?? '') === 'existing') {
+        $idxResume = strtoupper(trim((string) ($resume['index'] ?? '')));
+        if ($idxResume !== '') {
+            $enteredIndex = $idxResume;
+            $existingUserLevel = (string) ($resume['level'] ?? '');
+            $loginMode = 'existing';
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedShare = isset($_POST['shared_quiz_id']) ? (int) $_POST['shared_quiz_id'] : 0;
     if ($postedShare > 0) {
@@ -58,6 +71,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $action = $_POST['action'] ?? '';
+
+    if ($action === 'continue_after_password_display') {
+        $postedShareResume = isset($_POST['shared_quiz_id']) ? (int) $_POST['shared_quiz_id'] : 0;
+        if ($postedShareResume > 0) {
+            $qc = $db->prepare('SELECT id FROM quizzes WHERE id = ?');
+            $qc->execute([$postedShareResume]);
+            if ($qc->fetchColumn()) {
+                $_SESSION['pending_shared_quiz_id'] = $postedShareResume;
+            }
+        }
+        $idx = strtoupper(trim((string) ($_POST['pending_index'] ?? '')));
+        if ($idx === '') {
+            trytest_redirect(trytest_home_url());
+        }
+        $stmt = $db->prepare('SELECT level, password_hash FROM users WHERE index_number = ?');
+        $stmt->execute([$idx]);
+        $row = $stmt->fetch();
+        if (!$row || trim((string) ($row['password_hash'] ?? '')) === '') {
+            trytest_redirect(trytest_home_url());
+        }
+        $_SESSION['trytest_login_resume'] = [
+            'mode' => 'existing',
+            'index' => $idx,
+            'level' => (string) ($row['level'] ?? ''),
+        ];
+        trytest_redirect(trytest_home_url());
+    }
 
     if ($action === 'update_student_department' && !empty($_SESSION['user_id'])) {
         $uid = (int) $_SESSION['user_id'];
@@ -387,6 +427,10 @@ $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
 $loginHeroImageUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREtFCuK9bSv1zROMb1EGg0XTu9NWjfuLnbng&s';
+$studentPasswordOnlyView = !$isUserLoggedIn
+    && $generatedPassword !== ''
+    && $loginMode === 'index'
+    && $error === '';
 
 $needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
 $studentDashboardFixedViewport = $isUserLoggedIn
@@ -457,35 +501,46 @@ if ($isUserLoggedIn) {
     );
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
+    <?php if (!empty($studentPasswordOnlyView)): ?>
+    <div class="flex w-full max-w-md min-w-0 flex-col items-center">
+        <div class="w-full overflow-hidden rounded-xl border border-slate-200 bg-white px-6 py-14 text-center sm:px-10 sm:py-20">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Password</p>
+            <p class="mt-10 font-mono text-5xl font-extrabold tabular-nums tracking-[0.2em] text-slate-900 sm:mt-12 sm:text-6xl"><?php echo htmlspecialchars($generatedPassword, ENT_QUOTES, 'UTF-8'); ?></p>
+            <form method="post" class="mt-12 sm:mt-14">
+                <input type="hidden" name="action" value="continue_after_password_display">
+                <input type="hidden" name="pending_index" value="<?php echo htmlspecialchars($enteredIndex, ENT_QUOTES, 'UTF-8'); ?>">
+                <?php if ($pendingShareQuizId > 0): ?>
+                    <input type="hidden" name="shared_quiz_id" value="<?php echo $pendingShareQuizId; ?>">
+                <?php endif; ?>
+                <button type="submit" class="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-700">Continue</button>
+            </form>
+        </div>
+        <p class="mt-4 text-center text-[10px] font-light tracking-[0.12em] text-slate-400/70">Project of Manuel</p>
+    </div>
+    <?php else: ?>
     <div class="flex w-full max-w-md min-w-0 flex-col items-center">
         <div class="w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div class="relative min-h-[11.5rem] border-b border-slate-100 bg-white sm:min-h-[12.5rem]">
+            <div class="relative h-36 w-full border-b border-slate-100 bg-white sm:h-40">
                 <img
                     src="<?php echo htmlspecialchars($loginHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
                     alt=""
-                    class="pointer-events-none absolute bottom-0 left-1/2 h-[7.5rem] w-[min(100%,18rem)] -translate-x-1/2 object-contain object-bottom opacity-[0.92] sm:h-[8.5rem]"
+                    class="h-full w-full object-contain object-center p-3 sm:p-4"
                     width="400"
                     height="300"
                     loading="eager"
                     decoding="async"
                     referrerpolicy="no-referrer"
                 />
-                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" aria-hidden="true"></div>
-                <div class="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white via-white/90 to-transparent" aria-hidden="true"></div>
-                <div class="relative z-10 px-4 pb-2 pt-4 text-center sm:px-5 sm:pt-5">
-                    <h1 class="flex items-center justify-center gap-2 text-lg font-bold tracking-tight text-slate-900">
-                        <i class="fa-solid fa-graduation-cap text-indigo-600" aria-hidden="true"></i>
-                        Trytest
-                    </h1>
-                    <p class="mx-auto mt-1.5 max-w-[17rem] text-[11px] leading-snug text-slate-500 sm:text-xs">
-                        Quick quizzes and scores for your class — sign in with your index number.
-                    </p>
-                    <p class="mx-auto mt-0.5 max-w-[17rem] text-[10px] leading-snug text-slate-400 sm:text-[11px]">
-                        Same 4-digit password next time you open Trytest on this device.
-                    </p>
-                </div>
             </div>
             <div class="p-5 sm:p-6">
+                <h1 class="flex items-center justify-center gap-2 text-lg font-bold tracking-tight text-slate-900">
+                    <i class="fa-solid fa-graduation-cap text-indigo-600" aria-hidden="true"></i>
+                    Trytest
+                </h1>
+                <p class="mx-auto mt-1 max-w-sm text-center text-xs leading-relaxed text-slate-500">
+                    Quizzes and scores for your class — enter your index to sign in.
+                </p>
+
                 <?php if ($pendingShareQuizId > 0): ?>
                     <p class="mt-3 flex items-center justify-center gap-2 text-center text-xs text-indigo-800">
                         <i class="fa-solid fa-link shrink-0" aria-hidden="true"></i>
@@ -499,19 +554,12 @@ else: ?>
                         <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
                     </p>
                 <?php endif; ?>
-                <?php if ($message !== ''): ?>
+                <?php if ($message !== '' && $generatedPassword === ''): ?>
                     <div class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900 break-words">
                         <p class="flex items-start gap-2">
                             <i class="fa-solid fa-circle-check mt-0.5 shrink-0" aria-hidden="true"></i>
                             <span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
                         </p>
-                        <?php if ($generatedPassword !== ''): ?>
-                            <p class="mt-2 text-center font-mono text-lg font-bold tracking-widest text-slate-900"><?php echo htmlspecialchars($generatedPassword, ENT_QUOTES, 'UTF-8'); ?></p>
-                            <p class="mt-1 flex items-center justify-center gap-1 text-center text-[11px] text-emerald-800/90">
-                                <i class="fa-solid fa-key" aria-hidden="true"></i>
-                                <span>4-digit password for next step</span>
-                            </p>
-                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
@@ -650,6 +698,7 @@ else: ?>
         </div>
         <p class="mt-4 text-center text-[10px] font-light tracking-[0.12em] text-slate-400/70">Project of Manuel</p>
     </div>
+    <?php endif; ?>
     <script>
         (function () {
             try {
