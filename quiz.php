@@ -83,7 +83,11 @@ if ($schedulePhase === 'before') {
 <html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
-    <?php trytest_link_preview_meta(['title' => 'Opens soon · ' . $quizTitle, 'description' => 'This quiz is not open yet.']); ?>
+    <?php trytest_link_preview_meta([
+        'title' => 'Opens soon · ' . $quizTitle,
+        'description' => 'Not open yet — ' . $quizTitle,
+        'path_line' => 'quiz?quiz_id=' . $quizId,
+    ]); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Opens soon · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
@@ -149,7 +153,11 @@ if ($schedulePhase === 'after') {
 <html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
-    <?php trytest_link_preview_meta(['title' => 'Closed · ' . $quizTitle, 'description' => 'This quiz window has ended.']); ?>
+    <?php trytest_link_preview_meta([
+        'title' => 'Closed · ' . $quizTitle,
+        'description' => 'Window ended — ' . $quizTitle,
+        'path_line' => 'quiz?quiz_id=' . $quizId,
+    ]); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Closed · <?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></title>
@@ -192,7 +200,11 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
 <html lang="en" class="quiz-no-zoom">
 <head>
     <meta charset="UTF-8">
-    <?php trytest_link_preview_meta(['title' => $quizTitle . ' · Trytest', 'description' => 'Quiz on Trytest.']); ?>
+    <?php trytest_link_preview_meta([
+        'title' => $quizTitle . ' · Trytest',
+        'description' => 'Quiz: ' . $quizTitle,
+        'path_line' => 'quiz?quiz_id=' . $quizId,
+    ]); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?> · Trytest</title>

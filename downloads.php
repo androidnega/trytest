@@ -86,7 +86,11 @@ $h = static function (string $s): string {
 <html lang="en" class="<?php echo htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
-    <?php trytest_link_preview_meta(['title' => 'Files · Trytest', 'description' => 'Downloadable resources for your program.']); ?>
+    <?php trytest_link_preview_meta([
+        'title' => 'Files · Trytest',
+        'description' => 'Downloads for your program.',
+        'path_line' => 'downloads',
+    ]); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Files · Trytest</title>

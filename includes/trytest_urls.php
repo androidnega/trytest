@@ -433,10 +433,44 @@ function trytest_current_absolute_public_request_url(): string
 }
 
 /**
+ * Short path + query for link-preview copy (relative to app base when possible).
+ */
+function trytest_link_preview_path_summary(): string
+{
+    $path = trytest_request_path();
+    $base = trytest_base_path();
+    if ($base !== '' && str_starts_with($path, $base)) {
+        $rel = substr($path, strlen($base)) ?: '';
+        $path = ($rel !== '' && $rel[0] === '/') ? $rel : '/' . ltrim($rel, '/');
+    }
+    if ($path === '') {
+        $path = '/';
+    }
+    $qs = isset($_SERVER['QUERY_STRING']) ? trim((string) $_SERVER['QUERY_STRING']) : '';
+    if ($qs !== '') {
+        $path .= '?' . $qs;
+    }
+    if (strlen($path) > 160) {
+        return substr($path, 0, 157) . '…';
+    }
+
+    return $path;
+}
+
+/**
  * Open Graph / Twitter Card tags for WhatsApp and similar link previews.
  * Uses favicon-og.png (PNG export of favicon.svg) because many crawlers ignore SVG for og:image.
  *
- * @param array{title?: string, description?: string, url?: ?string, image_path?: string} $opts
+ * @param array{
+ *   title?: string,
+ *   description?: string,
+ *   url?: ?string,
+ *   image_path?: string,
+ *   image_width?: int,
+ *   image_height?: int,
+ *   path_line?: string,
+ *   omit_path?: bool
+ * } $opts
  */
 function trytest_link_preview_meta(array $opts = []): void
 {
@@ -445,6 +479,20 @@ function trytest_link_preview_meta(array $opts = []): void
         $title = 'Trytest';
     }
     $desc = trim((string) ($opts['description'] ?? ''));
+    $omitPath = !empty($opts['omit_path']);
+    $pathLine = '';
+    if (!$omitPath) {
+        $pathLine = trim((string) ($opts['path_line'] ?? ''));
+        if ($pathLine === '') {
+            $pathLine = trytest_link_preview_path_summary();
+        }
+    }
+    if ($pathLine !== '') {
+        $desc = $desc !== '' ? ($desc . ' · ' . $pathLine) : $pathLine;
+    }
+    if (strlen($desc) > 300) {
+        $desc = substr($desc, 0, 297) . '…';
+    }
     $url = array_key_exists('url', $opts) ? $opts['url'] : null;
     if (!is_string($url) || $url === '') {
         $url = trytest_current_absolute_public_request_url();
@@ -452,6 +500,14 @@ function trytest_link_preview_meta(array $opts = []): void
     $imagePath = trim((string) ($opts['image_path'] ?? 'favicon-og.png'));
     if ($imagePath === '') {
         $imagePath = 'favicon-og.png';
+    }
+    $imgW = isset($opts['image_width']) ? (int) $opts['image_width'] : 200;
+    $imgH = isset($opts['image_height']) ? (int) $opts['image_height'] : 200;
+    if ($imgW < 1) {
+        $imgW = 200;
+    }
+    if ($imgH < 1) {
+        $imgH = 200;
     }
     $imageUrl = trytest_absolute_public_url($imagePath);
     $h = static function (string $s): string {
@@ -467,9 +523,9 @@ function trytest_link_preview_meta(array $opts = []): void
 <meta property="og:url" content="<?php echo $h($url); ?>">
 <meta property="og:image" content="<?php echo $h($imageUrl); ?>">
 <meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="<?php echo $h('Trytest'); ?>">
+<meta property="og:image:width" content="<?php echo $h((string) $imgW); ?>">
+<meta property="og:image:height" content="<?php echo $h((string) $imgH); ?>">
+<meta property="og:image:alt" content="<?php echo $h($title); ?>">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="<?php echo $h($title); ?>">
 <?php if ($desc !== ''): ?>
