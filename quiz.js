@@ -187,14 +187,38 @@
         quizStatus.textContent = text;
         quizStatus.className = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
         if (tone === 'error') {
-            quizStatus.classList.add('border', 'border-red-200', 'bg-red-50', 'text-red-700');
+            quizStatus.classList.add(
+                'border',
+                'border-red-200',
+                'bg-red-50',
+                'text-red-700',
+                'dark:border-red-900/50',
+                'dark:bg-red-950/50',
+                'dark:text-red-300'
+            );
             return;
         }
         if (tone === 'done') {
-            quizStatus.classList.add('border', 'border-[#84B8B8]', 'bg-[#84B8B8]/20', 'text-[#2C6A7D]');
+            quizStatus.classList.add(
+                'border',
+                'border-[#84B8B8]',
+                'bg-[#84B8B8]/20',
+                'text-[#2C6A7D]',
+                'dark:border-zinc-600',
+                'dark:bg-zinc-800',
+                'dark:text-[#7eb8b8]'
+            );
             return;
         }
-        quizStatus.classList.add('border', 'border-[#84B8B8]', 'bg-[#84B8B8]/20', 'text-[#2C6A7D]');
+        quizStatus.classList.add(
+            'border',
+            'border-[#84B8B8]',
+            'bg-[#84B8B8]/20',
+            'text-[#2C6A7D]',
+            'dark:border-zinc-600',
+            'dark:bg-zinc-800',
+            'dark:text-[#7eb8b8]'
+        );
     }
 
     function formatClock(seconds) {
@@ -464,24 +488,24 @@
                       .join('<br />')
                 : escapeHtml('Believe in yourself.') + '<br />' + escapeHtml('You are ready.');
         mount.innerHTML =
-            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4">' +
+            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-900">' +
             '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
             '<img src="' +
             escapeAttr(img) +
-            '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100" width="128" height="128" loading="eager" />' +
+            '" alt="" class="trytest-quiz-intro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100 dark:border-zinc-600 dark:bg-zinc-800" width="128" height="128" loading="eager" />' +
             '<div class="min-w-0 flex-1 text-left">' +
-            '<p id="quizIntroMsg" class="text-sm font-semibold leading-snug text-slate-800 sm:text-base">' +
+            '<p id="quizIntroMsg" class="text-sm font-semibold leading-snug text-slate-800 sm:text-base dark:text-zinc-100">' +
             quoteHtml +
             '</p>' +
             (author !== ''
-                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm">' +
+                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm dark:border-zinc-700 dark:text-[#7eb8b8]">' +
                   escapeHtml(author) +
                   '</p>'
                 : '') +
             '</div></div></div>' +
             '<div class="mx-auto mt-6 w-full max-w-md text-center">' +
-            '<p id="quizIntroWait" class="mb-3 min-h-[1.25rem] text-xs font-medium tabular-nums text-slate-500 sm:text-sm"></p>' +
-            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-300 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5">' +
+            '<p id="quizIntroWait" class="mb-3 min-h-[1.25rem] text-xs font-medium tabular-nums text-slate-500 sm:text-sm dark:text-zinc-400"></p>' +
+            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-300 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-500">' +
             'Continue' +
             '</button></div>';
 
@@ -504,7 +528,7 @@
                 if (contBtn) {
                     contBtn.disabled = false;
                     contBtn.className =
-                        'w-full cursor-pointer rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5';
+                        'w-full cursor-pointer rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5 dark:border-[#c4080f] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]';
                 }
                 return;
             }
@@ -525,17 +549,17 @@
         setStatus('Loading', 'ok');
         questionBox.innerHTML =
             '<div class="animate-pulse space-y-4 text-left">' +
-            '<div class="h-6 bg-slate-200 rounded-lg w-3/4"></div>' +
-            '<div class="h-12 bg-slate-100 rounded-2xl"></div>' +
-            '<div class="h-12 bg-slate-100 rounded-2xl"></div>' +
-            '<div class="h-12 bg-slate-100 rounded-2xl"></div>' +
+            '<div class="h-6 w-3/4 rounded-lg bg-slate-200 dark:bg-zinc-700"></div>' +
+            '<div class="h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800"></div>' +
+            '<div class="h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800"></div>' +
+            '<div class="h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800"></div>' +
             '</div>';
     }
 
     function renderFetchError(message, onRetry) {
         questionBox.innerHTML =
-            '<p class="text-slate-600 text-left mb-4">' + escapeHtml(message) + '</p>' +
-            '<button type="button" id="retryBtn" class="w-full p-4 rounded-2xl bg-[#E50914] text-white font-semibold text-base active:scale-[0.99]">' +
+            '<p class="mb-4 text-left text-slate-600 dark:text-zinc-400">' + escapeHtml(message) + '</p>' +
+            '<button type="button" id="retryBtn" class="w-full rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] dark:bg-[#c4080f]">' +
             'Retry</button>';
         const btn = document.getElementById('retryBtn');
         if (btn) btn.addEventListener('click', onRetry);
@@ -611,19 +635,19 @@
         setStatus('Watch required', 'ok');
         questionBox.innerHTML =
             '<div class="space-y-3">' +
-            '<p class="text-[11px] font-semibold uppercase tracking-wide text-red-600">Video break</p>' +
-            '<h2 class="text-lg font-bold text-slate-900">Watch this video to continue</h2>' +
-            '<p class="text-sm text-slate-600">You reached question ' +
+            '<p class="text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Video break</p>' +
+            '<h2 class="text-lg font-bold text-slate-900 dark:text-zinc-100">Watch this video to continue</h2>' +
+            '<p class="text-sm text-slate-600 dark:text-zinc-400">You reached question ' +
             currentIndex +
-            '. Continue unlocks in <span id="adCountdown" class="font-bold text-slate-900">' +
+            '. Continue unlocks in <span id="adCountdown" class="font-bold text-slate-900 dark:text-zinc-100">' +
             wait +
             's</span>.</p>' +
-            '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-black">' +
+            '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-zinc-700">' +
             '<div class="aspect-video w-full"><iframe class="h-full w-full" src="' +
             escapeAttr(embed) +
             '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' +
             '</div>' +
-            '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white">Continue in ' +
+            '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white dark:bg-zinc-700">Continue in ' +
             wait +
             's</button>' +
             '</div>';
@@ -640,7 +664,7 @@
             }
             clearInterval(unlockTimer);
             btn.disabled = false;
-            btn.className = 'w-full rounded-2xl bg-[#E50914] p-3 text-sm font-bold text-white';
+            btn.className = 'w-full rounded-2xl bg-[#E50914] p-3 text-sm font-bold text-white dark:bg-[#c4080f]';
             btn.textContent = 'Continue quiz';
         }, 1000);
         if (btn) {
@@ -714,7 +738,7 @@
             if (text && String(text).trim() !== '') {
                 const safe = escapeHtml(String(text));
                 parts.push(
-                    '<button type="button" class="option w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-base font-medium text-slate-800 transition-all duration-300 hover:bg-slate-200 active:scale-[0.99] disabled:opacity-50" data-option="' +
+                    '<button type="button" class="option w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-base font-medium text-slate-800 transition-all duration-300 hover:bg-slate-200 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
                         escapeAttr(String(text)) +
                         '">' +
                         safe +
@@ -776,9 +800,9 @@
         const raw = String(q.question || '');
         const parts = raw.split('____');
         const inputClass =
-            'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border-2 border-slate-200 bg-white px-2 py-2 text-center text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 sm:max-w-[16rem]';
+            'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border-2 border-slate-200 bg-white px-2 py-2 text-center text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 sm:max-w-[16rem] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
         let inner =
-            '<div class="mb-6 text-left text-base font-medium leading-relaxed text-slate-900 md:text-lg">';
+            '<div class="mb-6 text-left text-base font-medium leading-relaxed text-slate-900 md:text-lg dark:text-zinc-100">';
         if (parts.length < 2) {
             inner += escapeHtml(raw);
             inner +=
@@ -801,21 +825,21 @@
         inner += '</div>';
         questionBox.innerHTML =
             inner +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] transition-all duration-300">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white transition-all duration-300 active:scale-[0.99] dark:bg-[#c4080f]">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
     function renderTheoryQuestion(q) {
         const prompt = escapeHtml(String(q.question || ''));
         questionBox.innerHTML =
-            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-slate-900">' +
+            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-slate-900 dark:text-zinc-100">' +
             prompt +
             '</h2>' +
-            '<label for="theoryInput" class="mb-1.5 block text-xs font-medium text-slate-600">Your answer</label>' +
+            '<label for="theoryInput" class="mb-1.5 block text-xs font-medium text-slate-600 dark:text-zinc-400">Your answer</label>' +
             '<textarea id="theoryInput" rows="3" maxlength="2000" autocomplete="off" ' +
-            'class="w-full min-h-[88px] resize-y rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35" ' +
+            'class="w-full min-h-[88px] resize-y rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" ' +
             'placeholder="Type your answer…"></textarea>' +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] transition-all duration-300">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white transition-all duration-300 active:scale-[0.99] dark:bg-[#c4080f]">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
@@ -843,7 +867,7 @@
         }
 
         const title =
-            '<h2 class="mb-4 text-left text-lg font-bold leading-snug text-slate-900">' +
+            '<h2 class="mb-4 text-left text-lg font-bold leading-snug text-slate-900 dark:text-zinc-100">' +
             escapeHtml(String(q.question)) +
             '</h2>';
         questionBox.innerHTML = title + renderMcqOptions(q);
@@ -853,7 +877,7 @@
 
     function showQuestionAtCurrentIndex() {
         if (orderedIds.length === 0) {
-            questionBox.innerHTML = '<p class="text-slate-500">No questions in this quiz yet.</p>';
+            questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">No questions in this quiz yet.</p>';
             setProgress();
             setStatus('No Questions', 'error');
             return;
@@ -990,7 +1014,7 @@
         if (document.getElementById('nextBtn')) return;
         questionBox.insertAdjacentHTML(
             'beforeend',
-            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-2xl border-2 border-slate-800 bg-slate-900 p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800">Continue</button>'
+            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-2xl border-2 border-slate-800 bg-slate-900 p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800 dark:border-zinc-200 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">Continue</button>'
         );
         const nextBtn = document.getElementById('nextBtn');
         if (nextBtn) {
@@ -1083,12 +1107,12 @@
             verdict = ev.verdict;
             if (verdict === 'partial' && ev.missing && ev.missing.length) {
                 feedbackLine =
-                    '<p class="mt-2 text-sm text-amber-900/90">Missing key ideas: ' +
+                    '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Missing key ideas: ' +
                     escapeHtml(ev.missing.slice(0, 4).join(', ')) +
                     '.</p>';
             } else if (verdict === 'partial') {
                 feedbackLine =
-                    '<p class="mt-2 text-sm text-amber-900/90">Close — add a bit more detail.</p>';
+                    '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Close — add a bit more detail.</p>';
             }
         } else {
             const okFill = isFillTheoryCorrect(userParts, q.correct_answer, q.question);
@@ -1140,13 +1164,13 @@
         setProgress();
         setStatus('Completed', 'done');
         questionBox.innerHTML =
-            '<h2 class="mb-2 text-xl font-bold text-slate-900">Saving…</h2>' +
-            '<p class="mb-1 text-2xl font-semibold text-[#2C6A7D]">' +
+            '<h2 class="mb-2 text-xl font-bold text-slate-900 dark:text-zinc-100">Saving…</h2>' +
+            '<p class="mb-1 text-2xl font-semibold text-[#2C6A7D] dark:text-[#7eb8b8]">' +
             score +
-            ' <span class="text-lg font-normal text-slate-400">/</span> ' +
+            ' <span class="text-lg font-normal text-slate-400 dark:text-zinc-500">/</span> ' +
             orderedIds.length +
             '</p>' +
-            '<p class="text-sm text-slate-500">Taking you to results and rankings.</p>';
+            '<p class="text-sm text-slate-500 dark:text-zinc-400">Taking you to results and rankings.</p>';
         saveScore();
     }
 
@@ -1165,26 +1189,26 @@
         var img = examOutroImage;
         var author = quizAuthorName.trim();
         mount.innerHTML =
-            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4">' +
+            '<div class="mx-auto w-full max-w-md rounded-2xl border border-slate-300 bg-white p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-900">' +
             '<div class="flex flex-row items-center gap-3 sm:gap-4">' +
             '<img src="' +
             escapeAttr(img) +
-            '" alt="" class="trytest-quiz-outro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100" width="144" height="144" loading="eager" />' +
+            '" alt="" class="trytest-quiz-outro-thumb shrink-0 rounded-xl border border-slate-200 bg-slate-100 dark:border-zinc-600 dark:bg-zinc-800" width="144" height="144" loading="eager" />' +
             '<div class="min-w-0 flex-1 text-left">' +
-            '<p class="text-sm font-semibold leading-snug text-slate-800 sm:text-base">Nice work — your results are next.</p>' +
-            '<p class="mt-1 text-xs tabular-nums text-slate-600 sm:text-sm">Score ' +
+            '<p class="text-sm font-semibold leading-snug text-slate-800 sm:text-base dark:text-zinc-100">Nice work — your results are next.</p>' +
+            '<p class="mt-1 text-xs tabular-nums text-slate-600 sm:text-sm dark:text-zinc-400">Score ' +
             escapeHtml(String(finalScore)) +
             ' / ' +
             escapeHtml(String(finalTotal)) +
             '</p>' +
             (author !== ''
-                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm">' +
+                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm dark:border-zinc-700 dark:text-[#7eb8b8]">' +
                   escapeHtml(author) +
                   '</p>'
                 : '') +
             '</div></div></div>' +
             '<div class="mx-auto mt-6 w-full max-w-md">' +
-            '<button type="button" id="quizOutroContinue" class="w-full rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5">' +
+            '<button type="button" id="quizOutroContinue" class="w-full rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5 dark:border-[#c4080f] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]">' +
             'Continue to results' +
             '</button></div>';
         var gone = false;
@@ -1227,7 +1251,7 @@
 
     function start() {
         if (!quizId) {
-            questionBox.innerHTML = '<p class="text-slate-500">Invalid quiz.</p>';
+            questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">Invalid quiz.</p>';
             return;
         }
 
@@ -1241,7 +1265,7 @@
             .then(loadQuestionIds)
             .then(function (ids) {
                 if (!ids.length) {
-                    questionBox.innerHTML = '<p class="text-slate-500">No questions in this quiz yet.</p>';
+                    questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">No questions in this quiz yet.</p>';
                     progressLabel.textContent = '';
                     if (totalValue) totalValue.textContent = '0';
                     if (progressBar) progressBar.style.width = '0%';

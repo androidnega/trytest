@@ -475,7 +475,7 @@ function trytest_render_level_podium_html(array $rows, int $userId, callable $h)
 function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool $showFraction): void
 {
     if (!$rows) {
-        echo '<p class="py-6 text-center text-sm text-slate-500">No rankings yet. Finish a quiz to appear here.</p>';
+        echo '<p class="py-6 text-center text-sm text-slate-500 dark:text-zinc-400">No rankings yet. Finish a quiz to appear here.</p>';
         return;
     }
     $top = array_slice($rows, 0, 3);
@@ -484,11 +484,11 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
     $third = $top[2] ?? null;
     ?>
     <div class="flex items-end justify-center gap-2 pt-4 pb-2">
-        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'bg-slate-100/90', false, $showFraction); ?>
-        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'bg-emerald-50', true, $showFraction); ?>
-        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'bg-slate-100/90', false, $showFraction); ?>
+        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90', false, $showFraction); ?>
+        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'bg-emerald-50 dark:bg-emerald-950/50', true, $showFraction); ?>
+        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90', false, $showFraction); ?>
     </div>
-    <ul class="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-2">
+    <ul class="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-2 dark:bg-zinc-900/80">
         <?php
         $i = 0;
         foreach ($rows as $row):
@@ -502,13 +502,13 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
             $tot = (int) ($row['best_total'] ?? 0);
             $isMe = $uid === $userId;
             ?>
-            <li class="flex flex-nowrap items-center gap-2 rounded-lg px-2 py-1.5 <?php echo $isMe ? 'bg-emerald-100/60' : 'bg-white'; ?>">
-                <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500"><?php echo $i; ?></span>
-                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32, $uid); ?></div>
+            <li class="flex flex-nowrap items-center gap-2 rounded-lg px-2 py-1.5 <?php echo $isMe ? 'bg-emerald-100/60 dark:bg-emerald-950/40' : 'bg-white dark:bg-zinc-950'; ?>">
+                <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500 dark:text-zinc-500"><?php echo $i; ?></span>
+                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32, $uid); ?></div>
                 <div class="min-w-0 flex-1 overflow-hidden">
-                    <p class="truncate text-xs font-medium leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
+                    <p class="truncate text-xs font-medium leading-tight dark:text-zinc-200"><?php echo $h(trytest_student_display_name($idx)); ?></p>
                 </div>
-                <span class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
+                <span class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
             </li>
         <?php endforeach; ?>
     </ul>
@@ -518,7 +518,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
 function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h, string $box, string $ring, bool $crown, bool $showFraction): void
 {
     if (!$slot) {
-        echo '<div class="' . $h($box) . ' flex flex-col items-center justify-end rounded-xl bg-slate-100/50"></div>';
+        echo '<div class="' . $h($box) . ' flex flex-col items-center justify-end rounded-xl bg-slate-100/50 dark:bg-zinc-800/40"></div>';
         return;
     }
     $uid = (int) ($slot['user_id'] ?? 0);
@@ -531,10 +531,10 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
     <div class="<?php echo $h($box); ?> relative flex flex-col items-center">
         <?php if ($crown): ?><span class="absolute -top-4 left-1/2 z-10 -translate-x-1/2 text-lg leading-none drop-shadow-sm" aria-hidden="true">👑</span><?php endif; ?>
         <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3">
-            <div class="relative z-0 mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/90 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48, $uid); ?></div>
-            <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight"><?php echo $h(trytest_student_display_name($idx)); ?></p>
-            <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
-            <span class="mt-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-600">#<?php echo $place; ?></span>
+            <div class="relative z-0 mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/90 dark:bg-zinc-800/90 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48, $uid); ?></div>
+            <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight dark:text-zinc-100"><?php echo $h(trytest_student_display_name($idx)); ?></p>
+            <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
+            <span class="mt-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-zinc-900/90 dark:text-zinc-300">#<?php echo $place; ?></span>
         </div>
     </div>
     <?php

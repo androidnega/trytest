@@ -70,13 +70,13 @@ declare(strict_types=1);
         if (!badge) return;
         var base = 'trytest-quiz-badge shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ';
         if (key === 'before') {
-            badge.className = base + 'bg-amber-50 text-amber-800';
+            badge.className = base + 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200';
             badge.textContent = 'Soon';
         } else if (key === 'after') {
-            badge.className = base + 'bg-slate-100 text-slate-500';
+            badge.className = base + 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400';
             badge.textContent = 'Closed';
         } else {
-            badge.className = base + 'bg-emerald-50 text-emerald-700';
+            badge.className = base + 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300';
             badge.textContent = 'Open';
         }
     }
@@ -97,9 +97,11 @@ declare(strict_types=1);
             }
             if (title) {
                 if (canPlay) {
-                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D]';
+                    title.className =
+                        'trytest-quiz-title block text-[13px] font-semibold leading-snug text-slate-800 hover:text-[#2C6A7D] dark:text-zinc-100 dark:hover:text-[#7eb8b8]';
                 } else {
-                    title.className = 'trytest-quiz-title block text-[13px] font-semibold leading-snug pointer-events-none cursor-default text-slate-600';
+                    title.className =
+                        'trytest-quiz-title block cursor-default text-[13px] font-semibold leading-snug pointer-events-none text-slate-600 dark:text-zinc-500';
                 }
             }
             var el = card.querySelector('.trytest-quiz-countdown');
@@ -110,24 +112,35 @@ declare(strict_types=1);
                 return;
             }
             if (s && now < s) {
-                el.className = countdownBase() + 'border-amber-300 bg-amber-100 text-amber-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-amber-800/90">Opens in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(s - now) + '</span>';
+                el.className =
+                    countdownBase() +
+                    'border-amber-300 bg-amber-100 text-amber-950 shadow-inner dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100';
+                el.innerHTML =
+                    '<span class="block text-[9px] font-bold uppercase tracking-wide text-amber-800/90 dark:text-amber-200/90">Opens in</span><span class="mt-0.5 block text-sm sm:text-base">' +
+                    formatMinSec(s - now) +
+                    '</span>';
                 return;
             }
             if (e && now < e) {
-                el.className = countdownBase() + 'border-sky-400 bg-sky-100 text-sky-950 shadow-inner';
-                el.innerHTML = '<span class="block text-[9px] font-bold uppercase tracking-wide text-sky-900/90">Closes in</span><span class="mt-0.5 block text-sm sm:text-base">' + formatMinSec(e - now) + '</span>';
+                el.className =
+                    countdownBase() +
+                    'border-sky-400 bg-sky-100 text-sky-950 shadow-inner dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100';
+                el.innerHTML =
+                    '<span class="block text-[9px] font-bold uppercase tracking-wide text-sky-900/90 dark:text-sky-200/90">Closes in</span><span class="mt-0.5 block text-sm sm:text-base">' +
+                    formatMinSec(e - now) +
+                    '</span>';
                 return;
             }
             if (e && now >= e) {
-                el.className = countdownBase() + 'border-slate-300 bg-slate-200 text-slate-700';
+                el.className =
+                    countdownBase() + 'border-slate-300 bg-slate-200 text-slate-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
                 el.textContent = 'Ended';
                 return;
             }
             if (s && now >= s && (!e || now <= e)) {
                 el.className =
                     countdownBase() +
-                    'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80';
+                    'border-emerald-300 bg-emerald-100 text-emerald-950 shadow-inner ring-1 ring-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-900/50';
                 var playHref = card.getAttribute('data-quiz-href') || '';
                 var hasAttempt = card.getAttribute('data-user-has-attempt') === '1';
                 var playLabel = hasAttempt ? 'Retake (resets points)' : 'Start now';
@@ -136,7 +149,7 @@ declare(strict_types=1);
                     var link = document.createElement('a');
                     link.href = playHref;
                     link.className =
-                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600';
+                        'trytest-quiz-start-link block w-full cursor-pointer rounded-md py-1 text-sm font-black tabular-nums tracking-tight text-emerald-950 no-underline outline-none ring-0 transition hover:bg-emerald-200/70 focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:focus-visible:ring-emerald-500';
                     link.setAttribute('aria-label', 'Start quiz');
                     link.textContent = playLabel;
                     el.appendChild(link);

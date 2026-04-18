@@ -11,6 +11,7 @@ require_once __DIR__ . '/includes/departments.php';
 require __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/youtube_subscribe.php';
 require_once __DIR__ . '/includes/student_dashboard_featured.php';
+require_once __DIR__ . '/includes/student_theme.php';
 
 $departmentOptions = trytest_department_dropdown_options($db);
 
@@ -447,6 +448,9 @@ $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php if ($isUserLoggedIn) {
+        trytest_student_theme_head_early();
+    } ?>
     <title>Trytest</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -454,6 +458,9 @@ $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php if ($isUserLoggedIn) {
+        trytest_student_theme_tailwind_config_script();
+    } ?>
     <style>
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
         <?php if (!empty($studentDashboardFixedViewport) || $studentLoginLockedViewport): ?>
@@ -472,13 +479,16 @@ $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
             max-height: 100vh;
         }
         <?php endif; ?>
+        <?php if ($isUserLoggedIn): ?>
+        html.dark { color-scheme: dark; }
+        <?php endif; ?>
     </style>
 </head>
 <body class="<?php
 if ($isUserLoggedIn) {
     echo !empty($studentDashboardFixedViewport)
-        ? 'h-svh max-h-svh max-w-[100vw] overflow-hidden bg-white text-slate-900 antialiased'
-        : 'min-h-screen max-w-[100vw] overflow-x-hidden bg-white text-slate-900 antialiased';
+        ? 'h-svh max-h-svh max-w-[100vw] overflow-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100'
+        : 'min-h-screen max-w-[100vw] overflow-x-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100';
 } else {
     echo 'flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-4 text-slate-900 antialiased md:px-6 md:py-6';
 }

@@ -702,13 +702,13 @@ function trytest_youtube_dashboard_video_card_html(string $pageUrl, bool $compac
         return '';
     }
     $footer = $compactLayout
-        ? '<div class="flex items-center justify-end border-t border-slate-100 px-2 py-1"><a class="text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:underline" href="'
+        ? '<div class="flex items-center justify-end border-t border-slate-100 px-2 py-1 dark:border-zinc-800"><a class="text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100" href="'
             . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">YouTube</a></div>'
-        : '<div class="border-t border-slate-100 px-3 py-2 text-right"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline" href="'
+        : '<div class="border-t border-slate-100 px-3 py-2 text-right dark:border-zinc-800"><a class="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline dark:text-zinc-300 dark:hover:text-white" href="'
             . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Open on YouTube</a></div>';
 
-    return '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80">'
-        . '<div class="aspect-video w-full bg-slate-50">'
+    return '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-zinc-700 dark:bg-zinc-950 dark:ring-zinc-800/80">'
+        . '<div class="aspect-video w-full bg-slate-50 dark:bg-black">'
         . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Featured video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
         . '</div>'
         . $footer
@@ -725,13 +725,13 @@ function trytest_youtube_dashboard_video_section_html(string $pageUrl, bool $com
         return '';
     }
     $sectionClass = $compactLayout
-        ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none'
-        : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4';
+        ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none dark:border-zinc-700 dark:bg-zinc-900'
+        : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4 dark:border-zinc-700 dark:bg-zinc-900';
 
     return '<section class="' . htmlspecialchars($sectionClass, ENT_QUOTES, 'UTF-8') . '" aria-label="Dashboard videos">'
         . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
-        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Featured video</h2>'
-        . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400">YouTube</span></div>'
+        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Featured video</h2>'
+        . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">YouTube</span></div>'
         . '<div class="grid grid-cols-1 gap-2">' . $cards . '</div>'
         . '</section>';
 }
