@@ -687,18 +687,49 @@
         }
     }
 
-    function sendYoutubeIframeCommand(iframe, func, args) {
+    function sendYoutubeIframeRaw(iframe, obj) {
         if (!iframe || !iframe.contentWindow) return;
-        try {
-            iframe.contentWindow.postMessage(
-                JSON.stringify({
-                    event: 'command',
-                    func: func,
-                    args: args === undefined ? [] : args,
-                }),
-                '*'
-            );
-        } catch (e) {}
+        var s = JSON.stringify(obj);
+        var origins = ['https://www.youtube.com', 'https://www.youtube-nocookie.com', '*'];
+        for (var oi = 0; oi < origins.length; oi++) {
+            try {
+                iframe.contentWindow.postMessage(s, origins[oi]);
+            } catch (e) {}
+        }
+    }
+
+    /** Tell the embed we control it (needed for mute/unMute to work reliably). */
+    function sendYoutubePlayerListening(iframe) {
+        sendYoutubeIframeRaw(iframe, { event: 'listening' });
+    }
+
+    /**
+     * YouTube embed commands: zero-arg funcs use args "" (not []) per embed quirks.
+     * @param {string} func
+     * @param {unknown} [args]
+     */
+    function sendYoutubeIframeCommand(iframe, func, args) {
+        var hasArgs =
+            args !== undefined &&
+            args !== null &&
+            !(Array.isArray(args) && args.length === 0) &&
+            args !== '';
+        if (!hasArgs) {
+            sendYoutubeIframeRaw(iframe, { event: 'command', func: func, args: '' });
+        } else {
+            sendYoutubeIframeRaw(iframe, { event: 'command', func: func, args: args });
+        }
+    }
+
+    function applyQuizAdIframeSound(iframe, unmuted) {
+        if (!iframe) return;
+        if (unmuted) {
+            sendYoutubeIframeCommand(iframe, 'unMute');
+            sendYoutubeIframeCommand(iframe, 'setVolume', [100]);
+        } else {
+            sendYoutubeIframeCommand(iframe, 'mute');
+            sendYoutubeIframeCommand(iframe, 'setVolume', [0]);
+        }
     }
 
     function hasSeenAdBreak(index) {
@@ -755,27 +786,40 @@
         var countdownEl = document.getElementById('adCountdown');
         var adIframe = document.getElementById('quizAdIframe');
         var unmuteBtn = document.getElementById('quizAdUnmuteBtn');
+        if (adIframe) {
+            adIframe.addEventListener(
+                'load',
+                function () {
+                    sendYoutubePlayerListening(adIframe);
+                },
+                { once: true }
+            );
+        }
         if (unmuteBtn && adIframe) {
             var adMuted = true;
             var clsMuted =
                 'w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700';
             var clsUnmuted =
                 'w-full cursor-pointer rounded-xl border border-emerald-500/90 bg-emerald-900/35 px-3 py-2.5 text-sm font-semibold text-emerald-50 hover:bg-emerald-800/50 dark:border-emerald-500/70 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/45';
-            unmuteBtn.addEventListener('click', function () {
-                adMuted = !adMuted;
+            function syncAdSoundButtonUi() {
+                if (!unmuteBtn) return;
                 if (!adMuted) {
-                    sendYoutubeIframeCommand(adIframe, 'unMute');
-                    sendYoutubeIframeCommand(adIframe, 'setVolume', [100]);
                     unmuteBtn.textContent = 'Tap to mute';
                     unmuteBtn.setAttribute('aria-pressed', 'true');
                     unmuteBtn.className = clsUnmuted;
                 } else {
-                    sendYoutubeIframeCommand(adIframe, 'mute');
-                    sendYoutubeIframeCommand(adIframe, 'setVolume', [0]);
                     unmuteBtn.textContent = 'Tap for sound';
                     unmuteBtn.setAttribute('aria-pressed', 'false');
                     unmuteBtn.className = clsMuted;
                 }
+            }
+            function toggleAdSound() {
+                adMuted = !adMuted;
+                applyQuizAdIframeSound(adIframe, !adMuted);
+                syncAdSoundButtonUi();
+            }
+            unmuteBtn.addEventListener('click', function () {
+                toggleAdSound();
             });
         }
         var btn = document.getElementById('adContinueBtn');
