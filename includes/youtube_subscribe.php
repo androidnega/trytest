@@ -360,10 +360,13 @@ function trytest_youtube_hybrid_confirmation_page(array $settings, string $next,
     $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
     $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
     ob_start();
+    trytest_link_preview_meta(['title' => $title, 'description' => 'Confirm your YouTube subscription to continue.']);
+    $ogHead = (string) ob_get_clean();
+    ob_start();
     trytest_student_zoom_lock_styles();
     trytest_student_zoom_lock_gesture_script();
     $zoomHead = (string) ob_get_clean();
-    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '"><title>'
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8">' . $ogHead . '<meta name="viewport" content="' . $vp . '"><title>'
         . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
         . '</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head><body class="touch-manipulation bg-slate-50 min-h-screen p-6">'
         . '<div class="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">'
@@ -806,10 +809,13 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
     $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
     $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
     ob_start();
+    trytest_link_preview_meta(['title' => 'Subscribe · Trytest', 'description' => 'Watch and subscribe to unlock your file on Trytest.']);
+    $ogHead = (string) ob_get_clean();
+    ob_start();
     trytest_student_zoom_lock_styles();
     trytest_student_zoom_lock_gesture_script();
     $zoomHead = (string) ob_get_clean();
-    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '">'
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8">' . $ogHead . '<meta name="viewport" content="' . $vp . '">'
         . '<title>Subscribe · Trytest</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head>'
         . '<body class="touch-manipulation min-h-screen bg-slate-50 p-4 text-slate-900">'
         . '<div class="mx-auto mt-4 max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200">'

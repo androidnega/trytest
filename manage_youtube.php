@@ -116,6 +116,7 @@ $effective = trytest_youtube_settings();
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — YouTube & PDF gate', 'description' => 'Trytest admin: YouTube and PDF download gate.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — YouTube &amp; PDF gate</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">

@@ -24,6 +24,7 @@ $ytLabel = $yt['gate_active'] ? 'On' : 'Off';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — Admin Manager', 'description' => 'Trytest admin: overview and tools.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Admin Manager</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">

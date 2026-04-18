@@ -45,6 +45,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — Reset data', 'description' => 'Trytest admin: reset application data.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Reset data</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">

@@ -15,10 +15,13 @@ function trytest_youtube_callback_page(string $title, string $bodyHtml, string $
     $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
     $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
     ob_start();
+    trytest_link_preview_meta(['title' => $title]);
+    $ogHead = (string) ob_get_clean();
+    ob_start();
     trytest_student_zoom_lock_styles();
     trytest_student_zoom_lock_gesture_script();
     $zoomHead = (string) ob_get_clean();
-    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '"><title>'
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8">' . $ogHead . '<meta name="viewport" content="' . $vp . '"><title>'
         . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
         . '</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head><body class="touch-manipulation bg-slate-50 min-h-screen p-6">'
         . '<div class="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">'

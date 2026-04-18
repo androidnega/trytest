@@ -148,6 +148,7 @@ if ($selectedQuizId > 0) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — Manage Questions', 'description' => 'Trytest admin: edit quiz questions.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Manage Questions</title>
     <script src="https://cdn.tailwindcss.com"></script>

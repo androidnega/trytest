@@ -448,6 +448,7 @@ $htmlRootClasses = trim(implode(' ', array_filter([trytest_student_zoom_lock_htm
 <html lang="en" class="<?php echo htmlspecialchars($htmlRootClasses, ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest', 'description' => 'Student sign-in, quizzes, and downloads.']); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($isUserLoggedIn) {
         trytest_student_theme_head_early();

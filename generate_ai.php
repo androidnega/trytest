@@ -88,6 +88,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — AI prompt', 'description' => 'Trytest admin: AI exam generation.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Trytest — AI prompt</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">

@@ -402,5 +402,82 @@ function trytest_redirect(string $location, int $status = 302): void
     exit;
 }
 
+/**
+ * Absolute asset/page URL using optional config `public_base_url` (same rules as redirects).
+ */
+function trytest_absolute_public_url(string $path = ''): string
+{
+    $prefix = trytest_redirect_scheme_host_prefix();
+    if ($prefix !== '') {
+        return $prefix . trytest_url($path);
+    }
+
+    return trytest_absolute_url($path);
+}
+
+/**
+ * Canonical URL for the current request (path + query), for og:url.
+ */
+function trytest_current_absolute_public_request_url(): string
+{
+    $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    if ($uri === '' || $uri[0] !== '/') {
+        $uri = '/' . ltrim($uri, '/');
+    }
+    $prefix = trytest_redirect_scheme_host_prefix();
+    if ($prefix !== '') {
+        return $prefix . $uri;
+    }
+
+    return trytest_request_origin() . $uri;
+}
+
+/**
+ * Open Graph / Twitter Card tags for WhatsApp and similar link previews.
+ * Uses favicon-og.png (PNG export of favicon.svg) because many crawlers ignore SVG for og:image.
+ *
+ * @param array{title?: string, description?: string, url?: ?string, image_path?: string} $opts
+ */
+function trytest_link_preview_meta(array $opts = []): void
+{
+    $title = trim((string) ($opts['title'] ?? ''));
+    if ($title === '') {
+        $title = 'Trytest';
+    }
+    $desc = trim((string) ($opts['description'] ?? ''));
+    $url = array_key_exists('url', $opts) ? $opts['url'] : null;
+    if (!is_string($url) || $url === '') {
+        $url = trytest_current_absolute_public_request_url();
+    }
+    $imagePath = trim((string) ($opts['image_path'] ?? 'favicon-og.png'));
+    if ($imagePath === '') {
+        $imagePath = 'favicon-og.png';
+    }
+    $imageUrl = trytest_absolute_public_url($imagePath);
+    $h = static function (string $s): string {
+        return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+    };
+    ?>
+<meta property="og:site_name" content="<?php echo $h('Trytest'); ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?php echo $h($title); ?>">
+<?php if ($desc !== ''): ?>
+<meta property="og:description" content="<?php echo $h($desc); ?>">
+<?php endif; ?>
+<meta property="og:url" content="<?php echo $h($url); ?>">
+<meta property="og:image" content="<?php echo $h($imageUrl); ?>">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="<?php echo $h('Trytest'); ?>">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?php echo $h($title); ?>">
+<?php if ($desc !== ''): ?>
+<meta name="twitter:description" content="<?php echo $h($desc); ?>">
+<?php endif; ?>
+<meta name="twitter:image" content="<?php echo $h($imageUrl); ?>">
+<?php
+}
+
 trytest_redirect_leaked_server_path_prefix();
 trytest_reject_trytest_prefix_when_at_root();

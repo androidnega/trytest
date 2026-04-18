@@ -56,6 +56,7 @@ $h = static function (string $s): string {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — Dashboard', 'description' => 'Admin sign-in or Trytest control center.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">

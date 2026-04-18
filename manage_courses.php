@@ -88,6 +88,7 @@ $deptPresets = trytest_department_dropdown_options($db);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <?php trytest_link_preview_meta(['title' => 'Trytest — Manage Courses', 'description' => 'Trytest admin: courses.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trytest — Manage Courses</title>
     <script src="https://cdn.tailwindcss.com"></script>
