@@ -395,16 +395,6 @@
     let quizIntroIntervalId = null;
     let quizIntroFinished = false;
 
-    function shouldSkipQuizIntro() {
-        try {
-            var raw = localStorage.getItem(resumeStorageKey());
-            if (parseResumePayload(raw)) {
-                return true;
-            }
-        } catch (e) {}
-        return false;
-    }
-
     function clearQuizIntroInterval() {
         if (quizIntroIntervalId !== null) {
             clearInterval(quizIntroIntervalId);
@@ -440,7 +430,10 @@
             scoreValue.textContent = '0';
         }
         var img = examWelcomeImage;
-        var quote = examWelcomeQuote;
+        var quote =
+            examWelcomeQuote.trim() !== ''
+                ? examWelcomeQuote
+                : 'Read carefully, trust your preparation, and answer with clear steps.';
         questionBox.innerHTML =
             '<div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-md sm:p-6">' +
             '<div class="flex flex-col gap-5 sm:flex-row sm:items-stretch sm:gap-6">' +
@@ -1216,9 +1209,6 @@
     });
     window.addEventListener('pagehide', saveQuizResume);
 
-    if (shouldSkipQuizIntro()) {
-        start();
-    } else {
-        renderQuizIntro();
-    }
+    // Always show image + quote first; quiz (and resume, if any) runs only after Continue or countdown.
+    renderQuizIntro();
 })();

@@ -355,6 +355,6 @@ window.QUIZ_CONFIG = {
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
-<script src="quiz.js"></script>
+<script src="<?php echo htmlspecialchars(trytest_url('quiz.js?v=' . (string) @filemtime(__DIR__ . '/quiz.js')), ENT_QUOTES, 'UTF-8'); ?>"></script>
 </body>
 </html>
