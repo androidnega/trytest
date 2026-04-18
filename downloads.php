@@ -83,10 +83,10 @@ $h = static function (string $s): string {
 };
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="<?php echo htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
     <title>Files · Trytest</title>
     <link rel="icon" type="image/svg+xml" href="<?php echo $h(trytest_url('favicon.svg')); ?>">
@@ -99,8 +99,10 @@ $h = static function (string $s): string {
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
         html.dark { color-scheme: dark; }
     </style>
+    <?php trytest_student_zoom_lock_styles(); ?>
+    <?php trytest_student_zoom_lock_gesture_script(); ?>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+<body class="touch-manipulation min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
     <header class="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
         <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
             <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 text-sm font-semibold text-[#2C6A7D] hover:underline dark:text-[#7eb8b8]">← Home</a>

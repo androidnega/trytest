@@ -442,12 +442,13 @@ $studentLoginLockedViewport = !$isUserLoggedIn;
 $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
     ? 'h-svh max-h-svh overflow-hidden'
     : ($studentLoginLockedViewport ? 'h-full max-h-full overflow-hidden' : '');
+$htmlRootClasses = trim(implode(' ', array_filter([trytest_student_zoom_lock_html_class(), $htmlViewportLockClass])));
 ?>
 <!DOCTYPE html>
-<html lang="en" class="<?php echo htmlspecialchars($htmlViewportLockClass, ENT_QUOTES, 'UTF-8'); ?>">
+<html lang="en" class="<?php echo htmlspecialchars($htmlRootClasses, ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="<?php echo htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($isUserLoggedIn) {
         trytest_student_theme_head_early();
     } ?>
@@ -483,14 +484,16 @@ $htmlViewportLockClass = !empty($studentDashboardFixedViewport)
         html.dark { color-scheme: dark; }
         <?php endif; ?>
     </style>
+    <?php trytest_student_zoom_lock_styles(); ?>
+    <?php trytest_student_zoom_lock_gesture_script(); ?>
 </head>
 <body class="<?php
 if ($isUserLoggedIn) {
     echo !empty($studentDashboardFixedViewport)
-        ? 'h-svh max-h-svh max-w-[100vw] overflow-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100'
-        : 'min-h-screen max-w-[100vw] overflow-x-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100';
+        ? 'touch-manipulation h-svh max-h-svh max-w-[100vw] overflow-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100'
+        : 'touch-manipulation min-h-screen max-w-[100vw] overflow-x-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100';
 } else {
-    echo 'flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-4 text-slate-900 antialiased md:px-6 md:py-6';
+    echo 'touch-manipulation flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-4 text-slate-900 antialiased md:px-6 md:py-6';
 }
 ?>">
 <?php if ($isUserLoggedIn):

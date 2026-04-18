@@ -109,3 +109,57 @@ function trytest_student_theme_controller_script(): void
 </script>
 <?php
 }
+
+/**
+ * Viewport meta value: disable pinch / user zoom on student-facing pages (same intent as quiz.php).
+ */
+function trytest_student_locked_viewport_content(): string
+{
+    return 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no';
+}
+
+/** Root class for zoom-lock CSS (student app, not admin). */
+function trytest_student_zoom_lock_html_class(): string
+{
+    return 'student-app-no-zoom';
+}
+
+function trytest_student_zoom_lock_styles(): void
+{
+    ?>
+<style>
+html.student-app-no-zoom,
+html.student-app-no-zoom body {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+html.student-app-no-zoom input[type='text'],
+html.student-app-no-zoom input[type='search'],
+html.student-app-no-zoom input[type='email'],
+html.student-app-no-zoom input[type='tel'],
+html.student-app-no-zoom input[type='number'],
+html.student-app-no-zoom input[type='password'],
+html.student-app-no-zoom select,
+html.student-app-no-zoom textarea {
+    font-size: 16px !important;
+}
+</style>
+<?php
+}
+
+function trytest_student_zoom_lock_gesture_script(): void
+{
+    ?>
+<script>
+(function () {
+    function blockGesture(e) {
+        e.preventDefault();
+    }
+    document.addEventListener('gesturestart', blockGesture, { passive: false });
+    document.addEventListener('gesturechange', blockGesture, { passive: false });
+    document.addEventListener('gestureend', blockGesture, { passive: false });
+})();
+</script>
+<?php
+}

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/student_theme.php';
+
 function trytest_youtube_ensure_google_php(): void
 {
     static $done = false;
@@ -355,9 +357,15 @@ function trytest_youtube_hybrid_confirmation_page(array $settings, string $next,
     $needCode = trytest_youtube_fallback_code();
     $title = 'Confirm subscription';
     header('Content-Type: text/html; charset=utf-8');
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'
+    $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
+    $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
+    ob_start();
+    trytest_student_zoom_lock_styles();
+    trytest_student_zoom_lock_gesture_script();
+    $zoomHead = (string) ob_get_clean();
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '"><title>'
         . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
-        . '</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-slate-50 min-h-screen p-6">'
+        . '</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head><body class="touch-manipulation bg-slate-50 min-h-screen p-6">'
         . '<div class="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">'
         . '<h1 class="text-lg font-bold text-slate-900">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>'
         . '<p class="mt-3 text-sm text-slate-600">' . htmlspecialchars($apiNote, ENT_QUOTES, 'UTF-8') . '</p>'
@@ -795,9 +803,15 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
     $videoPick = trytest_youtube_downloads_gate_pick_video_url($settings);
     $embed = trytest_youtube_embed_url_quiz_style($videoPick);
     header('Content-Type: text/html; charset=utf-8');
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        . '<title>Subscribe · Trytest</title><script src="https://cdn.tailwindcss.com"></script></head>'
-        . '<body class="min-h-screen bg-slate-50 p-4 text-slate-900">'
+    $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
+    $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
+    ob_start();
+    trytest_student_zoom_lock_styles();
+    trytest_student_zoom_lock_gesture_script();
+    $zoomHead = (string) ob_get_clean();
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '">'
+        . '<title>Subscribe · Trytest</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head>'
+        . '<body class="touch-manipulation min-h-screen bg-slate-50 p-4 text-slate-900">'
         . '<div class="mx-auto mt-4 max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200">'
         . '<div class="border-b border-slate-100 px-4 py-3 text-center">'
         . '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Subscribe</p>'

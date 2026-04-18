@@ -12,9 +12,15 @@ require __DIR__ . '/includes/youtube_subscribe.php';
 function trytest_youtube_callback_page(string $title, string $bodyHtml, string $primaryHref, string $primaryLabel): void
 {
     header('Content-Type: text/html; charset=utf-8');
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'
+    $vp = htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8');
+    $htmlClass = htmlspecialchars(trytest_student_zoom_lock_html_class(), ENT_QUOTES, 'UTF-8');
+    ob_start();
+    trytest_student_zoom_lock_styles();
+    trytest_student_zoom_lock_gesture_script();
+    $zoomHead = (string) ob_get_clean();
+    echo '<!DOCTYPE html><html lang="en" class="' . $htmlClass . '"><head><meta charset="UTF-8"><meta name="viewport" content="' . $vp . '"><title>'
         . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
-        . '</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-slate-50 min-h-screen p-6">'
+        . '</title><script src="https://cdn.tailwindcss.com"></script>' . $zoomHead . '</head><body class="touch-manipulation bg-slate-50 min-h-screen p-6">'
         . '<div class="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">'
         . '<h1 class="text-lg font-bold text-slate-900">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>'
         . '<div class="mt-3 text-sm text-slate-600">' . $bodyHtml . '</div>'
