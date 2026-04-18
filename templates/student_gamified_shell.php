@@ -24,6 +24,7 @@ declare(strict_types=1);
 /** @var string $dashboardYoutubeVideosHtml */
 /** @var array<string,mixed>|null $doneComparison */
 /** @var array{lead:string,body:string,quiz_id:int,context:string}|null $dashboardEncouragement */
+/** @var int $newQuizBadgeCount */
 /** @var string $quizUrlBase */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -38,6 +39,7 @@ $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
 $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
 $dashboardYoutubeVideosHtml = (string) ($dashboardYoutubeVideosHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
+$newQuizBadgeCount = max(0, (int) ($newQuizBadgeCount ?? 0));
 $downloadsNavBadge = '';
 $downloadsMenuBadge = '';
 if ($downloadsBadgeCount > 0) {
@@ -194,6 +196,15 @@ $navClass = static function (bool $on): string {
                     </div>
                 </section>
             <?php endif; ?>
+            <style>
+                @keyframes trytest-quiz-card-breathe {
+                    0%, 100% { transform: scale(1); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
+                    50% { transform: scale(1.02); box-shadow: 0 10px 28px rgba(229, 9, 20, 0.14); }
+                }
+                .trytest-quiz-home-card--pulse {
+                    animation: trytest-quiz-card-breathe 2.8s ease-in-out infinite;
+                }
+            </style>
             <section class="mb-6" aria-label="Quick links">
                 <div class="grid grid-cols-2 gap-3">
                     <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-amber-200/80 hover:shadow-md">
@@ -217,7 +228,16 @@ $navClass = static function (bool $on): string {
                         </a>
                     <?php endif; ?>
                     <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#E50914]/30 hover:shadow-md">
+                        <?php
+                        $quizCardClass = 'relative flex min-h-[112px] flex-col items-center justify-center rounded-2xl border bg-white px-3 py-4 text-center shadow-sm transition hover:border-[#E50914]/30 hover:shadow-md ';
+                        $quizCardClass .= $newQuizBadgeCount > 0
+                            ? 'trytest-quiz-home-card--pulse border-2 border-[#E50914]/25 ring-1 ring-[#E50914]/15'
+                            : 'border border-slate-200';
+                        ?>
+                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>">
+                            <?php if ($newQuizBadgeCount > 0): ?>
+                                <span class="absolute right-2 top-2 inline-flex h-5 min-w-[1.25rem] max-w-[4.5rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold leading-tight text-white" title="New quizzes since you last opened the list"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                            <?php endif; ?>
                             <span class="text-2xl leading-none" aria-hidden="true">📝</span>
                             <span class="mt-2 text-sm font-bold text-slate-900">Quizzes</span>
                             <span class="mt-0.5 text-[11px] text-slate-500"><?php echo (int) $totalQuizCards; ?> available</span>

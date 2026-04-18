@@ -80,6 +80,36 @@ function trytest_youtube_embed_url(string $videoUrl): string
     return $id === '' ? '' : ('https://www.youtube.com/embed/' . rawurlencode($id) . '?rel=0&autoplay=1&mute=1');
 }
 
+/** Same embed behaviour as in-quiz video breaks (autoplay, not forced mute). */
+function trytest_youtube_embed_url_quiz_style(string $videoUrl): string
+{
+    $id = trytest_youtube_extract_video_id($videoUrl);
+    return $id === '' ? '' : ('https://www.youtube.com/embed/' . rawurlencode($id) . '?rel=0&autoplay=1');
+}
+
+/**
+ * First video URL for the downloads subscribe screen (quiz ads, else dashboard clips).
+ *
+ * @param array<string, mixed> $settings trytest_youtube_settings()
+ */
+function trytest_youtube_downloads_gate_pick_video_url(array $settings): string
+{
+    foreach ((array) ($settings['quiz_ad_videos'] ?? []) as $u) {
+        $s = trim((string) $u);
+        if ($s !== '') {
+            return $s;
+        }
+    }
+    foreach ((array) ($settings['dashboard_videos'] ?? []) as $u) {
+        $s = trim((string) $u);
+        if ($s !== '') {
+            return $s;
+        }
+    }
+
+    return '';
+}
+
 /**
  * Load merged settings: database row (admin UI) overrides file/env fallbacks.
  * Optional `config/google.php` fills any remaining blanks (production-friendly).
@@ -473,48 +503,53 @@ function trytest_youtube_downloads_activation_panel_html(array $settings, string
     }
     require_once __DIR__ . '/trytest_urls.php';
     if (trytest_youtube_download_allowed($settings)) {
-        return '<div id="trytest-downloads-yt-gate" class="scroll-mt-24 mb-4">'
-            . '<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">'
-            . '<p class="font-bold text-emerald-950">Downloads unlocked for this session</p>'
-            . '<p class="mt-1 text-xs leading-snug text-emerald-800/95">You can use the <strong>Download</strong> buttons on each file below. This lasts about a week on this device.</p></div></div>';
+        return '<div id="trytest-downloads-yt-gate" class="scroll-mt-24 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-900">'
+            . 'Files are unlocked on this device for about a week.</div>';
     }
     $ch = trim((string) ($settings['channel_id'] ?? ''));
     $action = htmlspecialchars($formActionUrl, ENT_QUOTES, 'UTF-8');
     $ytUrl = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
     $codeConfigured = trim((string) ($settings['pdf_unlock_code'] ?? '')) !== '';
     $err = trim($gateError);
-    $out = '<div id="trytest-downloads-yt-gate" class="scroll-mt-24 mb-4 rounded-xl border-2 border-red-300 bg-gradient-to-b from-red-50 via-white to-amber-50 p-4 shadow-md ring-1 ring-red-100">';
-    $out .= '<p class="text-center text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube · subscribe first</p>';
-    $out .= '<h2 class="mt-2 text-center text-base font-bold leading-snug text-slate-900">Subscribe on YouTube, then unlock downloads</h2>';
-    $out .= '<p class="mt-1.5 text-center text-xs text-slate-600">The <strong>Download</strong> buttons on your files stay off until you finish the steps here. Open the channel, subscribe if you want to support the work, then tap the green unlock button.</p>';
+    $videoPick = trytest_youtube_downloads_gate_pick_video_url($settings);
+    $embed = trytest_youtube_embed_url_quiz_style($videoPick);
+    $out = '<div id="trytest-downloads-yt-gate" class="scroll-mt-24">';
+    $out .= '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">';
+    $out .= '<div class="border-b border-slate-100 px-4 py-3 text-center">';
+    $out .= '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Subscribe</p>';
+    $out .= '<h2 class="mt-1 text-base font-bold text-slate-900">Watch, then tap continue</h2></div>';
+    $out .= '<div class="space-y-4 p-4">';
     if ($err !== '') {
-        $out .= '<p class="mt-3 rounded-lg bg-red-100 px-3 py-2 text-center text-xs font-medium text-red-900">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
+        $out .= '<p class="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-900">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+    if ($embed !== '') {
+        $out .= '<div class="overflow-hidden rounded-xl border border-slate-200 bg-black">'
+            . '<div class="aspect-video w-full"><iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8')
+            . '" title="Channel video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>';
+    } elseif ($ch !== '') {
+        $out .= '<div class="rounded-xl border border-slate-200 bg-slate-50 py-10 text-center text-sm text-slate-600">'
+            . '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="font-bold text-red-600 underline">Open the channel on YouTube</a>'
+            . '<p class="mt-2 text-xs text-slate-500">No preview video is configured yet — your teacher can add quiz or dashboard video URLs in Admin → YouTube.</p></div>';
+    } else {
+        $out .= '<p class="rounded-lg bg-amber-50 px-3 py-3 text-center text-xs text-amber-900">Ask your teacher to finish YouTube setup (channel and optional video URLs).</p>';
     }
     if ($ch !== '') {
-        $out .= '<div class="mt-4 flex flex-col gap-2">'
-            . '<a id="trytestDownloadsOpenYtBtn" href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
-            . '<p class="text-center text-[10px] text-slate-600">Opens in a new tab — subscribe, then use the button below.</p></div>';
-    } else {
-        $out .= '<p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900">Your teacher still needs to add the YouTube channel ID under Admin → YouTube gate.</p>';
+        $out .= '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube</a>';
     }
     if ($codeConfigured) {
-        $out .= '<form method="post" action="' . $action . '" class="mt-4 space-y-2">'
+        $out .= '<details class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs text-slate-600">'
+            . '<summary class="cursor-pointer font-semibold text-slate-800">Have a code?</summary>'
+            . '<form method="post" action="' . $action . '" class="mt-3 space-y-2">'
             . '<input type="hidden" name="pdf_gate_action" value="unlock_code">'
-            . '<label class="block text-left text-xs font-medium text-slate-700">Code from the latest video (optional)</label>'
-            . '<input type="text" name="unlock_code" autocomplete="off" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="e.g. TRYTEST2026">'
-            . '<button type="submit" class="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800">Unlock with code</button></form>';
+            . '<input type="text" name="unlock_code" autocomplete="off" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Code from the video">'
+            . '<button type="submit" class="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-bold text-white">Unlock with code</button></form></details>';
     }
-    $out .= '<form method="post" action="' . $action . '" id="trytestDownloadsNudgeForm" class="mt-3">'
+    $out .= '<form method="post" action="' . $action . '" id="trytestDownloadsNudgeForm" class="space-y-2">'
         . '<input type="hidden" name="pdf_gate_action" value="nudge_continue">'
-        . '<button type="button" id="trytestDownloadsContinueBtn" class="w-full rounded-xl border-2 border-emerald-300 bg-emerald-400/60 py-3 text-sm font-bold text-white/90 shadow-sm cursor-not-allowed opacity-70" aria-disabled="true">I have subscribed — unlock downloads</button></form>';
-    $out .= '<p class="mt-2 text-center text-[10px] text-slate-500">No Google sign-in. We open YouTube first, then unlock this browser for PDFs.</p>';
-    $uJson = json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP);
-    $out .= '<script>(function(){var b=document.getElementById("trytestDownloadsContinueBtn");var f=document.getElementById("trytestDownloadsNudgeForm");'
-        . 'if(!b||!f)return;var o=document.getElementById("trytestDownloadsOpenYtBtn");var u=' . $uJson . ';'
-        . 'function setReady(ready){if(ready){b.disabled=false;b.setAttribute("aria-disabled","false");b.className="w-full rounded-xl border-2 border-emerald-600 bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700";}else{b.disabled=true;b.setAttribute("aria-disabled","true");b.className="w-full rounded-xl border-2 border-emerald-300 bg-emerald-400/60 py-3 text-sm font-bold text-white/90 shadow-sm cursor-not-allowed opacity-70";}}'
-        . 'setReady(!u);if(o){o.addEventListener("click",function(){setTimeout(function(){setReady(true);},450);});}'
-        . 'b.addEventListener("click",function(){if(b.disabled)return;if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},800);});})();</script>';
-    $out .= '</div>';
+        . '<button type="button" id="trytestDownloadsContinueBtn" disabled class="w-full rounded-xl bg-slate-300 py-3 text-sm font-bold text-white">Continue in 5s</button>'
+        . '<p class="text-center text-[10px] text-slate-500">After subscribing, continue here — you will land on your file list.</p></form>';
+    $out .= '</div></div></div>';
+    $out .= '<script>(function(){var b=document.getElementById("trytestDownloadsContinueBtn");var f=document.getElementById("trytestDownloadsNudgeForm");if(!b||!f)return;var t=5;var iv=setInterval(function(){t--;if(t>0){b.textContent="Continue in "+t+"s";return;}clearInterval(iv);b.disabled=false;b.textContent="I have subscribed — continue";b.className="w-full rounded-xl bg-[#2C6A7D] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#24586a]";},1000);b.addEventListener("click",function(){if(b.disabled)return;f.submit();});})();</script>';
 
     return $out;
 }
@@ -544,34 +579,15 @@ function trytest_youtube_downloads_soft_promo_html(array $settings): string
 }
 
 /**
- * One-time-per-tab modal when PDFs are gated and this session is not unlocked yet.
+ * @deprecated Pop-up gate removed; subscribe flow is inline on the downloads page.
  *
  * @param array<string, mixed> $settings trytest_youtube_settings()
  */
 function trytest_youtube_downloads_locked_modal_html(array $settings): string
 {
-    if (empty($settings['gate_active']) || trytest_youtube_download_allowed($settings)) {
-        return '';
-    }
-    require_once __DIR__ . '/trytest_urls.php';
-    $ch = trim((string) ($settings['channel_id'] ?? ''));
-    $u = htmlspecialchars(trytest_youtube_channel_browser_url($ch), ENT_QUOTES, 'UTF-8');
-    $openBtn = $ch !== ''
-        ? '<a href="' . $u . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube</a>'
-        : '';
+    unset($settings);
 
-    return '<dialog id="trytestYtDlGatePop" class="max-w-[min(92vw,22rem)] rounded-2xl border-0 p-0 text-slate-900 shadow-2xl ring-1 ring-slate-200 backdrop:bg-black/40">'
-        . '<div class="border-b border-red-100 bg-gradient-to-r from-red-50 to-amber-50 px-4 py-3 text-center">'
-        . '<p class="text-[10px] font-extrabold uppercase tracking-widest text-red-600">YouTube</p>'
-        . '<p class="mt-1 text-sm font-bold leading-snug">Subscribe first to unlock your downloads</p></div>'
-        . '<div class="space-y-3 px-4 py-4 text-center text-xs text-slate-600">'
-        . '<p>Use the big card on this page, or open the channel here — then tap <strong class="text-emerald-800">I have subscribed — unlock downloads</strong>.</p>'
-        . $openBtn
-        . '<button type="button" id="trytestYtDlGatePopClose" class="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">View page</button></div></dialog>'
-        . '<script>(function(){var d=document.getElementById("trytestYtDlGatePop");var c=document.getElementById("trytestYtDlGatePopClose");if(!d)return;function close(){try{d.close();}catch(e){}}'
-        . 'if(c)c.addEventListener("click",function(){close();try{document.getElementById("trytest-downloads-yt-gate")&&document.getElementById("trytest-downloads-yt-gate").scrollIntoView({behavior:"smooth",block:"start"});}catch(e2){}});'
-        . 'try{if(sessionStorage.getItem("trytest_yt_dl_pop")==="1")return;}catch(e3){}'
-        . 'try{if(typeof d.showModal==="function"){d.showModal();sessionStorage.setItem("trytest_yt_dl_pop","1");}}catch(e4){}})();</script>';
+    return '';
 }
 
 /**
@@ -689,41 +705,43 @@ function trytest_render_pdf_download_gate(int $docId, string $docTitle, array $s
     $postTarget = htmlspecialchars(trytest_url('download_resource?id=' . $docId), ENT_QUOTES, 'UTF-8');
     $codeConfigured = trim((string) ($settings['pdf_unlock_code'] ?? '')) !== '';
     $err = trim($error);
+    $videoPick = trytest_youtube_downloads_gate_pick_video_url($settings);
+    $embed = trytest_youtube_embed_url_quiz_style($videoPick);
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        . '<title>Unlock PDF · Trytest</title><script src="https://cdn.tailwindcss.com"></script></head>'
+        . '<title>Subscribe · Trytest</title><script src="https://cdn.tailwindcss.com"></script></head>'
         . '<body class="min-h-screen bg-slate-50 p-4 text-slate-900">'
-        . '<div class="mx-auto mt-6 max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">'
-        . '<p class="text-center text-xs font-bold uppercase tracking-widest text-red-600">Trytest materials</p>'
-        . '<h1 class="mt-2 text-center text-lg font-bold leading-snug">Free exam questions + answers PDF <span class="text-slate-600">(updated weekly)</span></h1>'
-        . '<p class="mt-2 text-center text-sm text-slate-600">' . htmlspecialchars($docTitle, ENT_QUOTES, 'UTF-8') . '</p>'
-        . '<p class="mt-4 text-center text-sm text-slate-700">Subscribe to the channel for more past papers — then unlock your download below.</p>';
+        . '<div class="mx-auto mt-4 max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200">'
+        . '<div class="border-b border-slate-100 px-4 py-3 text-center">'
+        . '<p class="text-[10px] font-bold uppercase tracking-widest text-[#E50914]">Subscribe</p>'
+        . '<h1 class="mt-1 text-base font-bold text-slate-900">Watch, then continue</h1></div>'
+        . '<div class="space-y-4 p-4">';
     if ($err !== '') {
-        echo '<p class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-800">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
+        echo '<p class="rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-800">' . htmlspecialchars($err, ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+    if ($embed !== '') {
+        echo '<div class="overflow-hidden rounded-xl border border-slate-200 bg-black"><div class="aspect-video w-full">'
+            . '<iframe class="h-full w-full" src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+            . '</div></div>';
     }
     if ($ch !== '') {
-        echo '<div class="mt-5 flex flex-col gap-2">'
-            . '<a id="trytestPdfOpenYtBtn" href="' . $ytUrl . '" target="_blank" rel="noopener" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube channel</a>'
-            . '<p class="text-center text-[10px] text-slate-500">Opens in a new tab — subscribe if you like the content.</p></div>';
-    } else {
-        echo '<p class="mt-4 text-center text-xs text-amber-800">Ask your teacher to add the YouTube channel ID in Admin → YouTube gate.</p>';
+        echo '<a href="' . $ytUrl . '" target="_blank" rel="noopener" class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700">Open YouTube</a>';
     }
     if ($codeConfigured) {
-        echo '<form method="post" action="' . $postTarget . '" class="mt-6 space-y-2">'
+        echo '<details class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs text-slate-600">'
+            . '<summary class="cursor-pointer font-semibold text-slate-800">Have a code?</summary>'
+            . '<form method="post" action="' . $postTarget . '" class="mt-3 space-y-2">'
             . '<input type="hidden" name="pdf_gate_action" value="unlock_code">'
-            . '<label class="block text-xs font-medium text-slate-600">Code from the latest video</label>'
-            . '<input type="text" name="unlock_code" autocomplete="off" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="e.g. TRYTEST2026">'
-            . '<button type="submit" class="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white">Unlock download</button></form>';
+            . '<input type="text" name="unlock_code" autocomplete="off" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Code">'
+            . '<button type="submit" class="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-bold text-white">Continue with code</button></form></details>';
     }
-    echo '<form method="post" action="' . $postTarget . '" id="trytestPdfNudgeForm" class="mt-4">'
+    echo '<form method="post" action="' . $postTarget . '" id="trytestPdfNudgeForm" class="space-y-2">'
         . '<input type="hidden" name="pdf_gate_action" value="nudge_continue">'
-        . '<button type="button" id="trytestPdfContinueBtn" class="w-full rounded-xl border-2 border-slate-300 bg-slate-200 py-3 text-sm font-bold text-slate-500 shadow-sm cursor-not-allowed opacity-70" aria-disabled="true">Continue to download</button></form>'
-        . '<p class="mt-4 text-center text-[10px] text-slate-500">No Google sign-in. Optional code if your teacher shared one in a video.</p>'
-        . '</div><script>(function(){var b=document.getElementById("trytestPdfContinueBtn");var f=document.getElementById("trytestPdfNudgeForm");'
-        . 'if(!b||!f)return;var o=document.getElementById("trytestPdfOpenYtBtn");var u=' . json_encode($ch !== '' ? trytest_youtube_channel_browser_url($ch) : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) . ';'
-        . 'function setReady(ready){if(ready){b.disabled=false;b.setAttribute("aria-disabled","false");b.className="w-full rounded-xl border-2 border-slate-200 bg-white py-3 text-sm font-bold text-slate-800 hover:bg-slate-50";}else{b.disabled=true;b.setAttribute("aria-disabled","true");b.className="w-full rounded-xl border-2 border-slate-300 bg-slate-200 py-3 text-sm font-bold text-slate-500 shadow-sm cursor-not-allowed opacity-70";}}'
-        . 'setReady(!u);if(o){o.addEventListener("click",function(){setTimeout(function(){setReady(true);},450);});}'
-        . 'b.addEventListener("click",function(){if(b.disabled)return;if(u)window.open(u,"_blank","noopener");setTimeout(function(){f.submit();},800);});})();</script>'
+        . '<button type="button" id="trytestPdfContinueBtn" disabled class="w-full rounded-xl bg-slate-300 py-3 text-sm font-bold text-white">Continue in 5s</button>'
+        . '</form><p class="text-center text-[10px] text-slate-500">Then your file: ' . htmlspecialchars($docTitle, ENT_QUOTES, 'UTF-8') . '</p>'
+        . '</div></div>'
+        . '<p class="mx-auto mt-4 max-w-md text-center text-xs"><a class="font-semibold text-[#2C6A7D] underline" href="' . htmlspecialchars(trytest_url('downloads'), ENT_QUOTES, 'UTF-8') . '">Back to files</a></p>'
+        . '<script>(function(){var b=document.getElementById("trytestPdfContinueBtn");var f=document.getElementById("trytestPdfNudgeForm");if(!b||!f)return;var t=5;var iv=setInterval(function(){t--;if(t>0){b.textContent="Continue in "+t+"s";return;}clearInterval(iv);b.disabled=false;b.textContent="I have subscribed — continue";b.className="w-full rounded-xl bg-[#2C6A7D] py-3 text-sm font-bold text-white";},1000);b.addEventListener("click",function(){if(b.disabled)return;f.submit();});})();</script>'
         . '</body></html>';
 }
 

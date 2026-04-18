@@ -76,7 +76,6 @@ $dashboardUrl = trytest_url('dashboard');
 $downloadResourceBase = trytest_url('download_resource');
 $ytActivationPanel = trytest_youtube_downloads_activation_panel_html($yt, trytest_url('downloads'), $ytGateErr);
 $ytSoftPromo = trytest_youtube_downloads_soft_promo_html($yt);
-$ytLockedModal = trytest_youtube_downloads_locked_modal_html($yt);
 $downloadsLocked = !empty($yt['gate_active']) && !trytest_youtube_download_allowed($yt);
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -100,61 +99,60 @@ $h = static function (string $s): string {
         <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
             <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 text-sm font-semibold text-[#2C6A7D] hover:underline">← Home</a>
             <div class="flex min-w-0 flex-1 items-center justify-end gap-2">
-                <h1 class="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-slate-900">Your files</h1>
-                <?php if ($pendingEligible > 0): ?>
+                <h1 class="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-slate-900"><?php echo $downloadsLocked ? 'Subscribe' : 'Your files'; ?></h1>
+                <?php if (!$downloadsLocked && $pendingEligible > 0): ?>
                     <span class="inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-full bg-[#E50914] px-1.5 text-[10px] font-extrabold leading-none text-white" title="Not downloaded yet"><?php echo $pendingEligible > 9 ? '9+' : (string) $pendingEligible; ?></span>
                 <?php endif; ?>
             </div>
         </div>
     </header>
     <main class="mx-auto max-w-lg px-4 py-6">
-        <?php if ($ytActivationPanel !== ''): ?>
-            <div class="mb-6"><?php echo $ytActivationPanel; ?></div>
-        <?php elseif ($ytSoftPromo !== ''): ?>
-            <div class="mb-6"><?php echo $ytSoftPromo; ?></div>
-        <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
-            <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup.</div>
-        <?php endif; ?>
-
-        <?php if (!$studentDocuments): ?>
-            <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
-                <p class="text-sm font-medium text-slate-700">No files for your program yet</p>
-                <p class="mt-2 text-xs leading-relaxed text-slate-500">When your teacher adds PDFs for your level and department, they will show up here.</p>
-            </div>
+        <?php if ($downloadsLocked): ?>
+            <?php if ($ytActivationPanel !== ''): ?>
+                <?php echo $ytActivationPanel; ?>
+            <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup.</div>
+            <?php endif; ?>
         <?php else: ?>
-            <ul class="space-y-3">
-                <?php foreach ($studentDocuments as $doc): ?>
-                    <li class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div class="flex items-center gap-3 px-4 py-3.5">
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C6A7D]/10 text-lg" aria-hidden="true">📄</span>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="truncate text-sm font-semibold text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'PDF')); ?></p>
-                                    <?php if (!empty($doc['is_new'])): ?>
-                                        <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900">New</span>
-                                    <?php endif; ?>
+            <?php if ($ytActivationPanel !== ''): ?>
+                <div class="mb-6"><?php echo $ytActivationPanel; ?></div>
+            <?php elseif ($ytSoftPromo !== ''): ?>
+                <div class="mb-6"><?php echo $ytSoftPromo; ?></div>
+            <?php elseif (!empty($yt['gate_active']) && trim((string) ($yt['channel_id'] ?? '')) === ''): ?>
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs text-amber-900">PDF gate is on but no YouTube channel is set yet — ask your teacher to finish YouTube setup.</div>
+            <?php endif; ?>
+
+            <?php if (!$studentDocuments): ?>
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
+                    <p class="text-sm font-medium text-slate-700">No files for your program yet</p>
+                    <p class="mt-2 text-xs leading-relaxed text-slate-500">When your teacher adds PDFs for your level and department, they will show up here.</p>
+                </div>
+            <?php else: ?>
+                <ul class="space-y-3">
+                    <?php foreach ($studentDocuments as $doc): ?>
+                        <li class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div class="flex items-center gap-3 px-4 py-3.5">
+                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C6A7D]/10 text-lg" aria-hidden="true">📄</span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="truncate text-sm font-semibold text-slate-900"><?php echo $h((string) ($doc['title'] ?? 'PDF')); ?></p>
+                                        <?php if (!empty($doc['is_new'])): ?>
+                                            <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-900">New</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="border-t border-slate-100 px-4 py-3">
-                            <?php if (!empty($doc['downloaded'])): ?>
-                                <span class="flex w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-bold text-emerald-800">Downloaded</span>
-                            <?php elseif ($downloadsLocked): ?>
-                                <div class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-center">
-                                    <p class="text-xs font-semibold text-amber-950">Subscribe first</p>
-                                    <p class="mt-1 text-[11px] leading-snug text-amber-900/90">Use the YouTube steps above, then downloads turn on.</p>
-                                    <a href="#trytest-downloads-yt-gate" class="mt-2 inline-block text-[11px] font-bold text-[#2C6A7D] underline underline-offset-2">Jump to unlock</a>
-                                </div>
-                            <?php else: ?>
-                                <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="block w-full rounded-xl bg-[#2C6A7D] py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#24586a]">Download</a>
-                            <?php endif; ?>
-                        </div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-        <?php if ($ytLockedModal !== ''): ?>
-            <?php echo $ytLockedModal; ?>
+                            <div class="border-t border-slate-100 px-4 py-3">
+                                <?php if (!empty($doc['downloaded'])): ?>
+                                    <span class="flex w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-bold text-emerald-800">Downloaded</span>
+                                <?php else: ?>
+                                    <a href="<?php echo $h($downloadResourceBase); ?>?id=<?php echo (int) ($doc['id'] ?? 0); ?>" class="block w-full rounded-xl bg-[#2C6A7D] py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#24586a]">Download</a>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
         <?php endif; ?>
     </main>
 </body>

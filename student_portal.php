@@ -257,6 +257,7 @@ $levelLeaderboardRows = [];
 $doneBlock = null;
 $doneComparison = null;
 $dashboardEncouragement = null;
+$newQuizBadgeCount = 0;
 $activeTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'home';
 if ($activeTab === 'profile') {
     $activeTab = 'home';
@@ -271,6 +272,15 @@ if ($isUserLoggedIn) {
     $totalPoints = (int) $ptsStmt->fetchColumn();
 
     $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
+
+    $feedSeenRow = $db->prepare('SELECT created_at, quizzes_feed_last_seen_at FROM users WHERE id = ?');
+    $feedSeenRow->execute([$userId]);
+    $feedSeen = $feedSeenRow->fetch(PDO::FETCH_ASSOC) ?: [];
+    $newQuizBadgeCount = trytest_student_new_quizzes_badge_count(
+        $coursesWithQuizzes,
+        trim((string) ($feedSeen['quizzes_feed_last_seen_at'] ?? '')),
+        trim((string) ($feedSeen['created_at'] ?? ''))
+    );
 
     $dashboardEncouragement = trytest_student_dashboard_encouragement(
         $coursesWithQuizzes,
@@ -346,6 +356,7 @@ if ($isUserLoggedIn) {
 }
 
 $downloadsBadgeCount = $downloadsBadgeCount ?? 0;
+$newQuizBadgeCount = (int) ($newQuizBadgeCount ?? 0);
 
 $ytSettings = trytest_youtube_settings();
 $quizDoneYoutubeHtml = '';
@@ -381,6 +392,7 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
     $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
+    $newQuizBadgeCount = (int) ($newQuizBadgeCount ?? 0);
     $quizzesPageUrl = (string) ($quizzesPageUrl ?? '');
     $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');

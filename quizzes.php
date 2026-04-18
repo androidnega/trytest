@@ -26,6 +26,12 @@ $_SESSION['user_index_number'] = (string) ($syncRow['index_number'] ?? '');
 $_SESSION['user_level'] = $userLevel;
 $_SESSION['user_department'] = $userDepartment;
 
+try {
+    $db->prepare('UPDATE users SET quizzes_feed_last_seen_at = datetime(\'now\') WHERE id = ?')->execute([$userId]);
+} catch (Throwable $e) {
+    // column missing on very old DB — ignore
+}
+
 $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
 
 $dashboardUrl = trytest_url('dashboard');

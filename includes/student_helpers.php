@@ -41,11 +41,6 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
 }
 
 /**
- * SQL WHERE fragment for student_documents rows this student may see (same rules as trytest_student_document_eligible).
- *
- * @return array{sql:string,params:list<string>}
- */
-/**
  * Best-effort numeric level for matching (e.g. "Level 100", "Lv100" → "100").
  */
 function trytest_student_level_canon(string $level): string
@@ -77,6 +72,11 @@ function trytest_quiz_level_visible_to_student(?string $quizLevel, string $userL
     return $q !== '' && $u !== '' && $q === $u;
 }
 
+/**
+ * SQL WHERE fragment for student_documents rows this student may see (same rules as trytest_student_document_eligible).
+ *
+ * @return array{sql:string,params:list<string>}
+ */
 function trytest_student_documents_visibility_sql(string $tableAlias, string $userLevel, string $userDepartment): array
 {
     $a = preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableAlias) === 1 ? $tableAlias : 'd';
@@ -143,6 +143,31 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
     }
 
     return $coursesWithQuizzes;
+}
+
+/**
+ * Quizzes newer than the last time the student opened the quizzes hub (or since account creation if never opened).
+ *
+ * @param list<array<string,mixed>> $coursesWithQuizzes
+ */
+function trytest_student_new_quizzes_badge_count(array $coursesWithQuizzes, string $quizzesFeedLastSeenAt, string $userAccountCreatedAt): int
+{
+    $seen = trim($quizzesFeedLastSeenAt);
+    $baseline = $seen !== '' ? $seen : trim($userAccountCreatedAt);
+    if ($baseline === '') {
+        return 0;
+    }
+    $n = 0;
+    foreach ($coursesWithQuizzes as $course) {
+        foreach ((array) ($course['quizzes'] ?? []) as $qz) {
+            $cAt = trim((string) ($qz['quiz_created_at'] ?? ''));
+            if ($cAt !== '' && strcmp($cAt, $baseline) > 0) {
+                $n++;
+            }
+        }
+    }
+
+    return $n;
 }
 
 function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 0): string

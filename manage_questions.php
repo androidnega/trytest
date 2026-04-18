@@ -53,6 +53,10 @@ if (isset($_GET['export']) && $_GET['export'] === 'txt') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $postedQuizId = (int) ($_POST['quiz_id'] ?? 0);
+    if ($postedQuizId > 0) {
+        $selectedQuizId = $postedQuizId;
+    }
     if ($action === 'approve_all') {
         $quizId = (int) ($_POST['quiz_id'] ?? 0);
         $selectedQuizId = $quizId;
@@ -64,9 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'approve_one') {
         $id = (int) ($_POST['id'] ?? 0);
-        if ($id > 0) {
-            $db->prepare('UPDATE questions SET status = ? WHERE id = ?')->execute(['approved', $id]);
-            $message = 'Question approved.';
+        if ($id > 0 && $selectedQuizId > 0) {
+            $ok = $db->prepare('UPDATE questions SET status = ? WHERE id = ? AND quiz_id = ? AND status = ?');
+            $ok->execute(['approved', $id, $selectedQuizId, 'pending']);
+            if ($ok->rowCount() > 0) {
+                $message = 'Question approved.';
+            }
         }
     }
     if ($action === 'save_edit') {
@@ -77,22 +84,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $b = trim((string) ($_POST['option_b'] ?? ''));
         $c = trim((string) ($_POST['option_c'] ?? ''));
         $d = trim((string) ($_POST['option_d'] ?? ''));
-        if ($id > 0 && $question !== '' && $correct !== '' && $a !== '' && $b !== '' && $c !== '' && $d !== '') {
-            $db->prepare(
-                'UPDATE questions
-                 SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?
-                 WHERE id = ?'
-            )->execute([$question, $a, $b, $c, $d, $correct, $id]);
-            $message = 'Question updated.';
-        } else {
+        if ($id < 1 || $selectedQuizId < 1) {
+            $error = 'Edit failed. Missing quiz or question.';
+        } elseif ($question === '' || $correct === '' || $a === '' || $b === '' || $c === '' || $d === '') {
             $error = 'Edit failed. All fields are required.';
+        } else {
+            $chk = $db->prepare('SELECT id FROM questions WHERE id = ? AND quiz_id = ? AND status IN (\'pending\', \'approved\')');
+            $chk->execute([$id, $selectedQuizId]);
+            if (!$chk->fetch()) {
+                $error = 'Question not found in this quiz set.';
+            } else {
+                $db->prepare(
+                    'UPDATE questions
+                     SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?
+                     WHERE id = ? AND quiz_id = ?'
+                )->execute([$question, $a, $b, $c, $d, $correct, $id, $selectedQuizId]);
+                $message = 'Question updated.';
+            }
         }
     }
     if ($action === 'delete_question') {
         $id = (int) ($_POST['id'] ?? 0);
-        if ($id > 0) {
-            $db->prepare('DELETE FROM questions WHERE id = ?')->execute([$id]);
-            $message = 'Question deleted.';
+        if ($id > 0 && $selectedQuizId > 0) {
+            $del = $db->prepare('DELETE FROM questions WHERE id = ? AND quiz_id = ?');
+            $del->execute([$id, $selectedQuizId]);
+            if ($del->rowCount() > 0) {
+                $message = 'Question deleted.';
+            }
         }
     }
 }
@@ -179,6 +197,7 @@ if ($selectedQuizId > 0) {
             <div class="space-y-3 max-h-[50vh] overflow-auto">
                 <?php foreach ($pendingQuestions as $q): ?>
                     <form method="post" class="border rounded-lg p-3 space-y-2">
+                        <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
                         <div class="grid gap-2 md:grid-cols-2">
                             <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
@@ -203,16 +222,25 @@ if ($selectedQuizId > 0) {
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5">
             <h2 class="font-semibold mb-3">Approved Question Set (<?php echo count($approvedQuestions); ?>)</h2>
-            <div id="approvedSet" class="space-y-2 max-h-[55vh] overflow-auto">
+            <div id="approvedSet" class="space-y-3 max-h-[55vh] overflow-auto">
                 <?php foreach ($approvedQuestions as $idx => $q): ?>
-                    <div class="border rounded-lg p-3 text-sm" data-q-item>
-                        <p class="font-medium"><?php echo ($idx + 1); ?>. <?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="text-slate-600 mt-1">A) <?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="text-slate-600">B) <?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="text-slate-600">C) <?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="text-slate-600">D) <?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="text-xs text-slate-500 mt-1">Answer: <?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?></p>
-                    </div>
+                    <form method="post" class="border rounded-lg p-3 space-y-2 text-sm" data-q-item>
+                        <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
+                        <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
+                        <p class="text-xs font-semibold text-slate-500">#<?php echo (int) ($idx + 1); ?> · approved</p>
+                        <div class="grid gap-2 md:grid-cols-2">
+                            <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button name="action" value="save_edit" class="rounded bg-slate-900 px-3 py-1.5 text-xs text-white">Save changes</button>
+                            <button name="action" value="delete_question" class="rounded border border-red-300 px-3 py-1.5 text-xs text-red-600" onclick="return confirm('Delete this question from the live quiz set?');">Delete</button>
+                        </div>
+                    </form>
                 <?php endforeach; ?>
                 <?php if (!$approvedQuestions): ?>
                     <p class="text-sm text-slate-500">No approved questions for this quiz set yet.</p>

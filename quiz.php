@@ -35,13 +35,7 @@ $quizTitle = (string) ($quizRow['title'] ?? 'Quiz');
 $durationMinutes = isset($quizRow['duration_minutes']) && $quizRow['duration_minutes'] !== null
     ? max(0, (int) $quizRow['duration_minutes'])
     : 0;
-$quizLevel = (string) ($quizRow['level'] ?? '');
 $userLevel = (string) $_SESSION['user_level'];
-if ($quizLevel !== '' && $quizLevel !== $userLevel) {
-    http_response_code(403);
-    echo 'You are not allowed to access this quiz.';
-    exit;
-}
 $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
 if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {
     http_response_code(403);

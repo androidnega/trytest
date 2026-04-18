@@ -33,11 +33,6 @@ if ($quiz === false) {
     echo json_encode(['ok' => false, 'error' => 'quiz_not_found'], JSON_THROW_ON_ERROR);
     exit;
 }
-if (!empty($quiz['level']) && (string) $quiz['level'] !== $userLevel) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_THROW_ON_ERROR);
-    exit;
-}
 if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_THROW_ON_ERROR);

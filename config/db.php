@@ -327,6 +327,30 @@ if (!$hasDownloadsLastSeen) {
     $db->exec('ALTER TABLE users ADD COLUMN downloads_last_seen_at TEXT');
 }
 
+$userColsQuizFeed = $db->query('PRAGMA table_info(users)')->fetchAll();
+$hasQuizzesFeedLastSeen = false;
+foreach ($userColsQuizFeed as $column) {
+    if (($column['name'] ?? '') === 'quizzes_feed_last_seen_at') {
+        $hasQuizzesFeedLastSeen = true;
+        break;
+    }
+}
+if (!$hasQuizzesFeedLastSeen) {
+    $db->exec('ALTER TABLE users ADD COLUMN quizzes_feed_last_seen_at TEXT');
+}
+
+$quizColsCreated = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
+$hasQuizCreatedAt = false;
+foreach ($quizColsCreated as $column) {
+    if (($column['name'] ?? '') === 'created_at') {
+        $hasQuizCreatedAt = true;
+        break;
+    }
+}
+if (!$hasQuizCreatedAt) {
+    $db->exec('ALTER TABLE quizzes ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))');
+}
+
 $db->exec('
 CREATE TABLE IF NOT EXISTS departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
