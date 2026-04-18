@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 session_start();
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store, must-revalidate');
 
 $quizId = isset($_GET['quiz_id']) ? (int) $_GET['quiz_id'] : 0;
 $questionId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -64,20 +65,54 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
 );
 
 if ($questionId < 1) {
-    // Playable pool: only questions approved for this quiz (imports start as pending).
+    // Playable pool: one DB round-trip — shuffle ids on server, send full question payloads so the
+    // browser does not request each question separately (saves PHP/DB work under load).
     $stmt = $db->prepare(
-        "SELECT id FROM questions WHERE quiz_id = ? AND status = 'approved' ORDER BY id"
+        "SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric
+         FROM questions WHERE quiz_id = ? AND status = 'approved' ORDER BY id"
     );
     $stmt->execute([$quizId]);
-    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $ids = [];
+    $questionsOut = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $qid = (int) ($row['id'] ?? 0);
+        if ($qid < 1) {
+            continue;
+        }
+        $ids[] = $qid;
+    }
     for ($i = count($ids) - 1; $i > 0; $i--) {
         $j = random_int(0, $i);
         $tmp = $ids[$i];
         $ids[$i] = $ids[$j];
         $ids[$j] = $tmp;
     }
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $qid = (int) ($row['id'] ?? 0);
+        if ($qid < 1) {
+            continue;
+        }
+        $rubric = trytest_theory_rubric_decode(isset($row['theory_rubric']) ? (string) $row['theory_rubric'] : null);
+        $row['theory_keywords'] = $rubric['keywords'];
+        $row['theory_accept'] = $rubric['accept'];
+        unset($row['theory_rubric']);
+        $row['play_type'] = trytest_question_play_type($row);
+        $questionsOut[$qid] = $row;
+    }
     echo json_encode(
-        ['ok' => true, 'ids' => $ids, 'effective_duration_seconds' => $effectiveDurationSeconds],
+        [
+            'ok' => true,
+            'ids' => $ids,
+            'questions' => $questionsOut,
+            'effective_duration_seconds' => $effectiveDurationSeconds,
+        ],
         JSON_THROW_ON_ERROR
     );
     exit;

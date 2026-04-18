@@ -18,6 +18,16 @@ $db = new PDO('sqlite:' . $dbFile, null, null, [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
+// Better read/write concurrency under many simultaneous students (single SQLite file).
+try {
+    $db->exec('PRAGMA journal_mode=WAL;');
+    $db->exec('PRAGMA synchronous=NORMAL;');
+    $db->exec('PRAGMA busy_timeout=8000;');
+    $db->exec('PRAGMA temp_store=MEMORY;');
+} catch (Throwable $e) {
+    // ignore if pragma unsupported
+}
+
 $db->exec('
 CREATE TABLE IF NOT EXISTS quizzes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

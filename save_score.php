@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: private, no-store, must-revalidate');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

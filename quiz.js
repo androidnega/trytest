@@ -135,6 +135,8 @@
 
     /** @type {number[]} */
     let orderedIds = [];
+    /** @type {Record<string, object>|null} Full quiz payload from first get_question response (avoids per-question HTTP). */
+    let questionBank = null;
     let currentIndex = 0;
     let score = 0;
     let locked = false;
@@ -297,7 +299,7 @@
                     }
                 })
                 .catch(function () {});
-        }, 20000);
+        }, 25000);
     }
 
     function startTimer() {
@@ -822,6 +824,30 @@
         });
     }
 
+    function cloneBankQuestion(q) {
+        try {
+            return JSON.parse(JSON.stringify(q));
+        } catch (e) {
+            return q;
+        }
+    }
+
+    /** Prefer in-memory bank from bulk boot; fall back to GET for one question (legacy / recovery). */
+    function resolveQuestion(id) {
+        var n = parseInt(String(id), 10);
+        if (!questionBank || isNaN(n) || n < 1) {
+            return loadQuestionById(n);
+        }
+        var q = questionBank[n];
+        if (!q && questionBank[String(n)]) {
+            q = questionBank[String(n)];
+        }
+        if (q) {
+            return Promise.resolve(cloneBankQuestion(q));
+        }
+        return loadQuestionById(n);
+    }
+
     function detectPlayType(q) {
         const stem = String(q.question || '');
         if (stem.indexOf('____') !== -1) {
@@ -1011,7 +1037,7 @@
         setStatus('In Progress', 'ok');
 
         const id = orderedIds[currentIndex];
-        loadQuestionById(id)
+        resolveQuestion(id)
             .then(function (q) {
                 showLoadedQuestion(q);
             })
@@ -1370,6 +1396,7 @@
             return;
         }
         quizFinished = false;
+        questionBank = null;
 
         renderLoading();
         progressLabel.textContent = 'Starting…';
@@ -1381,7 +1408,12 @@
             .then(loadQuestionIds)
             .then(function (boot) {
                 var ids = boot.ids;
+                questionBank =
+                    boot.questions && typeof boot.questions === 'object' && !Array.isArray(boot.questions)
+                        ? boot.questions
+                        : null;
                 if (!ids.length) {
+                    questionBank = null;
                     questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">No questions in this quiz yet.</p>';
                     progressLabel.textContent = '';
                     if (totalValue) totalValue.textContent = '0';
