@@ -386,7 +386,8 @@ $downloadsPageUrl = trytest_url('downloads');
 $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
-$loginHeroImageUrl = trytest_url('KofiEmma.jpg');
+/** Vector-style login illustration (local SVG — always loads, scales crisply). */
+$loginHeroImageUrl = trytest_url('login-illustration.svg');
 
 $needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
 $studentDashboardFixedViewport = $isUserLoggedIn
@@ -460,13 +461,13 @@ if ($isUserLoggedIn) {
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="flex w-full min-h-0 min-w-0 max-w-md flex-col items-stretch gap-4 md:max-w-4xl md:flex-row md:items-center md:gap-8">
-        <figure class="relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-44 md:order-2 md:h-[min(72vh,520px)] md:min-h-[300px] md:flex-1 md:max-w-none">
+        <figure class="relative h-40 w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-indigo-50/50 sm:h-44 md:order-2 md:h-[min(72vh,520px)] md:min-h-[300px] md:flex-1 md:max-w-none">
             <img
                 src="<?php echo htmlspecialchars($loginHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
                 alt=""
-                class="absolute inset-0 h-full w-full object-cover object-center"
-                width="800"
-                height="600"
+                class="absolute inset-0 h-full w-full object-contain object-center p-2 sm:p-3 md:p-6"
+                width="612"
+                height="612"
                 loading="eager"
                 decoding="async"
             >
