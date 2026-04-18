@@ -217,7 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_level'],
             $_SESSION['user_department'],
             $_SESSION['trytest_pdf_gate_ok_at'],
-            $_SESSION['pending_shared_quiz_id']
+            $_SESSION['pending_shared_quiz_id'],
+            $_SESSION['trytest_dash_feat_kind']
         );
         trytest_redirect(trytest_home_with_query(['out' => '1']));
     }
