@@ -370,9 +370,15 @@ $downloadsPageUrl = trytest_url('downloads');
 $quizzesPageUrl = trytest_url('quizzes');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
 $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
+
+$needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
+$studentDashboardFixedViewport = $isUserLoggedIn
+    && $activeTab === 'home'
+    && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))
+    && !$needsDepartmentSetupForLayout;
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo !empty($studentDashboardFixedViewport) ? 'h-svh max-h-svh overflow-hidden' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -382,9 +388,27 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <style> body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; } </style>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
+        <?php if (!empty($studentDashboardFixedViewport)): ?>
+        html, body {
+            height: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        <?php endif; ?>
+    </style>
 </head>
-<body class="<?php echo $isUserLoggedIn ? 'min-h-screen max-w-[100vw] overflow-x-hidden bg-white text-slate-900 antialiased' : 'bg-white min-h-screen text-slate-900'; ?>">
+<body class="<?php
+if ($isUserLoggedIn) {
+    echo !empty($studentDashboardFixedViewport)
+        ? 'h-svh max-h-svh max-w-[100vw] overflow-hidden bg-white text-slate-900 antialiased'
+        : 'min-h-screen max-w-[100vw] overflow-x-hidden bg-white text-slate-900 antialiased';
+} else {
+    echo 'min-h-screen bg-white text-slate-900';
+}
+?>">
 <?php if ($isUserLoggedIn):
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
     $userDisplayName = trytest_student_display_name($userIndex);
@@ -395,6 +419,7 @@ $pendingShareQuizId = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
+    $dashboardYoutubeVideosHtml = trytest_youtube_dashboard_videos_html($ytSettings, !empty($studentDashboardFixedViewport));
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <div class="mx-auto max-w-5xl p-0 md:p-4 md:py-8">
