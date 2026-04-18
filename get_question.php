@@ -27,7 +27,7 @@ if (empty($_SESSION['user_id']) || $userLevel === '') {
     exit;
 }
 
-$quizCheck = $db->prepare('SELECT id, level, quiz_starts_at, quiz_ends_at FROM quizzes WHERE id = ?');
+$quizCheck = $db->prepare('SELECT id, level, quiz_starts_at, quiz_ends_at, duration_minutes FROM quizzes WHERE id = ?');
 $quizCheck->execute([$quizId]);
 $quiz = $quizCheck->fetch();
 if ($quiz === false) {
@@ -55,6 +55,14 @@ if ($schedulePhase === 'after') {
     exit;
 }
 
+$durationMinutesForTimer = isset($quiz['duration_minutes']) && $quiz['duration_minutes'] !== null
+    ? max(0, (int) $quiz['duration_minutes'])
+    : 0;
+$effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
+    $durationMinutesForTimer,
+    isset($quiz['quiz_ends_at']) ? (string) $quiz['quiz_ends_at'] : null
+);
+
 if ($questionId < 1) {
     // Playable pool: only questions approved for this quiz (imports start as pending).
     $stmt = $db->prepare(
@@ -68,7 +76,10 @@ if ($questionId < 1) {
         $ids[$i] = $ids[$j];
         $ids[$j] = $tmp;
     }
-    echo json_encode(['ok' => true, 'ids' => $ids], JSON_THROW_ON_ERROR);
+    echo json_encode(
+        ['ok' => true, 'ids' => $ids, 'effective_duration_seconds' => $effectiveDurationSeconds],
+        JSON_THROW_ON_ERROR
+    );
     exit;
 }
 
@@ -92,4 +103,7 @@ unset($row['theory_rubric']);
 
 $row['play_type'] = trytest_question_play_type($row);
 
-echo json_encode(['ok' => true, 'question' => $row], JSON_THROW_ON_ERROR);
+echo json_encode(
+    ['ok' => true, 'question' => $row, 'effective_duration_seconds' => $effectiveDurationSeconds],
+    JSON_THROW_ON_ERROR
+);

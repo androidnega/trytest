@@ -601,6 +601,32 @@ function trytest_quiz_schedule_phase(?string $startsAtSql, ?string $endsAtSql, ?
     return 'open';
 }
 
+/**
+ * Quiz timer cap in seconds (same rules as quiz.php): min(duration, time until window end), or window-only when no per-quiz duration.
+ */
+function trytest_quiz_effective_duration_seconds(int $durationMinutes, ?string $quizEndsAtSql, ?int $now = null): int
+{
+    $now = $now ?? time();
+    $durationSec = $durationMinutes > 0 ? $durationMinutes * 60 : 0;
+    $endsRaw = $quizEndsAtSql !== null ? trim((string) $quizEndsAtSql) : '';
+    $endsTs = null;
+    if ($endsRaw !== '') {
+        $endParsed = strtotime($endsRaw);
+        if ($endParsed !== false) {
+            $endsTs = (int) $endParsed;
+        }
+    }
+    $untilEnd = ($endsTs !== null && $now < $endsTs) ? max(0, $endsTs - $now) : null;
+    if ($durationSec > 0) {
+        return $untilEnd !== null ? min($durationSec, $untilEnd) : $durationSec;
+    }
+    if ($untilEnd !== null && $untilEnd > 0) {
+        return $untilEnd;
+    }
+
+    return 0;
+}
+
 function trytest_record_document_download(PDO $db, int $userId, int $documentId): void
 {
     if ($userId < 1 || $documentId < 1) {

@@ -159,23 +159,10 @@ if ($schedulePhase === 'after') {
     exit;
 }
 
-$now = time();
-$endsTs = null;
-if ($endsRaw !== '') {
-    $endParsed = strtotime($endsRaw);
-    if ($endParsed !== false) {
-        $endsTs = (int) $endParsed;
-    }
-}
-$durationSec = $durationMinutes > 0 ? $durationMinutes * 60 : 0;
-$untilEnd = ($endsTs !== null && $now < $endsTs) ? max(0, $endsTs - $now) : null;
-if ($durationSec > 0) {
-    $effectiveDurationSeconds = $untilEnd !== null ? min($durationSec, $untilEnd) : $durationSec;
-} elseif ($untilEnd !== null && $untilEnd > 0) {
-    $effectiveDurationSeconds = $untilEnd;
-} else {
-    $effectiveDurationSeconds = 0;
-}
+$effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
+    $durationMinutes,
+    $endsRaw !== '' ? $endsRaw : null
+);
 
 ?>
 <!DOCTYPE html>

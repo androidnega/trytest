@@ -2,7 +2,7 @@
     const cfg = window.QUIZ_CONFIG || { quizId: 0, userId: 0, durationSeconds: 0 };
     const quizId = cfg.quizId;
     const userId = Number(cfg.userId || 0);
-    const durationSeconds = Number(cfg.durationSeconds || 0);
+    let durationCapSeconds = Number(cfg.durationSeconds || 0);
     const quizAdEnabled = !!cfg.quizAdEnabled;
     const quizAdEvery = Math.max(1, Number(cfg.quizAdEvery || 20));
     const quizAdWatchSeconds = Math.max(5, Number(cfg.quizAdWatchSeconds || 20));
@@ -78,16 +78,16 @@
     function applyResume(saved, serverIds) {
         if (!saved || !idsSameMultiset(saved.orderedIds, serverIds)) return false;
         if (saved.orderedIds.length !== serverIds.length) return false;
-        if (Number(saved.durationSeconds) !== Number(durationSeconds)) return false;
+        if (Number(saved.durationSeconds) !== Number(durationCapSeconds)) return false;
         var idx = parseInt(String(saved.currentIndex), 10);
         if (isNaN(idx) || idx < 0 || idx >= saved.orderedIds.length) return false;
         orderedIds = saved.orderedIds.slice();
         currentIndex = idx;
         score = Math.max(0, parseInt(String(saved.score), 10) || 0);
         var rem = parseInt(String(saved.remainingSeconds), 10);
-        rem = isNaN(rem) ? durationSeconds : Math.max(0, rem);
-        if (durationSeconds > 0) {
-            rem = Math.min(rem, durationSeconds);
+        rem = isNaN(rem) ? durationCapSeconds : Math.max(0, rem);
+        if (durationCapSeconds > 0) {
+            rem = Math.min(rem, durationCapSeconds);
         }
         remainingSeconds = rem;
         adBreaksSeen = saved.adBreaksSeen
@@ -112,7 +112,7 @@
                     currentIndex: currentIndex,
                     score: score,
                     remainingSeconds: remainingSeconds,
-                    durationSeconds: durationSeconds,
+                    durationSeconds: durationCapSeconds,
                     adBreaksSeen: adBreaksSeen,
                 })
             );
@@ -133,12 +133,15 @@
     let currentIndex = 0;
     let score = 0;
     let locked = false;
-    let remainingSeconds = durationSeconds;
+    let quizFinished = false;
+    let remainingSeconds = durationCapSeconds;
     let timerHandle = null;
     let quizClockStarted = false;
     let timerPaused = false;
     /** @type {number[]} */
     let adBreaksSeen = [];
+    /** @type {ReturnType<typeof setInterval> | null} */
+    let durationSyncInterval = null;
 
     function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -228,6 +231,70 @@
         return String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
     }
 
+    function applyEffectiveDurationFromServer(raw) {
+        var newCap = Math.max(0, Math.floor(Number(raw)));
+        if (isNaN(newCap)) return;
+        if (newCap === durationCapSeconds) return;
+        var delta = newCap - durationCapSeconds;
+        durationCapSeconds = newCap;
+        if (durationCapSeconds <= 0) {
+            remainingSeconds = 0;
+            if (timerHandle) {
+                clearInterval(timerHandle);
+                timerHandle = null;
+            }
+            if (timerLabel) timerLabel.textContent = 'No limit';
+            saveQuizResume();
+            return;
+        }
+        remainingSeconds = Math.max(0, Math.min(durationCapSeconds, remainingSeconds + delta));
+        if (timerLabel) timerLabel.textContent = formatClock(remainingSeconds);
+        if (quizClockStarted && remainingSeconds <= 0) {
+            if (timerHandle) {
+                clearInterval(timerHandle);
+                timerHandle = null;
+            }
+            endQuiz();
+            return;
+        }
+        saveQuizResume();
+    }
+
+    function attachTimerSyncFromResponse(data) {
+        if (data && typeof data.effective_duration_seconds !== 'undefined') {
+            applyEffectiveDurationFromServer(data.effective_duration_seconds);
+        }
+    }
+
+    function stopDurationSyncPolling() {
+        if (durationSyncInterval) {
+            clearInterval(durationSyncInterval);
+            durationSyncInterval = null;
+        }
+    }
+
+    function startDurationSyncPolling() {
+        if (!quizId || durationSyncInterval) return;
+        durationSyncInterval = setInterval(function () {
+            if (quizFinished) {
+                stopDurationSyncPolling();
+                return;
+            }
+            var u =
+                absTrytestPath('api_quiz_effective_duration.php?quiz_id=' + encodeURIComponent(String(quizId)));
+            fetch(u, { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (d) {
+                    if (d && d.ok && typeof d.effective_duration_seconds !== 'undefined') {
+                        applyEffectiveDurationFromServer(d.effective_duration_seconds);
+                    }
+                })
+                .catch(function () {});
+        }, 20000);
+    }
+
     function startTimer() {
         if (!timerLabel) return;
         if (remainingSeconds <= 0) {
@@ -263,11 +330,11 @@
 
     function setFrozenTimerLabel() {
         if (!timerLabel) return;
-        if (durationSeconds <= 0) {
+        if (durationCapSeconds <= 0) {
             timerLabel.textContent = 'No limit';
             return;
         }
-        timerLabel.textContent = formatClock(durationSeconds);
+        timerLabel.textContent = formatClock(remainingSeconds);
     }
 
     function pauseTimer() {
@@ -694,6 +761,7 @@
 
     function loadQuestionIds() {
         return fetchJson(apiUrl({ quiz_id: String(quizId) })).then(function (data) {
+            attachTimerSyncFromResponse(data);
             if (!data.ok || !Array.isArray(data.ids)) {
                 throw new Error('bad_response');
             }
@@ -703,6 +771,7 @@
 
     function loadQuestionById(id) {
         return fetchJson(apiUrl({ quiz_id: String(quizId), id: String(id) })).then(function (data) {
+            attachTimerSyncFromResponse(data);
             if (!data.ok || !data.question) {
                 throw new Error('bad_response');
             }
@@ -1156,6 +1225,9 @@
     }
 
     function endQuiz() {
+        if (quizFinished) return;
+        quizFinished = true;
+        stopDurationSyncPolling();
         clearQuizResumeStorage();
         if (timerHandle) {
             clearInterval(timerHandle);
@@ -1254,6 +1326,7 @@
             questionBox.innerHTML = '<p class="text-slate-500 dark:text-zinc-400">Invalid quiz.</p>';
             return;
         }
+        quizFinished = false;
 
         renderLoading();
         progressLabel.textContent = 'Starting…';
@@ -1280,10 +1353,11 @@
                 if (saved && applyResume(saved, ids)) {
                     progressLabel.textContent = 'Resuming where you left off…';
                     setStatus('In Progress', 'ok');
+                    startDurationSyncPolling();
                     showQuestionAtCurrentIndex();
                     return;
                 }
-                remainingSeconds = durationSeconds;
+                remainingSeconds = durationCapSeconds;
                 setFrozenTimerLabel();
                 orderedIds = shuffleInPlace(ids.slice());
                 currentIndex = 0;
@@ -1291,6 +1365,7 @@
                 adBreaksSeen = [];
                 setScoreDisplay();
                 if (totalValue) totalValue.textContent = String(orderedIds.length);
+                startDurationSyncPolling();
                 showQuestionAtCurrentIndex();
             })
             .catch(function () {
