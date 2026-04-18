@@ -956,7 +956,7 @@
                 const btn = e.target.closest('.option');
                 if (!btn || locked || btn.disabled) return;
                 const selected = btn.getAttribute('data-option') || '';
-                checkMcq(btn, selected, q.correct_answer);
+                checkMcq(btn, selected, q.correct_answer, q);
             });
         }
     }
@@ -1120,15 +1120,46 @@
         const userAnswer = normalize(selected);
         const normalizedCorrect = normalize(correct);
         if (!normalizedCorrect) return false;
-        if (normalizedCorrect.indexOf(',') === -1) {
-            return userAnswer === normalizedCorrect;
+        // Whole answer first so commas inside one correct string (e.g. "Paris, France") are not
+        // misread as multiple alternatives (that used to mark wrong + highlight the same option green).
+        if (userAnswer === normalizedCorrect) {
+            return true;
         }
+        if (String(correct).indexOf(',') !== -1) {
+            const answers = String(correct)
+                .split(',')
+                .map(function (a) { return normalize(a); })
+                .filter(Boolean);
+            return answers.some(function (a) { return userAnswer === a; });
+        }
+        return false;
+    }
 
-        const answers = String(correct)
-            .split(',')
-            .map(function (a) { return normalize(a); })
-            .filter(Boolean);
-        return answers.some(function (a) { return userAnswer === a; });
+    /** When correct_answer is a single letter A–D, compare against the actual option text. */
+    function resolveLetterMcqCorrect(correct, q) {
+        if (!q) {
+            return String(correct || '');
+        }
+        const c = String(correct || '').trim();
+        if (!/^[ABCD]$/i.test(c)) {
+            return c;
+        }
+        const map = { A: 'option_a', B: 'option_b', C: 'option_c', D: 'option_d' };
+        const col = map[c.toUpperCase()];
+        if (!col) {
+            return c;
+        }
+        const v = q[col];
+        if (v == null || String(v).trim() === '') {
+            return c;
+        }
+        return String(v).trim();
+    }
+
+    function isMcqSelectionCorrect(selected, correct, q) {
+        return (
+            isCorrectAnswer(selected, correct) || isCorrectAnswer(selected, resolveLetterMcqCorrect(correct, q))
+        );
     }
 
     function isFillTheoryCorrect(userParts, correct, stem) {
@@ -1224,13 +1255,17 @@
         }
     }
 
-    function checkMcq(btn, selected, correct) {
+    function checkMcq(btn, selected, correct, q) {
+        if (locked) {
+            return;
+        }
         locked = true;
         disableAllOptions();
 
-        const ok = isCorrectAnswer(selected, correct);
+        const ok = isMcqSelectionCorrect(selected, correct, q);
 
         if (ok) {
+            btn.textContent = selected;
             btn.className =
                 'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white success-pop shadow-sm';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
@@ -1238,6 +1273,7 @@
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
+            btn.textContent = selected;
             btn.className =
                 'option w-full rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-left text-base font-semibold text-white shadow-sm';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">❌</span>');
@@ -1245,22 +1281,22 @@
                 navigator.vibrate(200);
             }
             triggerCardWrongFeedback();
-            highlightCorrectMcq(correct);
+            highlightCorrectMcq(correct, q);
         }
 
         renderNextButton();
     }
 
-    function highlightCorrectMcq(correct) {
+    function highlightCorrectMcq(correct, q) {
         document.querySelectorAll('.option').forEach(function (b) {
             const val = b.getAttribute('data-option') || '';
-            if (normalize(val) === normalize(correct)) {
-                b.className =
-                    'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white shadow-sm';
-                if (!b.textContent.includes('✅')) {
-                    b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
-                }
+            if (!isMcqSelectionCorrect(val, correct, q)) {
+                return;
             }
+            b.textContent = val;
+            b.className =
+                'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white shadow-sm';
+            b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
         });
     }
 
