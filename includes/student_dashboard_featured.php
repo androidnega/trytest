@@ -58,7 +58,7 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
     }
     $imgUrl = trytest_student_dashboard_quote_image_url();
     $author = 'Emmanuel K Kwofie';
-    $thumbSize = $compactLayout ? 'h-[4.5rem] w-[4.5rem]' : 'h-24 w-24 sm:h-[6.5rem] sm:w-[6.5rem]';
+    $thumbSize = $compactLayout ? 'h-14 w-14 sm:h-16 sm:w-16' : 'h-20 w-20 sm:h-24 sm:w-24';
     $imgClass = 'shrink-0 rounded-xl border border-slate-200 bg-slate-100 object-cover shadow-sm dark:border-zinc-600 dark:bg-zinc-800 ' . $thumbSize;
     $phClass = 'shrink-0 rounded-xl border border-dashed border-slate-200 bg-slate-50 dark:border-zinc-600 dark:bg-zinc-800/80 ' . $thumbSize;
     $imgBlock = $imgUrl !== ''
@@ -67,27 +67,33 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
     $textClass = $compactLayout
         ? 'text-xs font-semibold leading-snug text-slate-800 dark:text-zinc-100'
         : 'text-sm font-semibold leading-snug text-slate-800 sm:text-base dark:text-zinc-100';
-    $authorClass = $compactLayout
-        ? 'mt-1.5 border-t border-slate-100 pt-1.5 text-[10px] font-medium tracking-wide text-[#2C6A7D] dark:border-zinc-700 dark:text-[#7eb8b8]'
-        : 'mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm dark:border-zinc-700 dark:text-[#7eb8b8]';
-    $pad = $compactLayout ? 'p-2.5 sm:p-3' : 'p-3 sm:p-4';
-    $gap = $compactLayout ? 'gap-2.5 sm:gap-3' : 'gap-3 sm:gap-4';
     $sectionClass = $compactLayout
         ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none dark:border-zinc-700 dark:bg-zinc-900'
         : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4 dark:border-zinc-700 dark:bg-zinc-900';
+    $footer = $compactLayout
+        ? '<div class="flex items-center justify-end border-t border-slate-100 px-2 py-1 dark:border-zinc-800"><span class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400">'
+            . $h($author) . '</span></div>'
+        : '<div class="border-t border-slate-100 px-3 py-2 text-right dark:border-zinc-800"><span class="text-xs font-medium text-slate-600 dark:text-zinc-400">'
+            . $h($author) . '</span></div>';
     $body = '<p class="' . htmlspecialchars($textClass, ENT_QUOTES, 'UTF-8') . '">'
-        . $h($l1) . '<br />' . $h($l2) . '</p>'
-        . '<p class="' . htmlspecialchars($authorClass, ENT_QUOTES, 'UTF-8') . '">' . $h($author) . '</p>';
+        . $h($l1) . '<br />' . $h($l2) . '</p>';
+
+    $innerPad = $compactLayout ? 'p-3 sm:p-4' : 'p-4 sm:p-6';
+    $gap = $compactLayout ? 'gap-3 sm:gap-4' : 'gap-4 sm:gap-5';
 
     return '<section class="' . htmlspecialchars($sectionClass, ENT_QUOTES, 'UTF-8') . '" aria-label="Exam wish">'
         . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
         . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Words for you</h2>'
         . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">Trytest</span></div>'
+        . '<div class="grid grid-cols-1 gap-2">'
         . '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-zinc-700 dark:bg-zinc-950 dark:ring-zinc-800/80">'
-        . '<div class="flex flex-row items-center ' . htmlspecialchars($gap, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($pad, ENT_QUOTES, 'UTF-8') . '">'
+        . '<div class="aspect-video w-full bg-slate-50 dark:bg-black">'
+        . '<div class="flex h-full min-h-0 flex-row items-center ' . htmlspecialchars($gap, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($innerPad, ENT_QUOTES, 'UTF-8') . '">'
         . $imgBlock
-        . '<div class="min-w-0 flex-1 text-left">' . $body . '</div>'
-        . '</div></article></section>';
+        . '<div class="min-w-0 flex-1 overflow-y-auto text-left">' . $body . '</div>'
+        . '</div></div>'
+        . $footer
+        . '</article></div></section>';
 }
 
 /**

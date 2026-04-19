@@ -149,6 +149,10 @@
     let adBreaksSeen = [];
     /** @type {ReturnType<typeof setInterval> | null} */
     let durationSyncInterval = null;
+    /** Logged when the learner submits an answer; flushed on Continue or at exam end (timer). */
+    let pendingAttemptLog = null;
+    /** @type {object[]} */
+    let examReviewItems = [];
 
     function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -905,6 +909,42 @@
         return loadQuestionById(n);
     }
 
+    function formatCorrectAnswerForReview(q) {
+        const play = String(q.play_type || detectPlayType(q)).toLowerCase();
+        if (play === 'mcq') {
+            return String(resolveLetterMcqCorrect(q.correct_answer, q));
+        }
+        if (play === 'fill') {
+            const stem = String(q.question || '');
+            const blanks = blankCountInStem(stem);
+            const raw = String(q.correct_answer || '');
+            if (blanks > 1 && raw.indexOf('|') !== -1) {
+                const segs = raw.split('|');
+                return segs
+                    .map(function (s, i) {
+                        return 'Blank ' + (i + 1) + ': ' + String(s).trim();
+                    })
+                    .join(' · ');
+            }
+            return raw;
+        }
+        return String(q.correct_answer || '');
+    }
+
+    function flushPendingQuestionAttempt() {
+        if (!pendingAttemptLog || !orderedIds.length) {
+            return;
+        }
+        if (currentIndex < 0 || currentIndex >= orderedIds.length) {
+            return;
+        }
+        if (pendingAttemptLog.questionId !== orderedIds[currentIndex]) {
+            return;
+        }
+        examReviewItems.push(pendingAttemptLog);
+        pendingAttemptLog = null;
+    }
+
     function detectPlayType(q) {
         const stem = String(q.question || '');
         if (stem.indexOf('____') !== -1) {
@@ -1284,6 +1324,15 @@
             highlightCorrectMcq(correct, q);
         }
 
+        pendingAttemptLog = {
+            questionId: orderedIds[currentIndex],
+            playType: 'mcq',
+            stem: String(q.question || ''),
+            userAnswer: String(selected),
+            correctAnswer: formatCorrectAnswerForReview(q),
+            verdict: ok ? 'correct' : 'wrong',
+        };
+
         renderNextButton();
     }
 
@@ -1349,10 +1398,24 @@
             } else if (verdict === 'partial') {
                 feedbackLine =
                     '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Close — add a bit more detail.</p>';
+            } else if (verdict === 'wrong' && ev.missing && ev.missing.length) {
+                feedbackLine =
+                    '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Hint — try including: ' +
+                    escapeHtml(ev.missing.slice(0, 4).join(', ')) +
+                    '.</p>';
             }
         } else {
             const okFill = isFillTheoryCorrect(userParts, q.correct_answer, q.question);
             verdict = okFill ? 'correct' : 'wrong';
+            if (!okFill) {
+                const evFill = evaluateTheory(userParts.join(' ').trim(), q);
+                if (evFill.missing && evFill.missing.length) {
+                    feedbackLine =
+                        '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Hint — try including: ' +
+                        escapeHtml(evFill.missing.slice(0, 4).join(', ')) +
+                        '.</p>';
+                }
+            }
         }
 
         if (verdict === 'correct') {
@@ -1379,13 +1442,102 @@
             triggerCardWrongFeedback();
         }
 
+        const ua =
+            userParts.length > 1
+                ? userParts
+                      .map(function (p) {
+                          return String(p || '').trim();
+                      })
+                      .filter(Boolean)
+                      .join(' · ')
+                : String(userParts[0] || '');
+        pendingAttemptLog = {
+            questionId: orderedIds[currentIndex],
+            playType: isTheory ? 'theory' : 'fill',
+            stem: String(q.question || ''),
+            userAnswer: ua,
+            correctAnswer: formatCorrectAnswerForReview(q),
+            verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
+        };
+
         renderNextButton();
         if (feedbackLine) {
             submit.insertAdjacentHTML('afterend', feedbackLine);
         }
     }
 
+    function renderExamReviewThenSave() {
+        const total = orderedIds.length;
+        const parts = [];
+        for (let i = 0; i < examReviewItems.length; i++) {
+            const row = examReviewItems[i];
+            const v = row.verdict;
+            let badge =
+                '<span class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">Correct</span>';
+            if (v === 'partial') {
+                badge =
+                    '<span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-200/90">Partial</span>';
+            } else if (v === 'wrong') {
+                badge =
+                    '<span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:bg-red-900/40 dark:text-red-200">Wrong</span>';
+            }
+            const stemShort = String(row.stem || '').length > 220 ? String(row.stem).slice(0, 217) + '…' : String(row.stem || '');
+            parts.push(
+                '<li class="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-left dark:border-zinc-600 dark:bg-zinc-800/80">' +
+                    '<div class="mb-2 flex flex-wrap items-start justify-between gap-2">' +
+                    '<p class="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-zinc-100">' +
+                    escapeHtml(stemShort) +
+                    '</p>' +
+                    badge +
+                    '</div>' +
+                    '<p class="text-xs font-medium text-slate-500 dark:text-zinc-400">Your answer</p>' +
+                    '<p class="mt-0.5 text-sm text-slate-800 dark:text-zinc-200">' +
+                    escapeHtml(String(row.userAnswer || '—')) +
+                    '</p>' +
+                    '<p class="mt-2 text-xs font-medium text-slate-500 dark:text-zinc-400">Correct answer</p>' +
+                    '<p class="mt-0.5 text-sm font-medium text-[#2C6A7D] dark:text-[#7eb8b8]">' +
+                    escapeHtml(String(row.correctAnswer || '—')) +
+                    '</p>' +
+                    '</li>'
+            );
+        }
+        const listHtml =
+            parts.length > 0
+                ? '<ol class="list-decimal space-y-3 pl-4 marker:font-semibold marker:text-slate-400 dark:marker:text-zinc-500">' +
+                  parts.join('') +
+                  '</ol>'
+                : '<p class="text-sm text-slate-500 dark:text-zinc-400">No question details to show.</p>';
+        questionBox.innerHTML =
+            '<div class="touch-manipulation space-y-4">' +
+            '<div>' +
+            '<h2 class="text-xl font-bold text-slate-900 dark:text-zinc-100">Exam complete</h2>' +
+            '<p class="mt-1 text-2xl font-semibold text-[#2C6A7D] dark:text-[#7eb8b8]">' +
+            score +
+            ' <span class="text-lg font-normal text-slate-400 dark:text-zinc-500">/</span> ' +
+            total +
+            '</p>' +
+            '<p class="mt-1 text-sm text-slate-600 dark:text-zinc-400">Review your answers below, then save to see rankings.</p>' +
+            '</div>' +
+            '<div class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 dark:border-zinc-600 dark:bg-zinc-900/50 sm:p-4">' +
+            '<p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">All questions</p>' +
+            listHtml +
+            '</div>' +
+            '<button type="button" id="examReviewSaveBtn" class="w-full rounded-2xl bg-[#E50914] p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-red-700 active:scale-[0.99] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]">' +
+            'Save &amp; continue to results' +
+            '</button>' +
+            '</div>';
+        const btn = document.getElementById('examReviewSaveBtn');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                saveScore();
+            });
+        }
+    }
+
     function advance() {
+        flushPendingQuestionAttempt();
         currentIndex++;
         saveQuizResume();
         showQuestionAtCurrentIndex();
@@ -1393,6 +1545,7 @@
 
     function endQuiz() {
         if (quizFinished) return;
+        flushPendingQuestionAttempt();
         quizFinished = true;
         stopDurationSyncPolling();
         clearQuizResumeStorage();
@@ -1402,15 +1555,7 @@
         }
         setProgress();
         setStatus('Completed', 'done');
-        questionBox.innerHTML =
-            '<h2 class="mb-2 text-xl font-bold text-slate-900 dark:text-zinc-100">Saving…</h2>' +
-            '<p class="mb-1 text-2xl font-semibold text-[#2C6A7D] dark:text-[#7eb8b8]">' +
-            score +
-            ' <span class="text-lg font-normal text-slate-400 dark:text-zinc-500">/</span> ' +
-            orderedIds.length +
-            '</p>' +
-            '<p class="text-sm text-slate-500 dark:text-zinc-400">Taking you to results and rankings.</p>';
-        saveScore();
+        renderExamReviewThenSave();
     }
 
     function showQuizOutroThenRedirect(doneUrl, finalScore, finalTotal) {
@@ -1495,6 +1640,8 @@
         }
         quizFinished = false;
         questionBank = null;
+        pendingAttemptLog = null;
+        examReviewItems = [];
 
         renderLoading();
         progressLabel.textContent = 'Starting…';
