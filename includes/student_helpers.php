@@ -410,6 +410,10 @@ function trytest_student_dashboard_tile_svg(string $kind, int $size = 40): strin
         case 'results':
             $path = '<path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-4" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linecap="round" stroke-linejoin="round"/>';
             break;
+        case 'rank':
+        case 'podium':
+            $path = '<path d="M6 20h4v-8H6v8zm5-12h4v12h-4V8zm5 6h4v6h-4v-6z" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '" stroke-linecap="round" stroke-linejoin="round"/>';
+            break;
         default:
             $path = '<circle cx="12" cy="12" r="8" fill="none" stroke="' . $stroke . '" stroke-width="' . $sw . '"/>';
     }
