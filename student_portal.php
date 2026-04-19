@@ -511,6 +511,14 @@ if ($isUserLoggedIn) {
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
     $showHomeFeatured = $activeTab === 'home' && (!is_array($doneBlock) || empty($doneBlock['quiz_id']));
+    require_once __DIR__ . '/includes/student_dashboard_nudges.php';
+    $dashboardNudgesHtml = '';
+    if ($showHomeFeatured) {
+        $dashboardNudgesHtml = trytest_student_dashboard_nudges_html(
+            trytest_student_dashboard_nudges_collect($db, $userId, $ytSettings, $downloadsPageUrl),
+            !empty($studentDashboardFixedViewport)
+        );
+    }
     $dashboardFeaturedHtml = trytest_student_dashboard_featured_html(
         $ytSettings,
         !empty($studentDashboardFixedViewport),

@@ -29,6 +29,7 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
 /** @var string $dashboardFeaturedHtml Featured dashboard block: video or exam wish (may be empty). */
+/** @var string $dashboardNudgesHtml Dismissible tips (praise, last quiz, downloads, YouTube). */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -63,6 +64,7 @@ $quizzesPageUrl = trim((string) ($quizzesPageUrl ?? ''));
 
 $dashboardFixedViewport = !empty($studentDashboardFixedViewport ?? false);
 $dashboardFeaturedHtml = (string) ($dashboardFeaturedHtml ?? $dashboardYoutubeVideosHtml ?? '');
+$dashboardNudgesHtml = (string) ($dashboardNudgesHtml ?? '');
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
@@ -277,6 +279,11 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         <?php endif; ?>
                     </div>
                 </section>
+            <?php endif; ?>
+            <?php if ($dashboardNudgesHtml !== ''): ?>
+                <div<?php echo $homeFlexLock ? ' class="min-h-0 shrink-0"' : ''; ?>>
+                    <?php echo $dashboardNudgesHtml; ?>
+                </div>
             <?php endif; ?>
             <?php if ($dashboardFeaturedHtml !== ''): ?>
                 <div<?php echo $homeFlexLock ? ' class="min-h-0 shrink-0 overflow-hidden"' : ''; ?>>
