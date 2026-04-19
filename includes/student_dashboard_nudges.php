@@ -113,50 +113,31 @@ function trytest_student_dashboard_nudges_collect(
 }
 
 /**
- * Show at most one home "dynamic" block per load: tip (nudge), featured (video/quote), or encouragement.
- * Rotates priority each visit so WhatsApp, Downloads, cheer, and featured all get air time — never stacked.
+ * At most one of dismissible nudge or cheer per load (featured video/quote is always shown separately).
  *
  * @param array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null $encouragement
- * @return array{nudge:string, featured:string, encouragement:array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null}
+ * @return array{nudge:string, encouragement:array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null}
  */
-function trytest_student_dashboard_single_dynamic_slot(
-    string $nudgeHtml,
-    string $featuredHtml,
-    ?array $encouragement
-): array {
+function trytest_student_dashboard_nudge_or_cheer_slot(string $nudgeHtml, ?array $encouragement): array
+{
     $nudgeOk = trim($nudgeHtml) !== '';
-    $featOk = trim($featuredHtml) !== '';
     $encOk = is_array($encouragement);
-
-    $orderSets = [
-        [0, 1, 2],
-        [1, 2, 0],
-        [2, 0, 1],
-    ];
-    $cycle = (int) ($_SESSION['trytest_dash_slot_cycle'] ?? 0);
-    $perm = $orderSets[$cycle % 3];
-    $_SESSION['trytest_dash_slot_cycle'] = $cycle + 1;
-
-    foreach ($perm as $p) {
-        if ($p === 0 && $nudgeOk) {
-            return ['nudge' => $nudgeHtml, 'featured' => '', 'encouragement' => null];
-        }
-        if ($p === 1 && $featOk) {
-            return ['nudge' => '', 'featured' => $featuredHtml, 'encouragement' => null];
-        }
-        if ($p === 2 && $encOk) {
-            return ['nudge' => '', 'featured' => '', 'encouragement' => $encouragement];
-        }
+    if (!$nudgeOk && !$encOk) {
+        return ['nudge' => '', 'encouragement' => null];
+    }
+    if (!$nudgeOk) {
+        return ['nudge' => '', 'encouragement' => $encouragement];
+    }
+    if (!$encOk) {
+        return ['nudge' => $nudgeHtml, 'encouragement' => null];
+    }
+    $cycle = (int) ($_SESSION['trytest_dash_nudge_cheer_cycle'] ?? 0);
+    $_SESSION['trytest_dash_nudge_cheer_cycle'] = $cycle + 1;
+    if (($cycle % 2) === 0) {
+        return ['nudge' => $nudgeHtml, 'encouragement' => null];
     }
 
-    if ($nudgeOk) {
-        return ['nudge' => $nudgeHtml, 'featured' => '', 'encouragement' => null];
-    }
-    if ($featOk) {
-        return ['nudge' => '', 'featured' => $featuredHtml, 'encouragement' => null];
-    }
-
-    return ['nudge' => '', 'featured' => '', 'encouragement' => $encOk ? $encouragement : null];
+    return ['nudge' => '', 'encouragement' => $encouragement];
 }
 
 /**

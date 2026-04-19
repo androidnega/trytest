@@ -525,19 +525,14 @@ if ($isUserLoggedIn) {
             trytest_student_dashboard_nudges_collect($db, $userId, $ytSettings, $downloadsPageUrl),
             !empty($studentDashboardFixedViewport)
         );
-        $rawFeaturedHtml = trytest_student_dashboard_featured_html(
+        $dashboardFeaturedHtml = trytest_student_dashboard_featured_html(
             $ytSettings,
             !empty($studentDashboardFixedViewport),
             $showHomeFeatured
         );
-        $pickedHome = trytest_student_dashboard_single_dynamic_slot(
-            $rawNudgeHtml,
-            $rawFeaturedHtml,
-            $dashboardEncouragement
-        );
-        $dashboardNudgesHtml = $pickedHome['nudge'];
-        $dashboardFeaturedHtml = $pickedHome['featured'];
-        $dashboardEncouragement = $pickedHome['encouragement'];
+        $pickedNc = trytest_student_dashboard_nudge_or_cheer_slot($rawNudgeHtml, $dashboardEncouragement);
+        $dashboardNudgesHtml = $pickedNc['nudge'];
+        $dashboardEncouragement = $pickedNc['encouragement'];
     }
     /** POST targets a real .php file so requests are not rewritten via /dashboard/ (directory POST → GET). */
     $studentPortalPostUrl = trytest_url('student_portal.php');

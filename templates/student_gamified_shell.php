@@ -29,7 +29,7 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var string $quizUrlBase */
 /** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
-/** @var string $dashboardFeaturedHtml Featured dashboard block: video or exam wish (may be empty). */
+/** @var string $dashboardFeaturedHtml Featured shell (Video | Words) — always present on home when logged in on home tab. */
 /** @var string $dashboardNudgesHtml Dismissible tips (praise, last quiz, downloads, YouTube). */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');

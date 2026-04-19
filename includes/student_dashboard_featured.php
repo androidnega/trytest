@@ -42,7 +42,35 @@ function trytest_student_dashboard_featured_kind_resolve(bool $videoAvailable): 
     return $current;
 }
 
-function trytest_student_dashboard_featured_quote_section_html(bool $compactLayout, string $twoLineQuote): string
+/**
+ * Same outer frame every time; right badge switches Video | Words. Inner area keeps stable min-height.
+ *
+ * @param 'Video'|'Words' $modeBadge
+ */
+function trytest_student_dashboard_featured_shell_html(bool $compactLayout, string $modeBadge, string $innerBodyHtml): string
+{
+    $h = static function (string $s): string {
+        return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+    };
+    $sectionClass = $compactLayout
+        ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none dark:border-zinc-800/50 dark:bg-[#1c1c22]'
+        : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4 dark:border-zinc-800/50 dark:bg-[#1c1c22]';
+    $slotClass =
+        'grid min-h-[13rem] grid-cols-1 gap-2 sm:min-h-[14rem]';
+
+    return '<section class="' . $h($sectionClass) . '" aria-label="Featured">'
+        . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
+        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Featured</h2>'
+        . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">' . $h($modeBadge) . '</span></div>'
+        . '<div class="' . $h($slotClass) . '">'
+        . $innerBodyHtml
+        . '</div></section>';
+}
+
+/**
+ * Inner card only: image + quote lines + footer (no outer section).
+ */
+function trytest_student_dashboard_featured_quote_article_html(bool $compactLayout, string $twoLineQuote): string
 {
     $h = static function (string $s): string {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -68,9 +96,6 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
     $textClass = $compactLayout
         ? 'text-sm font-bold leading-snug text-slate-800 dark:text-zinc-100'
         : 'text-base font-bold leading-snug text-slate-800 sm:text-lg dark:text-zinc-100';
-    $sectionClass = $compactLayout
-        ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none dark:border-zinc-800/50 dark:bg-[#1c1c22]'
-        : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4 dark:border-zinc-800/50 dark:bg-[#1c1c22]';
     $footer = $compactLayout
         ? '<div class="flex items-center justify-end border-t border-slate-100 px-2 py-1 dark:border-zinc-800"><span class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400">'
             . $h($author) . '</span></div>'
@@ -81,23 +106,27 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
 
     $innerPad = $compactLayout ? 'p-3 sm:p-4' : 'p-4 sm:p-6 md:p-8';
 
-    return '<section class="' . htmlspecialchars($sectionClass, ENT_QUOTES, 'UTF-8') . '" aria-label="Exam wish">'
-        . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
-        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Words for you</h2>'
-        . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">Trytest</span></div>'
-        . '<div class="grid grid-cols-1 gap-2">'
-        . '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-zinc-800/45 dark:bg-[#1e1e24] dark:ring-white/[0.04]">'
-        . '<div class="grid min-h-[8.75rem] w-full grid-cols-[minmax(5.25rem,34%)_minmax(0,1fr)] items-stretch gap-3 bg-slate-50/90 sm:min-h-[9.75rem] sm:gap-4 dark:bg-[#16161a] ' . htmlspecialchars($innerPad, ENT_QUOTES, 'UTF-8') . '">'
+    return '<article class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-zinc-800/45 dark:bg-[#1e1e24] dark:ring-white/[0.04]">'
+        . '<div class="grid min-h-[8.75rem] w-full flex-1 grid-cols-[minmax(5.25rem,34%)_minmax(0,1fr)] items-stretch gap-3 bg-slate-50/90 sm:min-h-[9.75rem] sm:gap-4 dark:bg-[#16161a] ' . htmlspecialchars($innerPad, ENT_QUOTES, 'UTF-8') . '">'
         . $imgBlock
         . '<div class="flex min-h-0 min-w-0 flex-col justify-center text-left">' . $body . '</div>'
         . '</div>'
         . $footer
-        . '</article></div></section>';
+        . '</article>';
+}
+
+function trytest_student_dashboard_featured_quote_section_html(bool $compactLayout, string $twoLineQuote): string
+{
+    return trytest_student_dashboard_featured_shell_html(
+        $compactLayout,
+        'Words',
+        trytest_student_dashboard_featured_quote_article_html($compactLayout, $twoLineQuote)
+    );
 }
 
 /**
- * Main dashboard hero: either YouTube clip or two-line exam wish + quote image (same vibe as quiz intro).
- * Shown to every signed-in student on home; not filtered by level.
+ * Main dashboard hero: either YouTube clip or two-line exam wish + quote image.
+ * Always wrapped in the same Featured shell; only the inner card and badge (Video | Words) change.
  *
  * @param array<string, mixed> $ytSettings
  */
@@ -109,13 +138,26 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
     $valid = trytest_youtube_dashboard_valid_embed_urls($ytSettings);
     $videoOk = $valid !== [];
     $kind = trytest_student_dashboard_featured_kind_resolve($videoOk);
+
+    $inner = '';
+    $badge = 'Words';
+
     if ($kind === 'video' && $videoOk) {
         $url = trytest_youtube_dashboard_resolve_session_video_url($valid);
         if ($url !== '') {
-            return trytest_youtube_dashboard_video_section_html($url, $compactLayout);
+            $card = trytest_youtube_dashboard_video_card_html($url, $compactLayout);
+            if ($card !== '') {
+                $inner = $card;
+                $badge = 'Video';
+            }
         }
     }
-    $quote = trytest_exam_short_random_message_dashboard();
 
-    return trytest_student_dashboard_featured_quote_section_html($compactLayout, $quote);
+    if ($inner === '') {
+        $quote = trytest_exam_short_random_message_dashboard();
+        $inner = trytest_student_dashboard_featured_quote_article_html($compactLayout, $quote);
+        $badge = 'Words';
+    }
+
+    return trytest_student_dashboard_featured_shell_html($compactLayout, $badge, $inner);
 }
