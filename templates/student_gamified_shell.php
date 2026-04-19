@@ -241,29 +241,21 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 $encSurface = '#D8EFEF';
             }
             $homeFlexLock = $dashboardFixedViewport;
-            $tileRounded = $homeFlexLock ? 'rounded-xl' : 'rounded-2xl';
-            $tileMin = $homeFlexLock ? 'min-h-0 min-w-0' : 'min-h-[96px]';
-            $tileSvg = $homeFlexLock ? 32 : 38;
-            $homeGridClass = $homeFlexLock
-                ? 'grid min-h-0 flex-1 grid-cols-2 gap-4 [grid-template-rows:minmax(0,1fr)_minmax(0,1fr)]'
-                : 'grid grid-cols-2 gap-3';
-            $lbGridClass = $homeFlexLock ? 'row-start-1 col-start-1 ' : '';
-            $filesGridClass = $homeFlexLock ? 'row-start-1 col-start-2 ' : '';
-            $quizSpanClass = $homeFlexLock ? 'row-start-2 col-span-2 ' : 'col-span-2 ';
+            $tileRounded = 'rounded-xl';
+            $tileSvg = 22;
+            $iconBox = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f4faf9] ring-1 ring-[#84B8B8]/40 dark:bg-[#252528] dark:ring-white/[0.06]';
+            $homeGridClass = 'grid w-full min-w-0 grid-cols-3 gap-1.5 sm:gap-2';
+            $slimCard =
+                'relative flex min-h-0 min-w-0 flex-row items-center gap-1.5 overflow-hidden '
+                . $tileRounded
+                . ' border border-slate-200 bg-white py-1.5 pl-1.5 pr-1 text-left text-slate-900 transition hover:bg-slate-50/90 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]';
             $cheerSectionClass = $homeFlexLock
                 ? 'shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100'
                 : 'mb-4 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100';
             $cheerBodyClass = $homeFlexLock
                 ? 'mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95'
                 : 'mt-0.5 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95';
-            $quickSectionClass = $homeFlexLock ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'mb-6';
-            $homeUpperBlocks = ($enc !== null ? 1 : 0)
-                + ($dashboardNudgesHtml !== '' ? 1 : 0)
-                + ($dashboardFeaturedHtml !== '' ? 1 : 0);
-            $homeQuickTilesCollapsed = $homeUpperBlocks >= 2;
-            $quickSectionClass = $homeQuickTilesCollapsed && $homeFlexLock
-                ? 'shrink-0'
-                : $quickSectionClass;
+            $quickSectionClass = $homeFlexLock ? 'min-w-0 shrink-0 overflow-hidden' : 'mb-6';
             ?>
             <style>
                 @keyframes trytest-quiz-icon-breathe {
@@ -300,63 +292,45 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 </div>
             <?php endif; ?>
             <section class="<?php echo $h($quickSectionClass); ?>" aria-label="Quick links">
-                <?php if ($homeQuickTilesCollapsed): ?>
-                    <nav class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-zinc-800/45 dark:bg-[#1a1a1f]" aria-label="Shortcuts">
-                        <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-500">Shortcuts</p>
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-semibold">
-                            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="text-[#2C6A7D] hover:underline dark:text-[#8ebfbf]">Leaderboard</a>
-                            <span class="text-slate-300 dark:text-zinc-700" aria-hidden="true">·</span>
-                            <a href="<?php echo $h($downloadsPageUrl); ?>" class="inline-flex items-center gap-1.5 text-[#2C6A7D] hover:underline dark:text-[#8ebfbf]">Files<?php if ($downloadsBadgeCount > 0): ?><span class="rounded-full bg-[#E50914] px-1.5 py-0.5 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span><?php endif; ?></a>
-                            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                                <span class="text-slate-300 dark:text-zinc-700" aria-hidden="true">·</span>
-                                <a href="<?php echo $h($quizzesPageUrl); ?>" class="inline-flex items-center gap-1.5 text-[#2C6A7D] hover:underline dark:text-[#8ebfbf]">Quizzes<?php if ($newQuizBadgeCount > 0): ?><span class="rounded-full bg-[#E50914] px-1.5 py-0.5 text-[10px] font-extrabold text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span><?php endif; ?></a>
-                            <?php endif; ?>
-                        </div>
-                    </nav>
-                <?php else: ?>
                 <div class="<?php echo $h($homeGridClass); ?>">
-                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($lbGridClass); ?>flex <?php echo $h($tileMin); ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]">
-                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45 dark:bg-[#252528] dark:ring-white/[0.06]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
-                        <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold leading-tight">Leaderboard</span>
-                            <span class="mt-0.5 block text-xs text-slate-500 dark:text-zinc-400/95">Level ranks</span>
+                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
+                        <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
+                        <span class="min-w-0 flex-1 overflow-hidden">
+                            <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
+                            <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Ranks</span>
                         </span>
                     </a>
-                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($filesGridClass); ?>relative flex <?php echo $h($tileMin); ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]">
+                    <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
                         <?php if ($downloadsBadgeCount > 0): ?>
-                            <span class="absolute right-2 top-2 z-10 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                            <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
                         <?php endif; ?>
-                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45 dark:bg-[#252528] dark:ring-white/[0.06]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
-                        <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold leading-tight">Files</span>
-                            <span class="mt-0.5 block text-xs text-slate-500 dark:text-zinc-400/95">Downloads</span>
+                        <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
+                        <span class="min-w-0 flex-1 overflow-hidden">
+                            <span class="block truncate text-[11px] font-bold leading-tight">Files</span>
+                            <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Downloads</span>
                         </span>
                     </a>
                     <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                        <?php
-                        $quizCardClass = 'relative ' . $quizSpanClass . 'flex ' . $tileMin . ' min-w-0 flex-row items-center gap-3 ' . $tileRounded . ' border border-slate-200 bg-white px-3 py-3 text-left text-slate-900 transition hover:bg-slate-50/80 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e] ';
-                        ?>
-                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($quizCardClass); ?>">
+                        <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
                             <?php if ($newQuizBadgeCount > 0): ?>
-                                <span class="absolute right-2 top-2 z-10 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
                             <?php endif; ?>
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f4faf9] ring-1 ring-[#84B8B8]/45 dark:bg-[#252528] dark:ring-white/[0.06] <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold leading-tight">Quizzes</span>
-                                <span class="mt-0.5 block text-xs text-slate-500 dark:text-zinc-400/95"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> <?php echo (int) $totalQuizCards === 1 ? 'quiz' : 'quizzes'; ?> ready</span>
+                            <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                            <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
+                                <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
+                                <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
                             </span>
                         </a>
                     <?php else: ?>
-                        <div class="<?php echo $h($quizSpanClass); ?>flex <?php echo $homeFlexLock ? 'min-h-0' : 'min-h-[88px]'; ?> min-w-0 flex-row items-center gap-3 <?php echo $h($tileRounded); ?> border border-slate-200 bg-white px-3 py-3 text-left text-slate-500 dark:border-zinc-800/45 dark:bg-[#18181c] dark:text-zinc-400">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 opacity-70 ring-1 ring-slate-200 dark:bg-[#252528] dark:ring-white/[0.05]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-semibold leading-tight text-slate-700 dark:text-zinc-300">Quizzes</span>
-                                <span class="mt-0.5 block text-xs text-slate-500 dark:text-zinc-500">None for your program yet</span>
+                        <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
+                            <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                            <span class="min-w-0 flex-1 overflow-hidden">
+                                <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
+                                <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
                             </span>
                         </div>
                     <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </section>
             <?php if ($homeFlexLock): ?>
             </div>
