@@ -269,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uidReset = (int) $_SESSION['user_id'];
         $lvlReset = trim((string) ($_SESSION['user_level'] ?? ''));
         $depReset = trim((string) ($_SESSION['user_department'] ?? ''));
-        if ($resetQuizId > 0 && trytest_student_can_access_quiz($db, $resetQuizId, $lvlReset, $depReset)) {
+        if ($resetQuizId > 0 && trytest_student_may_reset_quiz_attempt($db, $uidReset, $resetQuizId, $lvlReset, $depReset)) {
             trytest_student_wipe_quiz_results($db, $uidReset, $resetQuizId);
             trytest_redirect(trytest_url('quiz?quiz_id=' . $resetQuizId));
         }
@@ -524,6 +524,8 @@ if ($isUserLoggedIn) {
         !empty($studentDashboardFixedViewport),
         $showHomeFeatured
     );
+    /** POST targets a real .php file so requests are not rewritten via /dashboard/ (directory POST → GET). */
+    $studentPortalPostUrl = trytest_url('student_portal.php');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <?php if (!empty($studentPasswordOnlyView)): ?>

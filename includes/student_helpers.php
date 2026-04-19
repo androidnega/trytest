@@ -365,6 +365,24 @@ function trytest_student_wipe_quiz_results(PDO $db, int $userId, int $quizId): v
 }
 
 /**
+ * Whether this user may use "Try again" for a quiz. If they already have a saved score for that
+ * quiz, allow reset (they are clearing their own attempt). Otherwise use normal quiz access rules.
+ */
+function trytest_student_may_reset_quiz_attempt(PDO $db, int $userId, int $quizId, string $userLevel, string $userDepartment): bool
+{
+    if ($userId < 1 || $quizId < 1) {
+        return false;
+    }
+    $st = $db->prepare('SELECT 1 FROM scores WHERE user_id = ? AND quiz_id = ? LIMIT 1');
+    $st->execute([$userId, $quizId]);
+    if ($st->fetchColumn()) {
+        return true;
+    }
+
+    return trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment);
+}
+
+/**
  * Inline SVG for student dashboard quick-link tiles (stroke icons).
  */
 function trytest_student_dashboard_tile_svg(string $kind, int $size = 40): string

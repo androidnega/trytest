@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/includes/student_theme.php';
 
 /** @var string $dashboardUrl */
+/** @var string $studentPortalPostUrl Form action for POSTs (student_portal.php — avoids /dashboard/ directory POST issues). */
 /** @var string $downloadsPageUrl */
 /** @var int $downloadsBadgeCount */
 /** @var int $userId */
@@ -65,6 +66,7 @@ $quizzesPageUrl = trim((string) ($quizzesPageUrl ?? ''));
 $dashboardFixedViewport = !empty($studentDashboardFixedViewport ?? false);
 $dashboardFeaturedHtml = (string) ($dashboardFeaturedHtml ?? $dashboardYoutubeVideosHtml ?? '');
 $dashboardNudgesHtml = (string) ($dashboardNudgesHtml ?? '');
+$studentPortalPostUrl = isset($studentPortalPostUrl) ? (string) $studentPortalPostUrl : (string) ($dashboardUrl ?? '');
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
@@ -173,7 +175,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 <?php if ($departmentUpdateError !== ''): ?>
                     <p class="mt-2 rounded-lg bg-red-100 px-3 py-2 text-xs font-medium text-red-800 dark:bg-red-950/50 dark:text-red-200"><?php echo $h($departmentUpdateError); ?></p>
                 <?php endif; ?>
-                <form method="post" action="<?php echo $h($dashboardUrl); ?>" class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                     <input type="hidden" name="action" value="update_student_department">
                     <label class="block min-w-0 flex-1 text-left">
                         <span class="mb-1 block text-[11px] font-medium text-amber-950/80 dark:text-amber-200/90">Program / department</span>
@@ -388,7 +390,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             </div>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $rqid); ?>" class="inline-flex items-center rounded-lg bg-[#2C6A7D] px-3 py-2 text-xs font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91] dark:hover:bg-[#356d7f]">View quiz</a>
-                                <form method="post" action="<?php echo $h($dashboardUrl); ?>" class="inline" onsubmit="return confirm('Try again? Your saved score and attempts for this quiz will be removed.');">
+                                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="inline" onsubmit="return confirm('Try again? Your saved score and attempts for this quiz will be removed.');">
                                     <input type="hidden" name="action" value="reset_student_quiz">
                                     <input type="hidden" name="quiz_id" value="<?php echo $rqid; ?>">
                                     <button type="submit" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">Try again</button>
