@@ -678,6 +678,28 @@ function trytest_youtube_dashboard_valid_embed_urls(array $settings): array
 }
 
 /**
+ * Page URLs suitable for sharing (dashboard clips, else quiz ad clips when the dashboard list is empty).
+ *
+ * @param array<string, mixed> $settings
+ * @return list<string>
+ */
+function trytest_youtube_student_share_video_pool(array $settings): array
+{
+    $v = trytest_youtube_dashboard_valid_embed_urls($settings);
+    if ($v !== []) {
+        return $v;
+    }
+    foreach ((array) ($settings['quiz_ad_videos'] ?? []) as $u) {
+        $u = trim((string) $u);
+        if ($u !== '' && trytest_youtube_embed_url($u) !== '') {
+            $v[] = $u;
+        }
+    }
+
+    return array_values(array_unique($v));
+}
+
+/**
  * Resolves the session-picked dashboard video URL (rotates every N video views).
  * Call only when actually rendering the video block.
  *

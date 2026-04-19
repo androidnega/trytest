@@ -5,11 +5,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/youtube_subscribe.php';
 
 /**
- * Dismissible home-dashboard tips (praise, last score, downloads, YouTube share).
- * Visibility is partly random per visit; closing stores a cooldown in localStorage (handled in-page script).
+ * One dismissible home-dashboard tip per visit (solid background per kind).
+ * WhatsApp nudge picks a random shareable video and opens wa.me with prefilled text.
  *
  * @param array<string, mixed> $ytSettings From trytest_youtube_settings()
- * @return list<array{id:string,body:string,link?:string,link_label?:string,cooldown_days:int}>
+ * @return list<array{id:string,kind:string,body:string,link?:string,link_label?:string,whatsapp_href?:string,cooldown_days:int}>
  */
 function trytest_student_dashboard_nudges_collect(
     PDO $db,
@@ -17,7 +17,7 @@ function trytest_student_dashboard_nudges_collect(
     array $ytSettings,
     string $downloadsPageUrl
 ): array {
-    $out = [];
+    $candidates = [];
 
     $lastStmt = $db->prepare(
         'SELECT s.score, s.total, s.created_at, q.title AS quiz_title
@@ -30,10 +30,7 @@ function trytest_student_dashboard_nudges_collect(
     $lastStmt->execute([$userId]);
     $lastRow = $lastStmt->fetch(PDO::FETCH_ASSOC);
 
-    if (
-        is_array($lastRow)
-        && random_int(1, 100) <= 82
-    ) {
+    if (is_array($lastRow)) {
         $sc = (int) ($lastRow['score'] ?? 0);
         $tot = max(1, (int) ($lastRow['total'] ?? 1));
         $acc = (int) round(100 * $sc / $tot);
@@ -55,8 +52,9 @@ function trytest_student_dashboard_nudges_collect(
         } else {
             $line .= ' Every attempt counts — use Downloads for practice with answer keys.';
         }
-        $out[] = [
+        $candidates['last_quiz'] = [
             'id' => 'last_quiz',
+            'kind' => 'last_quiz',
             'body' => $line,
             'cooldown_days' => 4,
         ];
@@ -70,47 +68,93 @@ function trytest_student_dashboard_nudges_collect(
         'Your effort matters — celebrate progress, not only perfect scores.',
         'You belong here. Take the next quiz when you feel ready.',
     ];
-    if (random_int(1, 100) <= 40) {
-        $pi = random_int(0, count($praiseLines) - 1);
-        $out[] = [
-            'id' => 'praise_' . (string) $pi,
-            'body' => $praiseLines[$pi],
-            'cooldown_days' => 8,
+    $pi = random_int(0, count($praiseLines) - 1);
+    $candidates['praise'] = [
+        'id' => 'praise',
+        'kind' => 'praise',
+        'body' => $praiseLines[$pi],
+        'cooldown_days' => 8,
+    ];
+
+    $candidates['downloads'] = [
+        'id' => 'downloads_keys',
+        'kind' => 'downloads',
+        'body' => 'Need more practice? Open Files → Downloads for question sets that include answer keys.',
+        'link' => $downloadsPageUrl,
+        'link_label' => 'Open Downloads',
+        'cooldown_days' => 10,
+    ];
+
+    $sharePool = trytest_youtube_student_share_video_pool($ytSettings);
+    if ($sharePool !== []) {
+        $pickVideo = $sharePool[random_int(0, count($sharePool) - 1)];
+        $shareText =
+            "Check out this study video:\n"
+            . $pickVideo
+            . "\n\n— From Trytest. Share with a few friends who are studying too — it helps us keep materials and downloads available.";
+        $wa = 'https://wa.me/?text=' . rawurlencode($shareText);
+        $candidates['whatsapp'] = [
+            'id' => 'whatsapp_share',
+            'kind' => 'whatsapp',
+            'body' => 'Tap below to share a picked study clip with friends on WhatsApp — spreading the word helps us keep downloads and resources going.',
+            'whatsapp_href' => $wa,
+            'cooldown_days' => 12,
         ];
     }
 
-    if (random_int(1, 100) <= 44) {
-        $out[] = [
-            'id' => 'downloads_keys',
-            'body' => 'Need more practice? Open Files → Downloads for question sets that include answer keys.',
-            'link' => $downloadsPageUrl,
-            'link_label' => 'Open Downloads',
-            'cooldown_days' => 10,
-        ];
+    if ($candidates === []) {
+        return [];
     }
 
-    $ch = trim((string) ($ytSettings['channel_id'] ?? ''));
-    if ($ch !== '' && random_int(1, 100) <= 32) {
-        $ytUrl = trytest_youtube_channel_browser_url($ch);
-        $out[] = [
-            'id' => 'youtube_share_three',
-            'body' => 'Share our YouTube channel with three people you study with — it helps us keep materials and downloads available for everyone.',
-            'link' => $ytUrl,
-            'link_label' => 'Open channel',
-            'cooldown_days' => 14,
-        ];
-    }
+    $keys = array_keys($candidates);
+    $chosenKey = $keys[random_int(0, count($keys) - 1)];
 
-    shuffle($out);
-    if (count($out) > 3) {
-        $out = array_slice($out, 0, 3);
-    }
-
-    return $out;
+    return [$candidates[$chosenKey]];
 }
 
 /**
- * Rounded dismissible strips + inline script for localStorage cooldowns.
+ * Solid background classes per kind (no gradients).
+ *
+ * @return array{card:string,text:string,link:string}
+ */
+function trytest_student_dashboard_nudge_surface_classes(string $kind): array
+{
+    switch ($kind) {
+        case 'last_quiz':
+            return [
+                'card' => 'border border-[#9ec9c9] bg-[#D8EFEF] dark:border-emerald-800/60 dark:bg-emerald-950/45',
+                'text' => 'text-slate-900 dark:text-zinc-100',
+                'link' => 'font-semibold text-[#1d5c6e] underline dark:text-[#7eb8b8]',
+            ];
+        case 'praise':
+            return [
+                'card' => 'border border-[#f5c2c7] bg-[#FCE8E9] dark:border-rose-800/50 dark:bg-rose-950/40',
+                'text' => 'text-slate-900 dark:text-zinc-100',
+                'link' => 'font-semibold text-[#9f2d3a] underline dark:text-rose-200',
+            ];
+        case 'downloads':
+            return [
+                'card' => 'border border-slate-300 bg-[#E2E8F0] dark:border-zinc-600 dark:bg-slate-800',
+                'text' => 'text-slate-900 dark:text-zinc-100',
+                'link' => 'font-semibold text-[#2C6A7D] underline dark:text-[#7eb8b8]',
+            ];
+        case 'whatsapp':
+            return [
+                'card' => 'border border-[#86efac] bg-[#DCFCE7] dark:border-green-800/55 dark:bg-green-950/45',
+                'text' => 'text-slate-900 dark:text-zinc-100',
+                'link' => 'font-semibold text-[#15803d] underline dark:text-green-300',
+            ];
+        default:
+            return [
+                'card' => 'border border-slate-200 bg-white dark:border-zinc-600 dark:bg-zinc-900',
+                'text' => 'text-slate-900 dark:text-zinc-100',
+                'link' => 'font-semibold text-[#2C6A7D] underline dark:text-[#7eb8b8]',
+            ];
+    }
+}
+
+/**
+ * One dismissible strip + inline script for localStorage cooldowns.
  */
 function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayout): string
 {
@@ -120,18 +164,14 @@ function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayou
     $h = static function (string $s): string {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     };
-    $wrapClass = $compactLayout
-        ? 'mb-2 space-y-2'
-        : 'mb-3 space-y-2.5';
-    $cardClass = 'relative rounded-xl border border-slate-200/90 bg-white/95 px-3 py-2.5 pr-8 text-left shadow-sm dark:border-zinc-600 dark:bg-zinc-900/90';
-    $textClass = $compactLayout
-        ? 'text-[11px] leading-snug text-slate-800 dark:text-zinc-200'
-        : 'text-xs leading-snug text-slate-800 sm:text-sm dark:text-zinc-200';
+    $wrapClass = $compactLayout ? 'mb-2' : 'mb-3';
     $btnClass =
-        'absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-sm font-bold leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200';
+        'absolute right-1 top-1 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-sm font-bold leading-none text-slate-600/80 hover:bg-black/5 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100';
+
     $parts = [];
     foreach ($nudges as $n) {
         $id = preg_replace('/[^a-z0-9_]/i', '', (string) ($n['id'] ?? ''));
+        $kind = preg_replace('/[^a-z_]/i', '', (string) ($n['kind'] ?? 'note'));
         if ($id === '') {
             continue;
         }
@@ -140,6 +180,10 @@ function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayou
             continue;
         }
         $cd = max(1, min(30, (int) ($n['cooldown_days'] ?? 7)));
+        $surf = trytest_student_dashboard_nudge_surface_classes($kind);
+        $cardClass = 'relative rounded-xl px-3 py-2.5 pr-8 text-left shadow-sm ' . $surf['card'];
+        $textClass = ($compactLayout ? 'text-[11px] leading-snug ' : 'text-xs leading-snug sm:text-sm ') . $surf['text'];
+
         $link = isset($n['link']) ? trim((string) $n['link']) : '';
         $linkLabel = isset($n['link_label']) ? trim((string) $n['link_label']) : '';
         $linkHtml = '';
@@ -148,14 +192,28 @@ function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayou
             $linkHtml =
                 ' <a href="'
                 . $h($link)
-                . '" class="whitespace-nowrap font-semibold text-[#2C6A7D] underline dark:text-[#7eb8b8]">'
+                . '" class="whitespace-nowrap ' . $h($surf['link']) . '">'
                 . $h($lab)
                 . '</a>';
         }
+
+        $waHref = isset($n['whatsapp_href']) ? trim((string) $n['whatsapp_href']) : '';
+        $waBlock = '';
+        if ($waHref !== '') {
+            $waBlock =
+                '<a href="'
+                . $h($waHref)
+                . '" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex min-h-9 items-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#20bd5a]">'
+                . '<i class="fa-brands fa-whatsapp text-base" aria-hidden="true"></i>'
+                . '<span>Share on WhatsApp</span>'
+                . '</a>';
+        }
+
         $parts[] =
             '<div class="' . $h($cardClass) . '" data-trytest-nudge="' . $h($id) . '" data-trytest-nudge-cooldown="' . (string) $cd . '">'
             . '<button type="button" class="' . $h($btnClass) . '" data-trytest-nudge-close aria-label="Dismiss">×</button>'
             . '<p class="' . $h($textClass) . '">' . $h($body) . $linkHtml . '</p>'
+            . $waBlock
             . '</div>';
     }
     if ($parts === []) {
@@ -167,7 +225,7 @@ function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayou
 (function () {
     var PREFIX = 'trytest_dash_nudge_v1_';
     function storageKey(id) { return PREFIX + id; }
-    function isDismissed(id, cooldownDays) {
+    function isDismissed(id) {
         try {
             var raw = localStorage.getItem(storageKey(id));
             if (!raw) return false;
@@ -184,7 +242,7 @@ function trytest_student_dashboard_nudges_html(array $nudges, bool $compactLayou
         var id = el.getAttribute('data-trytest-nudge') || '';
         var cd = parseInt(el.getAttribute('data-trytest-nudge-cooldown') || '7', 10);
         if (isNaN(cd) || cd < 1) cd = 7;
-        if (id && isDismissed(id, cd)) {
+        if (id && isDismissed(id)) {
             el.remove();
             return;
         }

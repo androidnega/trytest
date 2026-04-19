@@ -59,8 +59,8 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
     $imgUrl = trytest_student_dashboard_quote_image_url();
     $author = 'Emmanuel K Kwofie';
     $thumbSize = $compactLayout
-        ? 'h-full min-h-[5.5rem] w-[38%] max-w-[11rem] min-w-[5.5rem]'
-        : 'h-full min-h-[7rem] w-[40%] max-w-[13rem] min-w-[6.5rem] sm:max-w-[14rem]';
+        ? 'h-full max-h-[7.5rem] min-h-[4.25rem] w-[36%] max-w-[9.5rem] min-w-[5rem]'
+        : 'h-full max-h-[9rem] sm:max-h-[10rem] min-h-[5rem] w-[35%] max-w-[11rem] min-w-[5.5rem] sm:max-w-[12rem]';
     $imgClass =
         'self-stretch shrink-0 rounded-2xl border border-slate-200 bg-slate-100 object-cover object-center shadow-md dark:border-zinc-600 dark:bg-zinc-800 '
         . $thumbSize;
@@ -93,7 +93,7 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
         . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">Trytest</span></div>'
         . '<div class="grid grid-cols-1 gap-2">'
         . '<article class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-zinc-700 dark:bg-zinc-950 dark:ring-zinc-800/80">'
-        . '<div class="aspect-video w-full bg-gradient-to-br from-slate-50 to-slate-100/90 dark:from-zinc-900 dark:to-black">'
+        . '<div class="aspect-[5/3] w-full max-h-[12rem] bg-slate-50 sm:max-h-[13.5rem] dark:bg-zinc-900">'
         . '<div class="flex h-full min-h-0 flex-row items-stretch ' . htmlspecialchars($gap, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($innerPad, ENT_QUOTES, 'UTF-8') . '">'
         . $imgBlock
         . '<div class="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto text-left">' . $body . '</div>'
@@ -122,7 +122,7 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
             return trytest_youtube_dashboard_video_section_html($url, $compactLayout);
         }
     }
-    $quote = trytest_exam_short_random_message();
+    $quote = trytest_exam_short_random_message_dashboard();
 
     return trytest_student_dashboard_featured_quote_section_html($compactLayout, $quote);
 }
