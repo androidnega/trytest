@@ -494,8 +494,8 @@ $htmlRootClasses = trim(implode(' ', array_filter([trytest_student_zoom_lock_htm
 <body class="<?php
 if ($isUserLoggedIn) {
     echo !empty($studentDashboardFixedViewport)
-        ? 'touch-manipulation h-svh max-h-svh max-w-[100vw] overflow-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100'
-        : 'touch-manipulation min-h-screen max-w-[100vw] overflow-x-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100';
+        ? 'touch-manipulation h-svh max-h-svh max-w-[100vw] overflow-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-[#0f1014] dark:text-zinc-100'
+        : 'touch-manipulation min-h-screen max-w-[100vw] overflow-x-hidden bg-zinc-50 text-slate-900 antialiased dark:bg-[#0f1014] dark:text-zinc-100';
 } else {
     echo 'touch-manipulation flex h-screen max-h-screen min-h-0 w-full max-w-[100vw] flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-4 text-slate-900 antialiased md:px-6 md:py-6';
 }

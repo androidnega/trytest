@@ -37,7 +37,7 @@ function trytest_student_theme_head_early(): void
             meta.name = 'theme-color';
             document.head.appendChild(meta);
         }
-        meta.setAttribute('content', dark ? '#09090b' : '#fafafa');
+        meta.setAttribute('content', dark ? '#0f1014' : '#fafafa');
     } catch (e) {}
 })();
 </script>
@@ -52,7 +52,7 @@ function trytest_student_theme_tailwind_config_script(): void
 function trytest_student_theme_toggle_button(): void
 {
     ?>
-<button type="button" id="trytestThemeToggle" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 shadow-sm ring-1 ring-zinc-200/80 hover:bg-zinc-200/90 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-600/80 dark:hover:bg-zinc-700 dark:active:bg-zinc-600" aria-label="Toggle dark mode" title="Dark mode">
+<button type="button" id="trytestThemeToggle" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 shadow-sm ring-1 ring-zinc-200/80 hover:bg-zinc-200/90 active:bg-zinc-300 dark:bg-[#252528] dark:text-zinc-300 dark:ring-white/[0.08] dark:hover:bg-[#2e2e33] dark:active:bg-[#36363c]" aria-label="Toggle dark mode" title="Dark mode">
     <i class="fa-solid fa-moon text-[15px]" id="trytestThemeIconMoon" aria-hidden="true"></i>
     <i class="fa-solid fa-sun text-[15px] hidden" id="trytestThemeIconSun" aria-hidden="true"></i>
 </button>
@@ -71,7 +71,7 @@ function trytest_student_theme_controller_script(): void
     function syncChrome() {
         var meta = document.getElementById('trytest-theme-color');
         if (meta) {
-            meta.setAttribute('content', isDark() ? '#09090b' : '#fafafa');
+            meta.setAttribute('content', isDark() ? '#0f1014' : '#fafafa');
         }
         var moon = document.getElementById('trytestThemeIconMoon');
         var sun = document.getElementById('trytestThemeIconSun');

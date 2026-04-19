@@ -122,31 +122,31 @@ function trytest_student_dashboard_nudge_surface_classes(string $kind): array
     switch ($kind) {
         case 'last_quiz':
             return [
-                'card' => 'border border-[#9ec9c9] bg-[#D8EFEF] dark:border-emerald-800/60 dark:bg-emerald-950/45',
+                'card' => 'border border-[#9ec9c9] bg-[#D8EFEF] dark:border-emerald-800/30 dark:bg-emerald-950/22',
                 'text' => 'text-slate-900 dark:text-zinc-100',
-                'link' => 'font-semibold text-[#1d5c6e] underline dark:text-[#7eb8b8]',
+                'link' => 'font-semibold text-[#1d5c6e] underline dark:text-[#8ebfbf]',
             ];
         case 'praise':
             return [
-                'card' => 'border border-[#f5c2c7] bg-[#FCE8E9] dark:border-rose-800/50 dark:bg-rose-950/40',
+                'card' => 'border border-[#f5c2c7] bg-[#FCE8E9] dark:border-rose-800/30 dark:bg-rose-950/20',
                 'text' => 'text-slate-900 dark:text-zinc-100',
-                'link' => 'font-semibold text-[#9f2d3a] underline dark:text-rose-200',
+                'link' => 'font-semibold text-[#9f2d3a] underline dark:text-rose-300/90',
             ];
         case 'downloads':
             return [
-                'card' => 'border border-slate-300 bg-[#E2E8F0] dark:border-zinc-600 dark:bg-slate-800',
+                'card' => 'border border-slate-300 bg-[#E2E8F0] dark:border-zinc-700/40 dark:bg-[#222228]/90',
                 'text' => 'text-slate-900 dark:text-zinc-100',
-                'link' => 'font-semibold text-[#2C6A7D] underline dark:text-[#7eb8b8]',
+                'link' => 'font-semibold text-[#2C6A7D] underline dark:text-[#8ebfbf]',
             ];
         case 'whatsapp':
             return [
-                'card' => 'border border-[#86efac] bg-[#DCFCE7] dark:border-green-800/55 dark:bg-green-950/45',
+                'card' => 'border border-[#86efac] bg-[#DCFCE7] dark:border-green-800/35 dark:bg-green-950/22',
                 'text' => 'text-slate-900 dark:text-zinc-100',
-                'link' => 'font-semibold text-[#15803d] underline dark:text-green-300',
+                'link' => 'font-semibold text-[#15803d] underline dark:text-green-300/90',
             ];
         default:
             return [
-                'card' => 'border border-slate-200 bg-white dark:border-zinc-600 dark:bg-zinc-900',
+                'card' => 'border border-slate-200 bg-white dark:border-zinc-700/45 dark:bg-[#1e1e24]',
                 'text' => 'text-slate-900 dark:text-zinc-100',
                 'link' => 'font-semibold text-[#2C6A7D] underline dark:text-[#7eb8b8]',
             ];
