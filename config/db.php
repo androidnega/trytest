@@ -383,6 +383,27 @@ CREATE TABLE IF NOT EXISTS departments (
 );
 ');
 
+$quizColsShare = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
+$hasQuizShareCode = false;
+foreach ($quizColsShare as $column) {
+    if (($column['name'] ?? '') === 'share_code') {
+        $hasQuizShareCode = true;
+        break;
+    }
+}
+if (!$hasQuizShareCode) {
+    $db->exec('ALTER TABLE quizzes ADD COLUMN share_code TEXT NOT NULL DEFAULT \'\'');
+}
+$db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_quizzes_share_code ON quizzes(share_code) WHERE share_code != \'\'');
+
+require_once dirname(__DIR__) . '/includes/quiz_share.php';
+foreach ($db->query('SELECT id FROM quizzes WHERE share_code IS NULL OR TRIM(share_code) = \'\'')->fetchAll() as $row) {
+    $rid = (int) ($row['id'] ?? 0);
+    if ($rid > 0) {
+        trytest_quiz_ensure_share_code($db, $rid);
+    }
+}
+
 // Keep SQLite file writable for the web server user in local XAMPP setups.
 if (!$dbFileExisted && is_file($dbFile)) {
     @chmod($dbFile, 0666);

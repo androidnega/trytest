@@ -12,6 +12,9 @@
     RewriteRule ^admin/?$ admin_login.php [L,QSA]
     RewriteRule ^admin/index\.php$ admin_login.php [L,QSA]
 
+    # Short quiz share URLs: /q/xxxx-xxxx → q.php?c=xxxx-xxxx
+    RewriteRule ^q/([a-z0-9-]+)$ q.php?c=$1 [L,QSA]
+
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d

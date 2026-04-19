@@ -68,7 +68,7 @@ $h = static function (string $s): string {
     <?php trytest_student_zoom_lock_styles(); ?>
     <?php trytest_student_zoom_lock_gesture_script(); ?>
 </head>
-<body class="touch-manipulation min-h-screen bg-slate-50 pb-24 text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+<body class="touch-manipulation min-h-screen bg-slate-50 pb-24 text-slate-900 antialiased dark:bg-[#0f1014] dark:text-zinc-100">
     <header class="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
         <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
             <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 text-sm font-semibold text-[#2C6A7D] hover:underline dark:text-[#7eb8b8]">← Home</a>

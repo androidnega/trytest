@@ -113,6 +113,53 @@ function trytest_student_dashboard_nudges_collect(
 }
 
 /**
+ * Show at most one home "dynamic" block per load: tip (nudge), featured (video/quote), or encouragement.
+ * Rotates priority each visit so WhatsApp, Downloads, cheer, and featured all get air time — never stacked.
+ *
+ * @param array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null $encouragement
+ * @return array{nudge:string, featured:string, encouragement:array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null}
+ */
+function trytest_student_dashboard_single_dynamic_slot(
+    string $nudgeHtml,
+    string $featuredHtml,
+    ?array $encouragement
+): array {
+    $nudgeOk = trim($nudgeHtml) !== '';
+    $featOk = trim($featuredHtml) !== '';
+    $encOk = is_array($encouragement);
+
+    $orderSets = [
+        [0, 1, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+    ];
+    $cycle = (int) ($_SESSION['trytest_dash_slot_cycle'] ?? 0);
+    $perm = $orderSets[$cycle % 3];
+    $_SESSION['trytest_dash_slot_cycle'] = $cycle + 1;
+
+    foreach ($perm as $p) {
+        if ($p === 0 && $nudgeOk) {
+            return ['nudge' => $nudgeHtml, 'featured' => '', 'encouragement' => null];
+        }
+        if ($p === 1 && $featOk) {
+            return ['nudge' => '', 'featured' => $featuredHtml, 'encouragement' => null];
+        }
+        if ($p === 2 && $encOk) {
+            return ['nudge' => '', 'featured' => '', 'encouragement' => $encouragement];
+        }
+    }
+
+    if ($nudgeOk) {
+        return ['nudge' => $nudgeHtml, 'featured' => '', 'encouragement' => null];
+    }
+    if ($featOk) {
+        return ['nudge' => '', 'featured' => $featuredHtml, 'encouragement' => null];
+    }
+
+    return ['nudge' => '', 'featured' => '', 'encouragement' => $encOk ? $encouragement : null];
+}
+
+/**
  * Solid background classes per kind (no gradients).
  *
  * @return array{card:string,text:string,link:string}

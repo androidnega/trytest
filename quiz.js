@@ -365,7 +365,79 @@
         startTimer();
     }
 
+    let quizAudioCtx = null;
+    function getQuizAudioContext() {
+        if (quizAudioCtx) {
+            return quizAudioCtx;
+        }
+        try {
+            quizAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            return null;
+        }
+        return quizAudioCtx;
+    }
+    /** Short cheerful arpeggio — Web Audio only, no asset files. */
+    function playQuizCorrectSound() {
+        var ctx = getQuizAudioContext();
+        if (!ctx) {
+            return;
+        }
+        try {
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+        } catch (e) {}
+        function tone(freq, startMs, durMs, vol) {
+            var t0 = ctx.currentTime + startMs / 1000;
+            var osc = ctx.createOscillator();
+            var g = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t0);
+            g.gain.setValueAtTime(0, t0);
+            g.gain.linearRampToValueAtTime(vol, t0 + 0.025);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + durMs / 1000);
+            osc.connect(g);
+            g.connect(ctx.destination);
+            osc.start(t0);
+            osc.stop(t0 + durMs / 1000 + 0.03);
+        }
+        tone(523.25, 0, 95, 0.11);
+        tone(659.25, 78, 100, 0.1);
+        tone(783.99, 158, 120, 0.09);
+        tone(1046.5, 248, 200, 0.065);
+    }
+    /** Soft low “wrong” cue — not harsh. */
+    function playQuizWrongSound() {
+        var ctx = getQuizAudioContext();
+        if (!ctx) {
+            return;
+        }
+        try {
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+        } catch (e) {}
+        function tone(freq, startMs, durMs, type, vol) {
+            var t0 = ctx.currentTime + startMs / 1000;
+            var osc = ctx.createOscillator();
+            var g = ctx.createGain();
+            osc.type = type || 'triangle';
+            osc.frequency.setValueAtTime(freq, t0);
+            g.gain.setValueAtTime(0, t0);
+            g.gain.linearRampToValueAtTime(vol, t0 + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + durMs / 1000);
+            osc.connect(g);
+            g.connect(ctx.destination);
+            osc.start(t0);
+            osc.stop(t0 + durMs / 1000 + 0.03);
+        }
+        tone(168, 0, 130, 'triangle', 0.1);
+        tone(142, 95, 160, 'sawtooth', 0.075);
+    }
+
     function triggerCardWrongFeedback() {
+        playQuizWrongSound();
         if (!quizCard) return;
         quizCard.classList.remove('quiz-card--wrong');
         void quizCard.offsetWidth;
@@ -376,6 +448,7 @@
     }
 
     function triggerCardCorrectFeedback() {
+        playQuizCorrectSound();
         if (!quizCard) return;
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;

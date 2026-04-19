@@ -19,6 +19,12 @@ $incomingShareQuiz = isset($_GET['quiz']) ? (int) $_GET['quiz'] : 0;
 if ($incomingShareQuiz < 1 && isset($_GET['quiz_id'])) {
     $incomingShareQuiz = (int) $_GET['quiz_id'];
 }
+if ($incomingShareQuiz < 1) {
+    $sIncoming = trytest_quiz_normalize_share_code((string) ($_GET['s'] ?? ''));
+    if ($sIncoming !== '') {
+        $incomingShareQuiz = trytest_quiz_id_from_share_code($db, $sIncoming);
+    }
+}
 if ($incomingShareQuiz > 0) {
     $qc = $db->prepare('SELECT id FROM quizzes WHERE id = ?');
     $qc->execute([$incomingShareQuiz]);
@@ -513,17 +519,26 @@ if ($isUserLoggedIn) {
     $showHomeFeatured = $activeTab === 'home' && (!is_array($doneBlock) || empty($doneBlock['quiz_id']));
     require_once __DIR__ . '/includes/student_dashboard_nudges.php';
     $dashboardNudgesHtml = '';
+    $dashboardFeaturedHtml = '';
     if ($showHomeFeatured) {
-        $dashboardNudgesHtml = trytest_student_dashboard_nudges_html(
+        $rawNudgeHtml = trytest_student_dashboard_nudges_html(
             trytest_student_dashboard_nudges_collect($db, $userId, $ytSettings, $downloadsPageUrl),
             !empty($studentDashboardFixedViewport)
         );
+        $rawFeaturedHtml = trytest_student_dashboard_featured_html(
+            $ytSettings,
+            !empty($studentDashboardFixedViewport),
+            $showHomeFeatured
+        );
+        $pickedHome = trytest_student_dashboard_single_dynamic_slot(
+            $rawNudgeHtml,
+            $rawFeaturedHtml,
+            $dashboardEncouragement
+        );
+        $dashboardNudgesHtml = $pickedHome['nudge'];
+        $dashboardFeaturedHtml = $pickedHome['featured'];
+        $dashboardEncouragement = $pickedHome['encouragement'];
     }
-    $dashboardFeaturedHtml = trytest_student_dashboard_featured_html(
-        $ytSettings,
-        !empty($studentDashboardFixedViewport),
-        $showHomeFeatured
-    );
     /** POST targets a real .php file so requests are not rewritten via /dashboard/ (directory POST → GET). */
     $studentPortalPostUrl = trytest_url('student_portal.php');
     require __DIR__ . '/templates/student_gamified_shell.php';

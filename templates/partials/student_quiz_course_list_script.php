@@ -220,6 +220,35 @@ declare(strict_types=1);
     setQuizResumeProgress();
     setInterval(tick, 1000);
 
+    document.querySelectorAll('.trytest-quiz-share-copy').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var url = btn.getAttribute('data-url') || '';
+            if (!url) return;
+            var reset = function () {
+                btn.textContent = 'Copy link';
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function () {
+                    btn.textContent = 'Copied!';
+                    setTimeout(reset, 2000);
+                }).catch(function () {});
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    btn.textContent = 'Copied!';
+                    setTimeout(reset, 2000);
+                } catch (err) {}
+                document.body.removeChild(ta);
+            }
+        });
+    });
+
     var pollUrl = <?php echo json_encode($quizSchedulesPollUrl ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
     if (pollUrl) {
         function mergeSchedules(data) {

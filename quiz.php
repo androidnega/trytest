@@ -46,6 +46,14 @@ if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment))
     echo 'You are not allowed to access this quiz.';
     exit;
 }
+
+require_once __DIR__ . '/includes/quiz_share.php';
+$quizShareCode = trytest_quiz_ensure_share_code($db, $quizId);
+$quizShareAbs = trytest_quiz_share_absolute_url($quizShareCode);
+$quizShareWaHref = $quizShareAbs !== ''
+    ? ('https://wa.me/?text=' . rawurlencode('Try this quiz on Trytest: ' . $quizShareAbs))
+    : '';
+
 $priorAttemptStmt = $db->prepare('SELECT 1 FROM scores WHERE quiz_id = ? AND user_id = ? LIMIT 1');
 $priorAttemptStmt->execute([$quizId, (int) ($_SESSION['user_id'] ?? 0)]);
 $hasPriorAttempt = (bool) $priorAttemptStmt->fetchColumn();
@@ -196,7 +204,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <?php trytest_link_preview_meta([
         'title' => $quizTitle . ' · Trytest',
         'description' => 'Quiz: ' . $quizTitle,
-        'path_line' => 'quiz?quiz_id=' . $quizId,
+        'path_line' => ($quizShareCode !== '' ? ('q/' . $quizShareCode) : ('quiz?quiz_id=' . $quizId)),
     ]); ?>
     <meta name="viewport" content="<?php echo htmlspecialchars($trytestQuizViewport, ENT_QUOTES, 'UTF-8'); ?>">
     <?php trytest_student_theme_head_early(); ?>
@@ -384,6 +392,43 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         </div>
     </div>
 </div>
+
+<?php if ($quizShareAbs !== ''): ?>
+<div class="mx-auto max-w-lg border-b border-slate-100 px-4 py-2.5 dark:border-zinc-800/80">
+    <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Share with classmates</p>
+    <div class="mt-1.5 flex flex-wrap items-center gap-2">
+        <span class="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-[11px] text-slate-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"><?php echo htmlspecialchars($quizShareAbs, ENT_QUOTES, 'UTF-8'); ?></span>
+        <button type="button" id="trytestQuizShareCopy" class="shrink-0 rounded-lg border border-[#2C6A7D] bg-[#2C6A7D]/10 px-3 py-1.5 text-[11px] font-bold text-[#2C6A7D] dark:border-[#7eb8b8] dark:bg-[#7eb8b8]/15 dark:text-[#7eb8b8]">Copy link</button>
+        <?php if ($quizShareWaHref !== ''): ?>
+            <a href="<?php echo htmlspecialchars($quizShareWaHref, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" class="shrink-0 rounded-lg border border-emerald-600/25 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-200">WhatsApp</a>
+        <?php endif; ?>
+    </div>
+</div>
+<script>
+(function () {
+    var btn = document.getElementById('trytestQuizShareCopy');
+    if (!btn) return;
+    var url = <?php echo json_encode($quizShareAbs, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
+    btn.addEventListener('click', function () {
+        function ok() {
+            var t = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(function () { btn.textContent = t || 'Copy link'; }, 2000);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(ok).catch(function () {});
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); ok(); } catch (e) {}
+            document.body.removeChild(ta);
+        }
+    });
+})();
+</script>
+<?php endif; ?>
 
 <main class="mx-auto max-w-lg px-4 pt-4">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-zinc-700 dark:bg-zinc-900">

@@ -31,6 +31,8 @@ if ($count === 0) {
     foreach ($samples as $row) {
         $ins->execute([$quizId, $row[0], $row[1], $row[2], $row[3], $row[4], $row[5], $row[6]]);
     }
+
+    trytest_quiz_ensure_share_code($db, $quizId);
 }
 
 header('Content-Type: text/plain; charset=utf-8');

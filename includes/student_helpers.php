@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/quiz_share.php';
+
 function trytest_student_display_name(string $indexNumber): string
 {
     $t = trim($indexNumber);
@@ -122,7 +124,7 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
 
     foreach ($courses as $course) {
         $quizStmt = $db->prepare(
-            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at, q.level AS quiz_level, q.created_at AS quiz_created_at,
+            'SELECT DISTINCT q.id, q.title, q.quiz_starts_at, q.quiz_ends_at, q.level AS quiz_level, q.created_at AS quiz_created_at, q.share_code,
              (SELECT COUNT(*) FROM questions qn WHERE qn.quiz_id = q.id AND qn.status = ?) AS question_count
              FROM quizzes q
              LEFT JOIN quiz_courses qc ON qc.quiz_id = q.id
@@ -142,6 +144,11 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
             if ($qid > 0 && $userId > 0 && !empty($attemptedQuizIds[$qid])) {
                 continue;
             }
+            $sc = trim((string) ($qz['share_code'] ?? ''));
+            if ($sc === '') {
+                $sc = trytest_quiz_ensure_share_code($db, $qid);
+            }
+            $qz['share_code'] = $sc;
             $qz['user_has_attempt'] = false;
             $quizzes[] = $qz;
         }
@@ -502,9 +509,9 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
     $third = $top[2] ?? null;
     ?>
     <div class="flex items-end justify-center gap-2 pt-4 pb-2">
-        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90', false, $showFraction); ?>
-        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'bg-emerald-50 dark:bg-emerald-950/50', true, $showFraction); ?>
-        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90', false, $showFraction); ?>
+        <?php trytest_podium_slot($second, 2, $userId, $h, 'h-24 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90 dark:ring-1 dark:ring-white/[0.06]', false, $showFraction); ?>
+        <?php trytest_podium_slot($first, 1, $userId, $h, 'h-32 w-[34%]', 'bg-emerald-50 dark:bg-emerald-950/45 dark:ring-1 dark:ring-emerald-400/25', true, $showFraction); ?>
+        <?php trytest_podium_slot($third, 3, $userId, $h, 'h-20 w-[30%]', 'bg-slate-100/90 dark:bg-zinc-800/90 dark:ring-1 dark:ring-white/[0.06]', false, $showFraction); ?>
     </div>
     <ul class="mt-4 max-h-64 space-y-1 overflow-y-auto rounded-xl bg-slate-50/80 p-2 dark:bg-zinc-900/80">
         <?php

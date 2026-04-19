@@ -8,10 +8,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/quiz_share.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($id < 1 && isset($_GET['quiz_id'])) {
     $id = (int) $_GET['quiz_id'];
+}
+$sParam = trytest_quiz_normalize_share_code((string) ($_GET['s'] ?? ''));
+if ($id < 1 && $sParam !== '') {
+    $id = trytest_quiz_id_from_share_code($db, $sParam);
 }
 if ($id < 1) {
     trytest_redirect(trytest_home_url());

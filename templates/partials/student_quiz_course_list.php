@@ -34,6 +34,8 @@ declare(strict_types=1);
                     $canPlay = ($phase === 'open' || $phase === 'unset');
                     $courseLabel = trim((string) ($course['code'] ?? '') . ' · ' . (string) ($course['title'] ?? ''));
                     $quizCardBg = ['bg-slate-50', 'bg-blue-50', 'bg-emerald-50', 'bg-amber-50'][($qid > 0 ? $qid : 0) % 4];
+                    $shareAbs = trytest_quiz_share_absolute_url(trim((string) ($qz['share_code'] ?? '')));
+                    $shareWa = $shareAbs !== '' ? ('https://wa.me/?text=' . rawurlencode('Try this quiz on Trytest: ' . $shareAbs)) : '';
                     ?>
                     <article
                         class="trytest-quiz-card rounded-md border border-slate-200 px-2.5 py-2 shadow-sm <?php echo $h($quizCardBg); ?> dark:border-zinc-700 dark:bg-zinc-900"
@@ -64,6 +66,15 @@ declare(strict_types=1);
                             <?php endif; ?>
                         </div>
                         <div class="trytest-quiz-countdown mt-1 hidden min-h-[1.6rem] w-full rounded-md border border-transparent px-1.5 py-1 text-center text-[10px] font-black tabular-nums leading-tight tracking-tight sm:text-[11px]" role="status" aria-live="polite"></div>
+                        <?php if ($shareAbs !== ''): ?>
+                            <div class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-200/80 pt-2 dark:border-zinc-700/80" data-share-stop="1">
+                                <span class="text-[8px] font-semibold uppercase tracking-wide text-slate-400 dark:text-zinc-500">Share</span>
+                                <button type="button" class="trytest-quiz-share-copy rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-bold text-[#2C6A7D] shadow-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-[#7eb8b8]" data-url="<?php echo $h($shareAbs); ?>">Copy link</button>
+                                <?php if ($shareWa !== ''): ?>
+                                    <a href="<?php echo $h($shareWa); ?>" target="_blank" rel="noopener noreferrer" class="rounded-md border border-emerald-600/20 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-950/35 dark:text-emerald-200">WhatsApp</a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                     </article>
                 <?php endforeach; ?>
                 <?php if (empty($course['quizzes'])): ?>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/quiz_share.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -87,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )->execute([$title, $level, $courseId, $startsSql, $endsSql, $durationCreateSql]);
                 $quizId = (int) $db->lastInsertId();
                 $db->prepare('INSERT OR IGNORE INTO quiz_courses (quiz_id, course_id) VALUES (?, ?)')->execute([$quizId, $courseId]);
+                trytest_quiz_ensure_share_code($db, $quizId);
                 $message = 'Quiz created for level ' . $level . '.';
             }
         }
@@ -129,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $courses = $db->query('SELECT id, code, title, level, department FROM courses ORDER BY id DESC')->fetchAll();
 $quizzes = $db->query(
-    'SELECT q.id, q.title, q.level, q.quiz_starts_at, q.quiz_ends_at, q.duration_minutes, c.code AS course_code, c.title AS course_title
+    'SELECT q.id, q.title, q.level, q.quiz_starts_at, q.quiz_ends_at, q.duration_minutes, q.share_code, c.code AS course_code, c.title AS course_title
      FROM quizzes q
      LEFT JOIN courses c ON c.id = q.course_id
      ORDER BY q.id DESC'
@@ -245,7 +247,13 @@ foreach ($questionRows as $row) {
                                 </div>
                             </div>
                             <?php
-                            $shareUrl = trytest_absolute_url('share_quiz?id=' . $quizId);
+                            $shareCodeRow = trim((string) ($quiz['share_code'] ?? ''));
+                            if ($shareCodeRow === '') {
+                                $shareCodeRow = trytest_quiz_ensure_share_code($db, $quizId);
+                            }
+                            $shareUrl = $shareCodeRow !== ''
+                                ? trytest_quiz_share_absolute_url($shareCodeRow)
+                                : trytest_absolute_url('share_quiz?id=' . $quizId);
                             $shareTitle = (string) ($quiz['title'] ?? 'Quiz');
                             $waBody = 'Trytest — "' . $shareTitle . "\"\n\n" . $shareUrl . "\n\nSign in with your index number to open the quiz.";
                             $waHref = 'https://wa.me/?text=' . rawurlencode($waBody);
