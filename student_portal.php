@@ -350,7 +350,7 @@ if ($isUserLoggedIn) {
         trytest_student_display_name((string) ($_SESSION['user_index_number'] ?? ''))
     );
 
-    $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment, 40);
+    $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment);
 
     $doneQuizId = isset($_GET['done']) ? (int) $_GET['done'] : 0;
     if ($doneQuizId > 0) {
