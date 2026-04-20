@@ -158,7 +158,7 @@ if ($f1 >= $simCorrect) {
     $verdict = 'partial';
 }
 
-$feedback = trytest_sql_feedback_lines($cmp, $f1, $hints);
+$feedback = trytest_sql_feedback_lines($cmp, $f1, $hints, $verdict !== 'correct');
 $marks = trytest_sql_marks_from_similarity($f1, $simCorrect);
 
 echo json_encode(

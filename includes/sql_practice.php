@@ -283,9 +283,11 @@ function trytest_sql_marks_from_similarity(float $f1, float $simCorrect): int
 }
 
 /**
+ * @param list<string> $hints Author hints from JSON (shown only when $includeConfiguredHints is true).
+ *
  * @return list<string>
  */
-function trytest_sql_feedback_lines(array $cmp, float $f1, array $hints): array
+function trytest_sql_feedback_lines(array $cmp, float $f1, array $hints, bool $includeConfiguredHints = true): array
 {
     $lines = [];
     $lines[] = sprintf(
@@ -306,8 +308,10 @@ function trytest_sql_feedback_lines(array $cmp, float $f1, array $hints): array
     } elseif (($cmp['precision'] ?? 0) < ($cmp['recall'] ?? 0)) {
         $lines[] = 'Tip: precision is lower — tighten WHERE / HAVING so extra rows drop out.';
     }
-    foreach ($hints as $h) {
-        $lines[] = 'Hint: ' . $h;
+    if ($includeConfiguredHints) {
+        foreach ($hints as $h) {
+            $lines[] = 'Hint: ' . $h;
+        }
     }
 
     return $lines;

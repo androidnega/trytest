@@ -1066,7 +1066,7 @@
         entries.forEach(function (text) {
             const safe = escapeHtml(String(text));
             parts.push(
-                '<button type="button" class="option w-full rounded-xl border border-zinc-200 bg-white p-4 text-left text-base font-medium text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
+                '<button type="button" class="option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-left text-[15px] font-medium text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
                     escapeAttr(String(text)) +
                     '">' +
                     safe +
@@ -1129,7 +1129,7 @@
         const inputClass =
             'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border border-zinc-200 bg-white px-2 py-2 text-center text-base text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 sm:max-w-[16rem] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
         let inner =
-            '<div class="mb-6 text-left text-base font-medium leading-relaxed text-slate-900 md:text-lg dark:text-zinc-100">';
+            '<div class="mb-5 text-left text-[15px] font-medium leading-relaxed text-slate-900 sm:mb-6 sm:text-base md:text-lg dark:text-zinc-100">';
         if (parts.length < 2) {
             inner += escapeHtml(raw);
             inner +=
@@ -1152,7 +1152,7 @@
         inner += '</div>';
         questionBox.innerHTML =
             inner +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
@@ -1188,30 +1188,17 @@
 
     function renderSqlQuestion(q) {
         const prompt = escapeHtml(String(q.question || ''));
-        const hints = q.sql_practice && Array.isArray(q.sql_practice.hints) ? q.sql_practice.hints : [];
-        let hintBlock = '';
-        if (hints.length) {
-            hintBlock =
-                '<div class="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300"><p class="font-semibold text-zinc-800 dark:text-zinc-200">Hints</p><ul class="mt-1 list-disc pl-4">' +
-                hints
-                    .map(function (h) {
-                        return '<li>' + escapeHtml(String(h)) + '</li>';
-                    })
-                    .join('') +
-                '</ul></div>';
-        }
         questionBox.innerHTML =
-            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-zinc-900 dark:text-zinc-100">' +
+            '<h2 class="mb-3 text-left text-base font-bold leading-snug text-zinc-900 sm:text-lg dark:text-zinc-100">' +
             prompt +
             '</h2>' +
-            hintBlock +
-            '<p class="mb-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Write your SQL below (SELECT or WITH … SELECT). Your query runs in a safe practice database — not the live Trytest site data.</p>' +
-            '<div id="sqlCmMount" class="mb-3 overflow-hidden rounded-xl border border-zinc-200 bg-white text-sm dark:border-zinc-600 dark:bg-zinc-900">' +
-            '<textarea id="sqlStudentTa" rows="14" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-2 font-mono text-[13px] leading-relaxed">' +
+            '<p class="mb-3 text-left text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">SELECT or WITH … SELECT only. Runs in a sandbox — not your real school data.</p>' +
+            '<div id="sqlCmMount" class="mb-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white text-sm shadow-inner dark:border-zinc-600 dark:bg-zinc-900">' +
+            '<textarea id="sqlStudentTa" rows="12" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-3 font-mono text-[15px] leading-relaxed sm:text-[13px]">' +
             '-- Practice query\nSELECT ' +
             '</textarea></div>' +
-            '<button type="button" id="sqlRunBtn" class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Run SQL check</button>' +
-            '<div id="sqlFeedback" class="mt-4 hidden rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-200"></div>';
+            '<button type="button" id="sqlRunBtn" class="flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm active:bg-zinc-950 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:active:bg-white">Run SQL check</button>' +
+            '<div id="sqlFeedback" class="mt-4 hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left text-[15px] leading-relaxed text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-200"></div>';
 
         const ta = document.getElementById('sqlStudentTa');
         const runBtn = document.getElementById('sqlRunBtn');
@@ -1230,19 +1217,30 @@
                 if (!ta || typeof CodeMirror === 'undefined') {
                     return;
                 }
+                var cmCompact =
+                    typeof window.matchMedia === 'function' &&
+                    window.matchMedia('(max-width: 639px)').matches;
                 const cm = CodeMirror.fromTextArea(ta, {
                     mode: 'text/x-sql',
-                    lineNumbers: true,
+                    lineNumbers: !cmCompact,
                     indentUnit: 2,
                     lineWrapping: true,
                     theme: 'default',
+                    tabSize: 2,
                 });
+                try {
+                    var winH = typeof window.innerHeight === 'number' ? window.innerHeight : 600;
+                    var hPx = cmCompact
+                        ? Math.round(Math.min(winH * 0.36, 340))
+                        : Math.round(Math.min(winH * 0.34, 400));
+                    cm.setSize('100%', hPx + 'px');
+                } catch (e1) {}
                 bindEditor(cm);
             })
             .catch(function () {
                 if (ta) {
                     ta.className =
-                        'min-h-[220px] w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-sm text-zinc-900 shadow-inner dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+                        'min-h-[13rem] w-full resize-y rounded-2xl border border-zinc-200 bg-white px-3 py-3 font-mono text-[15px] text-zinc-900 shadow-inner dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 sm:min-h-[240px] sm:text-sm';
                     bindEditor({
                         getValue: function () {
                             return ta.value;
@@ -1295,7 +1293,13 @@
                     return;
                 }
                 const verdict = String(data.verdict || 'wrong');
-                const lines = Array.isArray(data.feedback) ? data.feedback : [];
+                var rawFeedback = Array.isArray(data.feedback) ? data.feedback : [];
+                var lines =
+                    verdict === 'correct'
+                        ? rawFeedback.filter(function (line) {
+                              return String(line).trim().indexOf('Hint:') !== 0;
+                          })
+                        : rawFeedback;
                 let qMarks =
                     typeof data.marks === 'number' && !isNaN(data.marks)
                         ? Math.max(0, Math.min(MARKS_PER_QUESTION, Math.round(data.marks)))
@@ -1323,24 +1327,26 @@
                 }
                 const sim =
                     typeof data.similarity === 'number'
-                        ? '<p class="mt-1 text-xs tabular-nums text-zinc-600 dark:text-zinc-400">Similarity (result overlap): ' +
+                        ? '<p class="mt-2 text-[13px] tabular-nums text-zinc-600 dark:text-zinc-400">Overlap: ' +
                           Math.round(data.similarity * 100) +
                           '%</p>'
                         : '';
                 const marksNote =
-                    '<p class="mt-1 text-xs font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">Marks for this question: ' +
+                    '<p class="mt-2 text-[13px] font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">Marks: ' +
                     String(qMarks) +
                     ' / ' +
                     String(MARKS_PER_QUESTION) +
                     '</p>';
                 const ul =
-                    '<ul class="mt-2 list-disc space-y-1 pl-4 text-sm">' +
-                    lines
-                        .map(function (line) {
-                            return '<li>' + escapeHtml(String(line)) + '</li>';
-                        })
-                        .join('') +
-                    '</ul>';
+                    lines.length > 0
+                        ? '<ul class="mt-3 list-disc space-y-1.5 pl-4 text-[14px] leading-snug marker:text-zinc-400">' +
+                          lines
+                              .map(function (line) {
+                                  return '<li>' + escapeHtml(String(line)) + '</li>';
+                              })
+                              .join('') +
+                          '</ul>'
+                        : '';
                 if (fbEl) {
                     fbEl.classList.remove('hidden');
                     fbEl.innerHTML =
@@ -1391,14 +1397,14 @@
     function renderTheoryQuestion(q) {
         const prompt = escapeHtml(String(q.question || ''));
         questionBox.innerHTML =
-            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-slate-900 dark:text-zinc-100">' +
+            '<h2 class="mb-3 text-left text-base font-bold leading-snug text-slate-900 sm:text-lg dark:text-zinc-100">' +
             prompt +
             '</h2>' +
             '<label for="theoryInput" class="mb-1.5 block text-xs font-medium text-slate-600 dark:text-zinc-400">Your answer</label>' +
-            '<textarea id="theoryInput" rows="3" maxlength="2000" autocomplete="off" ' +
-            'class="w-full min-h-[88px] resize-y rounded-xl border border-zinc-200 bg-white px-3 py-3 text-base text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" ' +
+            '<textarea id="theoryInput" rows="4" maxlength="2000" autocomplete="off" ' +
+            'class="w-full min-h-[100px] resize-y rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-[16px] leading-relaxed text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 sm:text-base" ' +
             'placeholder="Type your answer…"></textarea>' +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
@@ -1431,7 +1437,7 @@
         }
 
         const title =
-            '<h2 class="mb-4 text-left text-lg font-bold leading-snug text-slate-900 dark:text-zinc-100">' +
+            '<h2 class="mb-3 text-left text-base font-bold leading-snug text-slate-900 sm:mb-4 sm:text-lg dark:text-zinc-100">' +
             escapeHtml(String(q.question)) +
             '</h2>';
         questionBox.innerHTML = title + renderMcqOptions(q);
@@ -1631,7 +1637,7 @@
         if (ok) {
             btn.textContent = selected;
             btn.className =
-                'option w-full rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-left text-base font-semibold text-zinc-900 success-pop shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-400 bg-zinc-100 p-3.5 text-left text-[15px] font-semibold text-zinc-900 success-pop shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
@@ -1639,7 +1645,7 @@
         } else {
             btn.textContent = selected;
             btn.className =
-                'option w-full rounded-xl border border-red-300 bg-red-50 p-4 text-left text-base font-semibold text-red-950 shadow-sm dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
+                'option flex min-h-[52px] w-full items-center rounded-2xl border border-red-300 bg-red-50 p-3.5 text-left text-[15px] font-semibold text-red-950 shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 opacity-90" aria-hidden="true">✗</span>');
             if (navigator.vibrate) {
                 navigator.vibrate(200);
@@ -1670,7 +1676,7 @@
             }
             b.textContent = val;
             b.className =
-                'option w-full rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-left text-base font-semibold text-zinc-900 shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-400 bg-zinc-100 p-3.5 text-left text-[15px] font-semibold text-zinc-900 shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
         });
     }
