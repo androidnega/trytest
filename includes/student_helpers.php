@@ -4,8 +4,22 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/quiz_share.php';
 
-function trytest_student_display_name(string $indexNumber): string
+/**
+ * Visible name: nickname when set, otherwise a short label from index number (legacy).
+ */
+function trytest_student_display_name(string $nickname = '', string $indexNumber = ''): string
 {
+    $nick = trim($nickname);
+    if ($nick !== '') {
+        $len = function_exists('mb_strlen') ? mb_strlen($nick, 'UTF-8') : strlen($nick);
+        if ($len > 48) {
+            $nick = function_exists('mb_substr') ? mb_substr($nick, 0, 48, 'UTF-8') : substr($nick, 0, 48);
+            $nick .= '…';
+        }
+
+        return $nick;
+    }
+
     $t = trim($indexNumber);
     if ($t === '') {
         return 'Student';
@@ -16,7 +30,79 @@ function trytest_student_display_name(string $indexNumber): string
     if ($last === '') {
         return substr($t, 0, 12);
     }
+
     return strlen($last) > 14 ? substr($last, 0, 14) . '…' : $last;
+}
+
+/**
+ * Normalize student-chosen nickname; returns null if invalid.
+ */
+function trytest_student_normalize_nickname(string $raw): ?string
+{
+    $t = trim($raw);
+    if ($t === '') {
+        return null;
+    }
+    $len = function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t);
+    if ($len < 2 || $len > 40) {
+        return null;
+    }
+    if (preg_match('/^[\p{L}\p{N}\s._-]+$/u', $t) !== 1) {
+        return null;
+    }
+
+    return $t;
+}
+
+/**
+ * Redirect to nickname setup when logged in but nickname is still empty.
+ */
+function trytest_student_require_nickname(PDO $db): void
+{
+    $uid = (int) ($_SESSION['user_id'] ?? 0);
+    if ($uid < 1) {
+        return;
+    }
+    $nk = trim((string) ($_SESSION['user_nickname'] ?? ''));
+    if ($nk !== '') {
+        return;
+    }
+    $stmt = $db->prepare('SELECT TRIM(COALESCE(nickname, \'\')) FROM users WHERE id = ?');
+    $stmt->execute([$uid]);
+    $nk = (string) ($stmt->fetchColumn() ?: '');
+    if ($nk !== '') {
+        $_SESSION['user_nickname'] = $nk;
+
+        return;
+    }
+    trytest_redirect(trytest_url('nickname'));
+}
+
+/**
+ * For JSON student APIs: exit 403 if the user is signed in but has not set a nickname yet.
+ */
+function trytest_student_api_require_nickname(PDO $db): void
+{
+    $uid = (int) ($_SESSION['user_id'] ?? 0);
+    if ($uid < 1) {
+        return;
+    }
+    $nk = trim((string) ($_SESSION['user_nickname'] ?? ''));
+    if ($nk !== '') {
+        return;
+    }
+    $stmt = $db->prepare('SELECT TRIM(COALESCE(nickname, \'\')) FROM users WHERE id = ?');
+    $stmt->execute([$uid]);
+    $nk = (string) ($stmt->fetchColumn() ?: '');
+    if ($nk !== '') {
+        $_SESSION['user_nickname'] = $nk;
+
+        return;
+    }
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'nickname_required'], JSON_THROW_ON_ERROR);
+    exit;
 }
 
 /**
@@ -216,7 +302,7 @@ function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 
 }
 
 /**
- * @return list<array{user_id:int,index_number:string,department:string,best_score:int,best_total:int,first_best_at:string}>
+ * @return list<array{user_id:int,index_number:string,nickname:string,department:string,best_score:int,best_total:int,first_best_at:string}>
  */
 function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string $level = null, ?string $department = null): array
 {
@@ -235,6 +321,7 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string
         )
         SELECT u.id AS user_id,
                u.index_number AS index_number,
+               TRIM(COALESCE(u.nickname, \'\')) AS nickname,
                u.department AS department,
                r.score AS best_score,
                r.total AS best_total,
@@ -268,6 +355,7 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string
         $out[] = [
             'user_id' => (int) ($r['user_id'] ?? 0),
             'index_number' => (string) ($r['index_number'] ?? ''),
+            'nickname' => (string) ($r['nickname'] ?? ''),
             'department' => (string) ($r['department'] ?? ''),
             'best_score' => (int) ($r['best_score'] ?? 0),
             'best_total' => (int) ($r['best_total'] ?? 0),
@@ -283,7 +371,7 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string
  *
  * @param int $limit Max rows (0 = no cap — whole cohort).
  *
- * @return list<array{user_id:int,index_number:string,department:string,total_points:int}>
+ * @return list<array{user_id:int,index_number:string,nickname:string,department:string,total_points:int}>
  */
 function trytest_level_leaderboard(PDO $db, string $level, string $department, int $limit = 0): array
 {
@@ -297,13 +385,15 @@ function trytest_level_leaderboard(PDO $db, string $level, string $department, i
         return [];
     }
     $stmt = $db->prepare(
-        'SELECT u.id AS user_id, u.index_number AS index_number, u.department AS department,
+        'SELECT u.id AS user_id, u.index_number AS index_number,
+                TRIM(COALESCE(u.nickname, \'\')) AS nickname,
+                u.department AS department,
                 TRIM(COALESCE(u.level, \'\')) AS user_level,
                 COALESCE(SUM(s.score), 0) AS total_points
          FROM users u
          LEFT JOIN scores s ON s.user_id = u.id AND s.user_id IS NOT NULL
          WHERE LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))
-         GROUP BY u.id, u.index_number, u.department, u.level'
+         GROUP BY u.id, u.index_number, u.nickname, u.department, u.level'
     );
     $stmt->execute([$dp]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -316,6 +406,7 @@ function trytest_level_leaderboard(PDO $db, string $level, string $department, i
         $candidates[] = [
             'user_id' => (int) ($r['user_id'] ?? 0),
             'index_number' => (string) ($r['index_number'] ?? ''),
+            'nickname' => (string) ($r['nickname'] ?? ''),
             'department' => (string) ($r['department'] ?? ''),
             'total_points' => (int) ($r['total_points'] ?? 0),
         ];
@@ -565,6 +656,20 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
  */
 function trytest_student_post_login_redirect_url(PDO $db): string
 {
+    $uid = (int) ($_SESSION['user_id'] ?? 0);
+    if ($uid > 0) {
+        $nk = trim((string) ($_SESSION['user_nickname'] ?? ''));
+        if ($nk === '') {
+            $st = $db->prepare('SELECT TRIM(COALESCE(nickname, \'\')) FROM users WHERE id = ?');
+            $st->execute([$uid]);
+            $nk = (string) ($st->fetchColumn() ?: '');
+            $_SESSION['user_nickname'] = $nk;
+        }
+        if ($nk === '') {
+            return trytest_url('nickname');
+        }
+    }
+
     $qid = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
     if ($qid < 1) {
         return trytest_url('dashboard');
@@ -593,6 +698,7 @@ function trytest_render_level_podium_html(array $rows, int $userId, callable $h)
         $norm[] = [
             'user_id' => (int) ($r['user_id'] ?? 0),
             'index_number' => (string) ($r['index_number'] ?? ''),
+            'nickname' => (string) ($r['nickname'] ?? ''),
             'department' => (string) ($r['department'] ?? ''),
             'best_score' => (int) ($r['total_points'] ?? 0),
             'best_total' => 0,
@@ -629,6 +735,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
             }
             $uid = (int) ($row['user_id'] ?? 0);
             $idx = (string) ($row['index_number'] ?? '');
+            $nn = (string) ($row['nickname'] ?? '');
             $sc = (int) ($row['best_score'] ?? 0);
             $tot = (int) ($row['best_total'] ?? 0);
             $isMe = $uid === $userId;
@@ -637,7 +744,7 @@ function trytest_render_podium_inner(array $rows, int $userId, callable $h, bool
                 <span class="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-slate-500 dark:text-zinc-500"><?php echo $i; ?></span>
                 <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 32, $uid); ?></div>
                 <div class="min-w-0 flex-1 overflow-hidden">
-                    <p class="truncate text-xs font-medium leading-tight dark:text-zinc-200"><?php echo $h(trytest_student_display_name($idx)); ?></p>
+                    <p class="truncate text-xs font-medium leading-tight dark:text-zinc-200"><?php echo $h(trytest_student_display_name($nn, $idx)); ?></p>
                 </div>
                 <span class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo $sc; ?><?php echo $showFraction && $tot > 0 ? $h('/' . $tot) : ''; ?></span>
             </li>
@@ -654,6 +761,7 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
     }
     $uid = (int) ($slot['user_id'] ?? 0);
     $idx = (string) ($slot['index_number'] ?? '');
+    $nn = (string) ($slot['nickname'] ?? '');
     $sc = (int) ($slot['best_score'] ?? 0);
     $tot = (int) ($slot['best_total'] ?? 0);
     $isMe = $uid === $userId;
@@ -663,7 +771,7 @@ function trytest_podium_slot(?array $slot, int $place, int $userId, callable $h,
         <?php if ($crown): ?><span class="absolute -top-4 left-1/2 z-10 -translate-x-1/2 text-lg leading-none drop-shadow-sm" aria-hidden="true">👑</span><?php endif; ?>
         <div class="flex w-full flex-1 flex-col items-center justify-end rounded-xl <?php echo $h($ring); ?> px-1 pb-2 pt-3">
             <div class="relative z-0 mb-1 h-12 w-12 overflow-hidden rounded-full bg-white/90 dark:bg-zinc-800/90 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($idx, 48, $uid); ?></div>
-            <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight dark:text-zinc-100"><?php echo $h(trytest_student_display_name($idx)); ?></p>
+            <p class="w-full truncate px-0.5 text-center text-[10px] font-bold leading-tight dark:text-zinc-100"><?php echo $h(trytest_student_display_name($nn, $idx)); ?></p>
             <p class="mt-1 whitespace-nowrap text-xs font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo $sc; ?><?php echo $h($frac); ?></p>
             <span class="mt-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-zinc-900/90 dark:text-zinc-300">#<?php echo $place; ?></span>
         </div>

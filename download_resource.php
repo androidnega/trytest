@@ -18,7 +18,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $userId = (int) $_SESSION['user_id'];
-$uSync = $db->prepare('SELECT level, department FROM users WHERE id = ?');
+$uSync = $db->prepare('SELECT level, department, TRIM(COALESCE(nickname, \'\')) AS nickname FROM users WHERE id = ?');
 $uSync->execute([$userId]);
 $uRow = $uSync->fetch(PDO::FETCH_ASSOC);
 if (!$uRow) {
@@ -29,6 +29,9 @@ if (!$uRow) {
 }
 $_SESSION['user_level'] = trim((string) ($uRow['level'] ?? ''));
 $_SESSION['user_department'] = trim((string) ($uRow['department'] ?? ''));
+$_SESSION['user_nickname'] = trim((string) ($uRow['nickname'] ?? ''));
+
+trytest_student_require_nickname($db);
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($id < 1) {

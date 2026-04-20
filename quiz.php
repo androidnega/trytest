@@ -17,6 +17,8 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['user_level'])) {
     trytest_redirect(trytest_home_url());
 }
 
+trytest_student_require_nickname($db);
+
 $quizId = isset($_GET['quiz_id']) ? (int) $_GET['quiz_id'] : 0;
 
 if ($quizId < 1) {

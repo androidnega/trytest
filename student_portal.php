@@ -167,20 +167,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($indexNumber === '' || $password === '') {
             $error = 'Index number and password are required.';
         } else {
-            $stmt = $db->prepare('SELECT id, level, password_hash, department FROM users WHERE index_number = ?');
-            $stmt->execute([$indexNumber]);
-            $user = $stmt->fetch();
-            if (!$user) {
-                $error = 'User not found. Enter index again.';
-                $loginMode = 'index';
-            } elseif (!password_verify($password, (string) ($user['password_hash'] ?? ''))) {
-                $error = 'Invalid password. Use “Forgot password?” if you need a new 4-digit code.';
-                $existingUserLevel = (string) ($user['level'] ?? '');
-            } else {
-                $_SESSION['user_id'] = (int) $user['id'];
-                $_SESSION['user_index_number'] = $indexNumber;
-                $_SESSION['user_level'] = (string) $user['level'];
-                $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
+        $stmt = $db->prepare('SELECT id, level, password_hash, department, TRIM(COALESCE(nickname, \'\')) AS nickname FROM users WHERE index_number = ?');
+        $stmt->execute([$indexNumber]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            $error = 'User not found. Enter index again.';
+            $loginMode = 'index';
+        } elseif (!password_verify($password, (string) ($user['password_hash'] ?? ''))) {
+            $error = 'Invalid password. Use “Forgot password?” if you need a new 4-digit code.';
+            $existingUserLevel = (string) ($user['level'] ?? '');
+        } else {
+            $_SESSION['user_id'] = (int) $user['id'];
+            $_SESSION['user_index_number'] = $indexNumber;
+            $_SESSION['user_level'] = (string) $user['level'];
+            $_SESSION['user_department'] = trim((string) ($user['department'] ?? ''));
+            $_SESSION['user_nickname'] = trim((string) ($user['nickname'] ?? ''));
                 try {
                     $db->prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?')
                         ->execute([(int) $user['id']]);
@@ -196,10 +197,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $indexNumber = strtoupper(trim((string) ($_POST['index_number'] ?? '')));
         $level = trim((string) ($_POST['level'] ?? ''));
         $department = trim((string) ($_POST['department'] ?? ''));
+        $nicknameRaw = (string) ($_POST['nickname'] ?? '');
         $enteredIndex = $indexNumber;
         $loginMode = 'new';
+        $nicknameNorm = trytest_student_normalize_nickname($nicknameRaw);
         if ($indexNumber === '' || $level === '') {
             $error = 'Index number and level are required.';
+        } elseif ($nicknameNorm === null) {
+            $error = 'Choose a nickname (2–40 characters: letters, numbers, spaces, dot, underscore, or hyphen).';
         } else {
             $resolvedDept = trytest_resolve_department_for_save($department, $departmentOptions);
             if ($departmentOptions !== [] && $resolvedDept === null) {
@@ -215,8 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $plainPassword = trytest_generate_student_password();
                     $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
                     try {
-                        $db->prepare('INSERT INTO users (index_number, level, password_hash, department) VALUES (?, ?, ?, ?)')
-                            ->execute([$indexNumber, $level, $passwordHash, $departmentToSave]);
+                        $db->prepare('INSERT INTO users (index_number, level, password_hash, department, nickname) VALUES (?, ?, ?, ?, ?)')
+                            ->execute([$indexNumber, $level, $passwordHash, $departmentToSave, $nicknameNorm]);
                         $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
                         $generatedPassword = $plainPassword;
                         $loginMode = 'index';
@@ -261,6 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset(
             $_SESSION['user_id'],
             $_SESSION['user_index_number'],
+            $_SESSION['user_nickname'],
             $_SESSION['user_level'],
             $_SESSION['user_department'],
             $_SESSION['trytest_pdf_gate_ok_at'],
@@ -288,18 +294,24 @@ $userLevel = (string) ($_SESSION['user_level'] ?? '');
 $userId = $isUserLoggedIn ? (int) $_SESSION['user_id'] : 0;
 
 if ($isUserLoggedIn) {
-    $sync = $db->prepare('SELECT index_number, level, department FROM users WHERE id = ?');
+    $sync = $db->prepare('SELECT index_number, level, department, TRIM(COALESCE(nickname, \'\')) AS nickname FROM users WHERE id = ?');
     $sync->execute([$userId]);
     $syncRow = $sync->fetch();
     if ($syncRow) {
         $_SESSION['user_index_number'] = (string) $syncRow['index_number'];
         $_SESSION['user_level'] = (string) $syncRow['level'];
         $_SESSION['user_department'] = trim((string) ($syncRow['department'] ?? ''));
+        $_SESSION['user_nickname'] = trim((string) ($syncRow['nickname'] ?? ''));
         $userLevel = (string) $syncRow['level'];
     }
 }
 
 $userDepartment = $isUserLoggedIn ? trim((string) ($_SESSION['user_department'] ?? '')) : '';
+$userNickname = $isUserLoggedIn ? trim((string) ($_SESSION['user_nickname'] ?? '')) : '';
+
+if ($isUserLoggedIn && $userNickname === '') {
+    trytest_redirect(trytest_url('nickname'));
+}
 
 if ($isUserLoggedIn) {
     $pq = (int) ($_SESSION['pending_shared_quiz_id'] ?? 0);
@@ -347,7 +359,7 @@ if ($isUserLoggedIn) {
     $dashboardEncouragement = trytest_student_dashboard_encouragement(
         $coursesWithQuizzes,
         $userId,
-        trytest_student_display_name((string) ($_SESSION['user_index_number'] ?? ''))
+        trytest_student_display_name((string) ($_SESSION['user_nickname'] ?? ''), (string) ($_SESSION['user_index_number'] ?? ''))
     );
 
     $levelLeaderboardRows = trytest_level_leaderboard($db, $userLevel, $userDepartment);
@@ -508,7 +520,7 @@ if ($isUserLoggedIn) {
 ?>">
 <?php if ($isUserLoggedIn):
     $userIndex = (string) ($_SESSION['user_index_number'] ?? '');
-    $userDisplayName = trytest_student_display_name($userIndex);
+    $userDisplayName = trytest_student_display_name((string) ($_SESSION['user_nickname'] ?? ''), $userIndex);
     $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
     $newQuizBadgeCount = (int) ($newQuizBadgeCount ?? 0);
     $quizzesPageUrl = (string) ($quizzesPageUrl ?? '');
@@ -716,6 +728,10 @@ else: ?>
                                         <?php endforeach; ?>
                                     </select>
                                     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                                </div>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-signature"></i></span>
+                                    <input class="w-full min-w-0 rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" name="nickname" maxlength="40" autocomplete="nickname" placeholder="Your nickname (how others see you)" required>
                                 </div>
                                 <button class="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white" type="submit">
                                     <i class="fa-solid fa-check" aria-hidden="true"></i>

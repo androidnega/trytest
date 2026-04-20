@@ -28,6 +28,8 @@ if (!$row) {
     exit;
 }
 
+trytest_student_api_require_nickname($db);
+
 $userLevel = trim((string) ($row['level'] ?? ''));
 $userDepartment = trim((string) ($row['department'] ?? ''));
 

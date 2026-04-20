@@ -16,7 +16,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $userId = (int) $_SESSION['user_id'];
-$sync = $db->prepare('SELECT index_number, level, department, downloads_last_seen_at FROM users WHERE id = ?');
+$sync = $db->prepare('SELECT index_number, level, department, downloads_last_seen_at, TRIM(COALESCE(nickname, \'\')) AS nickname FROM users WHERE id = ?');
 $sync->execute([$userId]);
 $syncRow = $sync->fetch();
 if (!$syncRow) {
@@ -28,6 +28,8 @@ $userDepartment = trim((string) ($syncRow['department'] ?? ''));
 $_SESSION['user_index_number'] = $userIndex;
 $_SESSION['user_level'] = $userLevel;
 $_SESSION['user_department'] = $userDepartment;
+$_SESSION['user_nickname'] = trim((string) ($syncRow['nickname'] ?? ''));
+trytest_student_require_nickname($db);
 
 $yt = trytest_youtube_settings();
 $ytGateErr = '';

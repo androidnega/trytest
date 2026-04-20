@@ -7,11 +7,14 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require __DIR__ . '/config/db.php';
+require __DIR__ . '/includes/student_helpers.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 if (empty($_SESSION['user_id'])) {
     trytest_redirect(trytest_home_url());
 }
+
+trytest_student_require_nickname($db);
 
 $settings = trytest_youtube_settings();
 if (!$settings['gate_active']) {

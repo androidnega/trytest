@@ -41,6 +41,7 @@ $reviewJson = trytest_quiz_review_json_normalize($reviewPayload, $total);
 
 try {
     if ($userId !== null && $userId > 0) {
+        trytest_student_api_require_nickname($db);
         $userLevel = trim((string) ($_SESSION['user_level'] ?? ''));
         $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
         if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment)) {

@@ -7,6 +7,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require __DIR__ . '/config/db.php';
+require __DIR__ . '/includes/student_helpers.php';
 require __DIR__ . '/includes/youtube_subscribe.php';
 
 function trytest_youtube_callback_page(string $title, string $bodyHtml, string $primaryHref, string $primaryLabel): void
@@ -36,6 +37,8 @@ if (empty($_SESSION['user_id'])) {
     trytest_youtube_callback_page('Sign in required', '<p>Please sign in to Trytest first, then try downloading again.</p>', trytest_home_url(), 'Back to dashboard');
     exit;
 }
+
+trytest_student_require_nickname($db);
 
 $settings = trytest_youtube_settings();
 if (!$settings['gate_active']) {

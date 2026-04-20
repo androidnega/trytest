@@ -29,6 +29,8 @@ if (empty($_SESSION['user_id']) || $userLevel === '') {
     exit;
 }
 
+trytest_student_api_require_nickname($db);
+
 $quizCheck = $db->prepare('SELECT id, level, quiz_starts_at, quiz_ends_at, duration_minutes FROM quizzes WHERE id = ?');
 $quizCheck->execute([$quizId]);
 $quiz = $quizCheck->fetch();

@@ -385,6 +385,18 @@ if (!$hasQuizzesFeedLastSeen) {
     $db->exec('ALTER TABLE users ADD COLUMN quizzes_feed_last_seen_at TEXT');
 }
 
+$userColsNickname = $db->query('PRAGMA table_info(users)')->fetchAll();
+$hasNickname = false;
+foreach ($userColsNickname as $column) {
+    if (($column['name'] ?? '') === 'nickname') {
+        $hasNickname = true;
+        break;
+    }
+}
+if (!$hasNickname) {
+    $db->exec('ALTER TABLE users ADD COLUMN nickname TEXT NOT NULL DEFAULT \'\'');
+}
+
 $quizColsCreated = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
 $hasQuizCreatedAt = false;
 foreach ($quizColsCreated as $column) {

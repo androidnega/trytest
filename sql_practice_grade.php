@@ -40,6 +40,8 @@ if ($userId < 1 || $userLevel === '') {
     exit;
 }
 
+trytest_student_api_require_nickname($db);
+
 if ($quizId < 1 || $questionId < 1) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'invalid_ids'], JSON_THROW_ON_ERROR);

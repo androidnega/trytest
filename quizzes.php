@@ -15,7 +15,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $userId = (int) $_SESSION['user_id'];
-$sync = $db->prepare('SELECT index_number, level, department FROM users WHERE id = ?');
+$sync = $db->prepare('SELECT index_number, level, department, TRIM(COALESCE(nickname, \'\')) AS nickname FROM users WHERE id = ?');
 $sync->execute([$userId]);
 $syncRow = $sync->fetch();
 if (!$syncRow) {
@@ -26,6 +26,8 @@ $userDepartment = trim((string) ($syncRow['department'] ?? ''));
 $_SESSION['user_index_number'] = (string) ($syncRow['index_number'] ?? '');
 $_SESSION['user_level'] = $userLevel;
 $_SESSION['user_department'] = $userDepartment;
+$_SESSION['user_nickname'] = trim((string) ($syncRow['nickname'] ?? ''));
+trytest_student_require_nickname($db);
 
 try {
     $db->prepare('UPDATE users SET quizzes_feed_last_seen_at = datetime(\'now\') WHERE id = ?')->execute([$userId]);
