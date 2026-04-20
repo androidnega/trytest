@@ -1192,7 +1192,6 @@
             '<h2 class="mb-3 text-left text-base font-bold leading-snug text-zinc-900 sm:text-lg dark:text-zinc-100">' +
             prompt +
             '</h2>' +
-            '<p class="mb-3 text-left text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">SELECT or WITH … SELECT only. Runs in a sandbox — not your real school data.</p>' +
             '<div id="sqlCmMount" class="mb-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white text-sm shadow-inner dark:border-zinc-600 dark:bg-zinc-900">' +
             '<textarea id="sqlStudentTa" rows="12" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-3 font-mono text-[15px] leading-relaxed sm:text-[13px]">' +
             '-- Practice query\nSELECT ' +
