@@ -142,8 +142,7 @@ if ($studentIsSelect) {
                 'marks' => 0,
                 'marks_max' => 10,
                 'feedback' => [
-                    'For INSERT/UPDATE/DELETE or DDL answers, the question needs a `golden_sql` field in sql_practice (the instructor\'s solution, one statement). We then compare the result of `reference_sql` after your answer vs after `golden_sql`.',
-                    'Ask your instructor to add golden_sql to this question\'s SQL practice JSON.',
+                    'This question is not set up for INSERT/UPDATE/DELETE yet. The instructor should add either: (1) `golden_sql` (model statement) with `reference_sql` as a SELECT that checks the table, or (2) put the model INSERT in `reference_sql` and the checking SELECT in `compare_sql` (or `verify_sql`).',
                 ],
                 'sqlite_error' => null,
                 'expected_rows' => null,

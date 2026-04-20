@@ -18,7 +18,7 @@ declare(strict_types=1);
 /** @param array<string,mixed> $public */
 function trytest_sql_practice_strip_secrets(array $public): array
 {
-    unset($public['reference_sql'], $public['golden_sql']);
+    unset($public['reference_sql'], $public['golden_sql'], $public['compare_sql'], $public['verify_sql']);
 
     return $public;
 }
@@ -35,8 +35,28 @@ function trytest_sql_practice_parse_config(?array $decoded): array
     $setup = trim((string) ($decoded['setup_sql'] ?? ''));
     $ref = trim((string) ($decoded['reference_sql'] ?? ''));
     $golden = trim((string) ($decoded['golden_sql'] ?? ''));
+    $compare = trim((string) ($decoded['compare_sql'] ?? $decoded['verify_sql'] ?? ''));
     if ($ref === '') {
         return ['ok' => false, 'error' => 'sql_practice JSON must include reference_sql (and optional setup_sql).'];
+    }
+
+    $coreForSwap = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
+    if (
+        $golden === ''
+        && $compare !== ''
+        && $coreForSwap !== ''
+        && !trytest_sql_student_answer_is_select($coreForSwap)
+    ) {
+        $golden = $ref;
+        $ref = $compare;
+    }
+
+    $coreRef = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
+    if ($coreRef === '' || !trytest_sql_student_answer_is_select($coreRef)) {
+        return [
+            'ok' => false,
+            'error' => 'reference_sql must be a SELECT (for comparing rows). For INSERT/UPDATE homework you can either: (1) reference_sql = SELECT … and golden_sql = model statement, or (2) reference_sql = model INSERT/UPDATE and compare_sql (or verify_sql) = the SELECT that checks the result.',
+        ];
     }
     $hints = [];
     if (isset($decoded['hints']) && is_array($decoded['hints'])) {
