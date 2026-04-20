@@ -82,6 +82,8 @@ $hints = $cfg['hints'];
 $simCorrect = $cfg['simCorrect'];
 $simPartial = $cfg['simPartial'];
 
+$studentSql = trytest_sql_normalize_student_sql($studentSql);
+
 $bad = trytest_sql_student_query_allowed($studentSql);
 if ($bad !== null) {
     echo json_encode(

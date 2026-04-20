@@ -1249,6 +1249,27 @@
             });
     }
 
+    function normalizeSqlPracticeInput(sql) {
+        if (typeof sql !== 'string') {
+            return '';
+        }
+        var lines = sql.split(/\r?\n/).filter(function (line) {
+            return !/^\s*\d+\s*$/.test(line);
+        });
+        sql = lines.join('\n').trim();
+        var insRe = /\b(REPLACE\s+INTO|INSERT\s+INTO)\b/i;
+        var m = insRe.exec(sql);
+        if (m) {
+            sql = sql.slice(m.index);
+            var semi = sql.indexOf(';');
+            if (semi !== -1) {
+                sql = sql.slice(0, semi + 1);
+            }
+            return sql.trim();
+        }
+        return sql;
+    }
+
     function runSqlCheck(q, cm, fbEl) {
         if (locked) {
             return;
@@ -1258,7 +1279,8 @@
             fbEl.classList.add('hidden');
             fbEl.innerHTML = '';
         }
-        const sqlText = cm && typeof cm.getValue === 'function' ? cm.getValue() : '';
+        const rawSql = cm && typeof cm.getValue === 'function' ? cm.getValue() : '';
+        const sqlText = normalizeSqlPracticeInput(rawSql);
         runBtnBusy(true);
         fetch(absTrytestPath('sql_practice_grade'), {
             method: 'POST',

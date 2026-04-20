@@ -40,6 +40,20 @@ function trytest_sql_practice_parse_config(?array $decoded): array
         return ['ok' => false, 'error' => 'sql_practice JSON must include reference_sql (and optional setup_sql).'];
     }
 
+    $coreRefBeforeSwap = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
+    if (
+        $golden === ''
+        && $compare === ''
+        && $coreRefBeforeSwap !== ''
+        && preg_match('/^\s*(INSERT|REPLACE)\s+INTO\b/is', $coreRefBeforeSwap) === 1
+    ) {
+        $inferred = trytest_sql_infer_compare_select_from_insert($ref);
+        if ($inferred !== null) {
+            $golden = $ref;
+            $ref = $inferred;
+        }
+    }
+
     $coreForSwap = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
     if (
         $golden === ''
@@ -191,6 +205,60 @@ function trytest_sql_strip_sql_comments(string $sql): string
     }
 
     return trim(implode("\n", $out));
+}
+
+/**
+ * Infer SELECT * FROM table from INSERT INTO / REPLACE INTO … (simple forms).
+ */
+function trytest_sql_infer_compare_select_from_insert(string $insertSql): ?string
+{
+    $san = trytest_sql_strip_sql_comments(rtrim(trim($insertSql), ';'));
+    if ($san === '') {
+        return null;
+    }
+    foreach (['INSERT', 'REPLACE'] as $kw) {
+        if (
+            preg_match(
+                '/\b' . $kw . '\s+INTO\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s*(?:\(|\s+VALUES\b)/is',
+                $san,
+                $m
+            ) === 1
+        ) {
+            return 'SELECT * FROM ' . $m[2];
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Clean common paste garbage: lone line numbers, then keep the first INSERT/REPLACE … block only.
+ */
+function trytest_sql_normalize_student_sql(string $sql): string
+{
+    $sql = trim($sql);
+    $lines = preg_split('/\R/', $sql) ?: [];
+    $kept = [];
+    foreach ($lines as $line) {
+        if (preg_match('/^\s*\d+\s*$/', $line) === 1) {
+            continue;
+        }
+        $kept[] = $line;
+    }
+    $sql = trim(implode("\n", $kept));
+
+    if (preg_match('/\b(REPLACE\s+INTO|INSERT\s+INTO)\b/is', $sql, $m, PREG_OFFSET_CAPTURE)) {
+        $start = $m[0][1];
+        $rest = substr($sql, (int) $start);
+        $semi = strpos($rest, ';');
+        if ($semi !== false) {
+            $rest = substr($rest, 0, $semi + 1);
+        }
+
+        return trim($rest);
+    }
+
+    return $sql;
 }
 
 /**
