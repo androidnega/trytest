@@ -10,6 +10,11 @@ declare(strict_types=1);
  */
 function trytest_question_play_type(array $row): string
 {
+    $qt = strtolower(trim((string) ($row['question_type'] ?? '')));
+    if ($qt === 'sql') {
+        return 'sql';
+    }
+
     $stem = (string) ($row['question'] ?? '');
     if (strpos($stem, '____') !== false) {
         return 'fill';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/question_play_type.php';
+require_once __DIR__ . '/includes/sql_practice.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -85,10 +86,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $b = trim((string) ($_POST['option_b'] ?? ''));
         $c = trim((string) ($_POST['option_c'] ?? ''));
         $d = trim((string) ($_POST['option_d'] ?? ''));
+        $questionType = trim((string) ($_POST['question_type'] ?? 'mcq'));
+        $sqlPracticeJson = trim((string) ($_POST['sql_practice'] ?? ''));
         if ($id < 1 || $selectedQuizId < 1) {
             $error = 'Edit failed. Missing quiz or question.';
-        } elseif ($question === '' || $correct === '') {
-            $error = 'Edit failed. Question and correct answer are required.';
+        } elseif ($question === '') {
+            $error = 'Edit failed. Question text is required.';
+        } elseif ($questionType === 'sql') {
+            if ($sqlPracticeJson === '') {
+                $error = 'SQL practical: paste JSON with setup_sql and reference_sql.';
+            } else {
+                $decoded = json_decode($sqlPracticeJson, true);
+                $pc = trytest_sql_practice_parse_config(is_array($decoded) ? $decoded : null);
+                if (!$pc['ok']) {
+                    $error = 'SQL practical JSON: ' . ($pc['error'] ?? 'invalid');
+                }
+            }
+            if ($error === '') {
+                $chk = $db->prepare('SELECT id FROM questions WHERE id = ? AND quiz_id = ? AND status IN (\'pending\', \'approved\')');
+                $chk->execute([$id, $selectedQuizId]);
+                if (!$chk->fetch()) {
+                    $error = 'Question not found in this quiz set.';
+                } else {
+                    $db->prepare(
+                        'UPDATE questions
+                         SET question = ?, question_type = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, sql_practice = ?
+                         WHERE id = ? AND quiz_id = ?'
+                    )->execute([$question, 'sql', '', '', '', '', '-', $sqlPracticeJson, $id, $selectedQuizId]);
+                    $message = 'Question updated.';
+                }
+            }
+        } elseif ($correct === '') {
+            $error = 'Edit failed. Correct answer is required for non-SQL questions.';
         } else {
             $chk = $db->prepare('SELECT id FROM questions WHERE id = ? AND quiz_id = ? AND status IN (\'pending\', \'approved\')');
             $chk->execute([$id, $selectedQuizId]);
@@ -97,9 +126,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $db->prepare(
                     'UPDATE questions
-                     SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?
+                     SET question = ?, question_type = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, sql_practice = NULL
                      WHERE id = ? AND quiz_id = ?'
-                )->execute([$question, $a, $b, $c, $d, $correct, $id, $selectedQuizId]);
+                )->execute([$question, $questionType !== '' ? $questionType : 'mcq', $a, $b, $c, $d, $correct, $id, $selectedQuizId]);
                 $message = 'Question updated.';
             }
         }
@@ -126,7 +155,7 @@ $pendingQuestions = [];
 $approvedQuestions = [];
 if ($selectedQuizId > 0) {
     $pendingStmt = $db->prepare(
-        'SELECT id, question, question_type, option_a, option_b, option_c, option_d, correct_answer
+        'SELECT id, question, question_type, option_a, option_b, option_c, option_d, correct_answer, sql_practice
          FROM questions
          WHERE quiz_id = ? AND status = ?
          ORDER BY id DESC'
@@ -135,7 +164,7 @@ if ($selectedQuizId > 0) {
     $pendingQuestions = $pendingStmt->fetchAll();
 
     $approvedStmt = $db->prepare(
-        'SELECT id, question, question_type, option_a, option_b, option_c, option_d, correct_answer
+        'SELECT id, question, question_type, option_a, option_b, option_c, option_d, correct_answer, sql_practice
          FROM questions
          WHERE quiz_id = ? AND status = ?
          ORDER BY id DESC'
@@ -169,6 +198,7 @@ if ($selectedQuizId > 0) {
                 <h2 class="font-semibold">Question Set &amp; Review Pool</h2>
                 <p class="text-xs text-slate-500">To load new items into the review pool, use <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_exam'), ENT_QUOTES, 'UTF-8'); ?>">Import exam</a> or <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/import_json'), ENT_QUOTES, 'UTF-8'); ?>">Import JSON</a>. Here you pick the quiz set, approve or edit, and export.</p>
                 <p class="text-xs text-slate-600">Play mode is detected automatically: use <code class="rounded bg-slate-100 px-1">____</code> in the stem for fill-in-the-blank (multiple blanks: separate model answers with <code class="rounded bg-slate-100 px-1">|</code>); add options A–D for MCQ; leave options empty for short theory.</p>
+                <p class="text-xs text-slate-600"><strong>SQL practical:</strong> set Mode to &quot;SQL practical&quot; and paste JSON with <code class="rounded bg-slate-100 px-1">setup_sql</code> (CREATE/INSERT for a sandbox dataset), <code class="rounded bg-slate-100 px-1">reference_sql</code> (model SELECT), and optional <code class="rounded bg-slate-100 px-1">hints</code>. Students write SELECT-only queries; marking compares result sets (lenient overlap), not exact SQL text.</p>
                 <form method="get" class="space-y-2">
                     <label class="text-xs text-slate-500">Quiz set</label>
                     <div class="flex gap-2">
@@ -199,18 +229,27 @@ if ($selectedQuizId > 0) {
             <h2 class="font-semibold mb-3">Pending Review (<?php echo count($pendingQuestions); ?>)</h2>
             <div class="space-y-3 max-h-[50vh] overflow-auto">
                 <?php foreach ($pendingQuestions as $q): ?>
-                    <form method="post" class="border rounded-lg p-3 space-y-2">
+                    <form method="post" class="border rounded-lg p-3 space-y-2 grid gap-2 md:grid-cols-2">
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500"><?php echo htmlspecialchars(trytest_question_play_type($q), ENT_QUOTES, 'UTF-8'); ?></p>
+                        <div class="flex flex-wrap items-center gap-2 md:col-span-2">
+                            <label class="text-xs text-slate-600">Mode</label>
+                            <select name="question_type" class="border rounded px-2 py-1.5 text-sm">
+                                <option value="mcq" <?php echo strtolower((string) ($q['question_type'] ?? '')) !== 'sql' ? 'selected' : ''; ?>>Normal (auto MCQ / fill / theory)</option>
+                                <option value="sql" <?php echo strtolower((string) ($q['question_type'] ?? '')) === 'sql' ? 'selected' : ''; ?>>SQL practical</option>
+                            </select>
+                        </div>
                         <div class="grid gap-2 md:grid-cols-2">
                             <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo strtolower((string) ($q['question_type'] ?? '')) === 'sql' ? '' : 'required'; ?> placeholder="Answer (not used for SQL)">
                             <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option A (MCQ)">
                             <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option B">
                             <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option C">
                             <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option D">
                         </div>
+                        <label class="md:col-span-2 text-xs text-slate-500">SQL practical JSON (<code class="rounded bg-slate-100 px-1">setup_sql</code>, <code class="rounded bg-slate-100 px-1">reference_sql</code>)</label>
+                        <textarea name="sql_practice" rows="8" class="md:col-span-2 w-full border rounded px-2 py-1.5 font-mono text-[11px] leading-relaxed" placeholder='{"setup_sql":"CREATE TABLE t(a INT); INSERT INTO t VALUES (1),(2);","reference_sql":"SELECT SUM(a) AS s FROM t;","hints":["Use an aggregate"]}'><?php echo htmlspecialchars((string) ($q['sql_practice'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                         <div class="flex flex-wrap gap-2">
                             <button name="action" value="approve_one" class="rounded bg-emerald-600 px-3 py-1.5 text-xs text-white">Accept</button>
                             <button name="action" value="save_edit" class="rounded bg-slate-900 px-3 py-1.5 text-xs text-white">Save Edit</button>
@@ -228,18 +267,27 @@ if ($selectedQuizId > 0) {
             <h2 class="font-semibold mb-3">Approved Question Set (<?php echo count($approvedQuestions); ?>)</h2>
             <div id="approvedSet" class="space-y-3 max-h-[55vh] overflow-auto">
                 <?php foreach ($approvedQuestions as $idx => $q): ?>
-                    <form method="post" class="border rounded-lg p-3 space-y-2 text-sm" data-q-item>
+                    <form method="post" class="border rounded-lg p-3 space-y-2 text-sm grid gap-2 md:grid-cols-2" data-q-item>
                         <input type="hidden" name="quiz_id" value="<?php echo (int) $selectedQuizId; ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $q['id']; ?>">
                         <p class="text-xs font-semibold text-slate-500">#<?php echo (int) ($idx + 1); ?> · approved · <span class="text-indigo-600"><?php echo htmlspecialchars(trytest_question_play_type($q), ENT_QUOTES, 'UTF-8'); ?></span></p>
+                        <div class="flex flex-wrap items-center gap-2 md:col-span-2">
+                            <label class="text-xs text-slate-600">Mode</label>
+                            <select name="question_type" class="border rounded px-2 py-1.5 text-sm">
+                                <option value="mcq" <?php echo strtolower((string) ($q['question_type'] ?? '')) !== 'sql' ? 'selected' : ''; ?>>Normal (auto MCQ / fill / theory)</option>
+                                <option value="sql" <?php echo strtolower((string) ($q['question_type'] ?? '')) === 'sql' ? 'selected' : ''; ?>>SQL practical</option>
+                            </select>
+                        </div>
                         <div class="grid gap-2 md:grid-cols-2">
                             <input class="border rounded px-2 py-1.5" name="question" value="<?php echo htmlspecialchars((string) $q['question'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                            <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <input class="border rounded px-2 py-1.5" name="correct_answer" value="<?php echo htmlspecialchars((string) $q['correct_answer'], ENT_QUOTES, 'UTF-8'); ?>" <?php echo strtolower((string) ($q['question_type'] ?? '')) === 'sql' ? '' : 'required'; ?> placeholder="Answer (not used for SQL)">
                             <input class="border rounded px-2 py-1.5" name="option_a" value="<?php echo htmlspecialchars((string) $q['option_a'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option A (MCQ)">
                             <input class="border rounded px-2 py-1.5" name="option_b" value="<?php echo htmlspecialchars((string) $q['option_b'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option B">
                             <input class="border rounded px-2 py-1.5" name="option_c" value="<?php echo htmlspecialchars((string) $q['option_c'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option C">
                             <input class="border rounded px-2 py-1.5" name="option_d" value="<?php echo htmlspecialchars((string) $q['option_d'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Option D">
                         </div>
+                        <label class="md:col-span-2 text-xs text-slate-500">SQL practical JSON</label>
+                        <textarea name="sql_practice" rows="8" class="md:col-span-2 w-full border rounded px-2 py-1.5 font-mono text-[11px] leading-relaxed" placeholder='{"setup_sql":"…","reference_sql":"…"}'><?php echo htmlspecialchars((string) ($q['sql_practice'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                         <div class="flex flex-wrap gap-2">
                             <button name="action" value="save_edit" class="rounded bg-slate-900 px-3 py-1.5 text-xs text-white">Save changes</button>
                             <button name="action" value="delete_question" class="rounded border border-red-300 px-3 py-1.5 text-xs text-red-600" onclick="return confirm('Delete this question from the live quiz set?');">Delete</button>

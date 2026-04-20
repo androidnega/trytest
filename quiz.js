@@ -982,6 +982,9 @@
 
     function formatCorrectAnswerForReview(q) {
         const play = String(q.play_type || detectPlayType(q)).toLowerCase();
+        if (play === 'sql') {
+            return 'Graded by comparing your result set to the instructor query on the same practice data.';
+        }
         if (play === 'mcq') {
             return String(resolveLetterMcqCorrect(q.correct_answer, q));
         }
@@ -1017,6 +1020,9 @@
     }
 
     function detectPlayType(q) {
+        if (String(q.question_type || '').toLowerCase() === 'sql') {
+            return 'sql';
+        }
         const stem = String(q.question || '');
         if (stem.indexOf('____') !== -1) {
             return 'fill';
@@ -1140,6 +1146,219 @@
         bindFreeResponseHandlers(q);
     }
 
+    var sqlCmLoadingPromise = null;
+    function ensureSqlCodeMirror() {
+        if (typeof CodeMirror !== 'undefined') {
+            return Promise.resolve();
+        }
+        if (sqlCmLoadingPromise) {
+            return sqlCmLoadingPromise;
+        }
+        sqlCmLoadingPromise = new Promise(function (resolve, reject) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css';
+            document.head.appendChild(link);
+            var s1 = document.createElement('script');
+            s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
+            s1.onload = function () {
+                var s2 = document.createElement('script');
+                s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js';
+                s2.onload = function () {
+                    resolve();
+                };
+                s2.onerror = reject;
+                document.head.appendChild(s2);
+            };
+            s1.onerror = reject;
+            document.head.appendChild(s1);
+        });
+        return sqlCmLoadingPromise;
+    }
+
+    function renderSqlQuestion(q) {
+        const prompt = escapeHtml(String(q.question || ''));
+        const hints = q.sql_practice && Array.isArray(q.sql_practice.hints) ? q.sql_practice.hints : [];
+        let hintBlock = '';
+        if (hints.length) {
+            hintBlock =
+                '<div class="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300"><p class="font-semibold text-zinc-800 dark:text-zinc-200">Hints</p><ul class="mt-1 list-disc pl-4">' +
+                hints
+                    .map(function (h) {
+                        return '<li>' + escapeHtml(String(h)) + '</li>';
+                    })
+                    .join('') +
+                '</ul></div>';
+        }
+        questionBox.innerHTML =
+            '<h2 class="mb-3 text-left text-lg font-bold leading-snug text-zinc-900 dark:text-zinc-100">' +
+            prompt +
+            '</h2>' +
+            hintBlock +
+            '<p class="mb-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Write your SQL below (SELECT or WITH … SELECT). Your query runs in a safe practice database — not the live Trytest site data.</p>' +
+            '<div id="sqlCmMount" class="mb-3 overflow-hidden rounded-xl border border-zinc-200 bg-white text-sm dark:border-zinc-600 dark:bg-zinc-900">' +
+            '<textarea id="sqlStudentTa" rows="14" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-2 font-mono text-[13px] leading-relaxed">' +
+            '-- Practice query\nSELECT ' +
+            '</textarea></div>' +
+            '<button type="button" id="sqlRunBtn" class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Run SQL check</button>' +
+            '<div id="sqlFeedback" class="mt-4 hidden rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-left text-sm text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-200"></div>';
+
+        const ta = document.getElementById('sqlStudentTa');
+        const runBtn = document.getElementById('sqlRunBtn');
+        const fb = document.getElementById('sqlFeedback');
+
+        function bindEditor(cmInstance) {
+            if (runBtn) {
+                runBtn.addEventListener('click', function () {
+                    runSqlCheck(q, cmInstance, fb);
+                });
+            }
+        }
+
+        ensureSqlCodeMirror()
+            .then(function () {
+                if (!ta || typeof CodeMirror === 'undefined') {
+                    return;
+                }
+                const cm = CodeMirror.fromTextArea(ta, {
+                    mode: 'text/x-sql',
+                    lineNumbers: true,
+                    indentUnit: 2,
+                    lineWrapping: true,
+                    theme: 'default',
+                });
+                bindEditor(cm);
+            })
+            .catch(function () {
+                if (ta) {
+                    ta.className =
+                        'min-h-[220px] w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-sm text-zinc-900 shadow-inner dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+                    bindEditor({
+                        getValue: function () {
+                            return ta.value;
+                        },
+                    });
+                }
+            });
+    }
+
+    function runSqlCheck(q, cm, fbEl) {
+        if (locked) {
+            return;
+        }
+        locked = true;
+        if (fbEl) {
+            fbEl.classList.add('hidden');
+            fbEl.innerHTML = '';
+        }
+        const sqlText = cm && typeof cm.getValue === 'function' ? cm.getValue() : '';
+        runBtnBusy(true);
+        fetch(absTrytestPath('sql_practice_grade'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                quiz_id: quizId,
+                question_id: orderedIds[currentIndex],
+                sql: sqlText,
+            }),
+        })
+            .then(function (res) {
+                return res.json().then(function (body) {
+                    if (!res.ok) {
+                        return { ok: false, _http: true };
+                    }
+                    return body;
+                }).catch(function () {
+                    return { ok: false };
+                });
+            })
+            .then(function (data) {
+                runBtnBusy(false);
+                if (!data || !data.ok) {
+                    locked = false;
+                    if (fbEl) {
+                        fbEl.classList.remove('hidden');
+                        fbEl.innerHTML =
+                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not grade right now. Try again.</p>';
+                    }
+                    return;
+                }
+                const verdict = String(data.verdict || 'wrong');
+                const lines = Array.isArray(data.feedback) ? data.feedback : [];
+                let badge =
+                    '<span class="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100">Review</span>';
+                if (verdict === 'correct') {
+                    badge =
+                        '<span class="rounded-full bg-zinc-300 px-2 py-0.5 text-[11px] font-bold text-zinc-900 dark:bg-zinc-600 dark:text-zinc-100">Correct</span>';
+                    score++;
+                    setScoreDisplay();
+                    triggerCardCorrectFeedback();
+                } else if (verdict === 'partial') {
+                    badge =
+                        '<span class="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-950 dark:bg-amber-900/50 dark:text-amber-100">Partial</span>';
+                    triggerCardWrongFeedback();
+                } else {
+                    triggerCardWrongFeedback();
+                }
+                const sim =
+                    typeof data.similarity === 'number'
+                        ? '<p class="mt-1 text-xs tabular-nums text-zinc-600 dark:text-zinc-400">Similarity (result overlap): ' +
+                          Math.round(data.similarity * 100) +
+                          '%</p>'
+                        : '';
+                const ul =
+                    '<ul class="mt-2 list-disc space-y-1 pl-4 text-sm">' +
+                    lines
+                        .map(function (line) {
+                            return '<li>' + escapeHtml(String(line)) + '</li>';
+                        })
+                        .join('') +
+                    '</ul>';
+                if (fbEl) {
+                    fbEl.classList.remove('hidden');
+                    fbEl.innerHTML =
+                        '<div class="mb-2 flex flex-wrap items-center gap-2">' +
+                        badge +
+                        '</div>' +
+                        sim +
+                        ul;
+                }
+                const shortSql = sqlText.length > 900 ? sqlText.slice(0, 897) + '…' : sqlText;
+                pendingAttemptLog = {
+                    questionId: orderedIds[currentIndex],
+                    playType: 'sql',
+                    stem: String(q.question || ''),
+                    userAnswer: shortSql,
+                    correctAnswer:
+                        'Automatic result-set grade' +
+                        (typeof data.similarity === 'number'
+                            ? ' (~' + Math.round(data.similarity * 100) + '% overlap)'
+                            : ''),
+                    verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
+                };
+                renderNextButton();
+            })
+            .catch(function () {
+                runBtnBusy(false);
+                locked = false;
+                if (fbEl) {
+                    fbEl.classList.remove('hidden');
+                    fbEl.innerHTML =
+                        '<p class="font-semibold text-red-800 dark:text-red-200">Network error. Check your connection and try again.</p>';
+                }
+            });
+    }
+
+    function runBtnBusy(on) {
+        const b = document.getElementById('sqlRunBtn');
+        if (!b) {
+            return;
+        }
+        b.disabled = !!on;
+        b.textContent = on ? 'Checking…' : 'Run SQL check';
+    }
+
     function renderTheoryQuestion(q) {
         const prompt = escapeHtml(String(q.question || ''));
         questionBox.innerHTML =
@@ -1166,6 +1385,11 @@
 
         const playType = String(q.play_type || detectPlayType(q)).toLowerCase();
 
+        if (playType === 'sql') {
+            renderSqlQuestion(q);
+            saveQuizResume();
+            return;
+        }
         if (playType === 'fill') {
             renderFillQuestion(q);
             saveQuizResume();

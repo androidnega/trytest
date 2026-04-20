@@ -202,6 +202,18 @@ if (!$hasTheoryRubric) {
     $db->exec('ALTER TABLE questions ADD COLUMN theory_rubric TEXT');
 }
 
+$questionColsSqlPractice = $db->query('PRAGMA table_info(questions)')->fetchAll();
+$hasSqlPractice = false;
+foreach ($questionColsSqlPractice as $column) {
+    if (($column['name'] ?? '') === 'sql_practice') {
+        $hasSqlPractice = true;
+        break;
+    }
+}
+if (!$hasSqlPractice) {
+    $db->exec('ALTER TABLE questions ADD COLUMN sql_practice TEXT');
+}
+
 $scoreColsReview = $db->query('PRAGMA table_info(scores)')->fetchAll();
 $hasScoresReviewJson = false;
 foreach ($scoreColsReview as $column) {
