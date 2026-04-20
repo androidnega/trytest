@@ -123,10 +123,31 @@ function trytest_sql_student_query_allowed(string $sql): ?string
 
 /**
  * True if the statement is treated as a read-only SELECT (same-sandbox grading as before).
+ * Pasted scaffolding like "SELECT" + blank lines + INSERT INTO counts as mutating (INSERT path).
  */
 function trytest_sql_student_answer_is_select(string $sanitizedSql): bool
 {
-    return preg_match('/^\s*(WITH|SELECT)\b/is', $sanitizedSql) === 1;
+    $t = trim($sanitizedSql);
+    if ($t === '') {
+        return false;
+    }
+    if (preg_match('/\bINSERT\s+INTO\b/is', $t) === 1) {
+        return false;
+    }
+    if (preg_match('/\bREPLACE\s+INTO\b/is', $t) === 1) {
+        return false;
+    }
+    if (preg_match('/\bUPDATE\s+/is', $t) === 1) {
+        return false;
+    }
+    if (preg_match('/\bDELETE\s+FROM\b/is', $t) === 1) {
+        return false;
+    }
+    if (preg_match('/\b(CREATE|DROP|ALTER|TRUNCATE)\s+/is', $t) === 1) {
+        return false;
+    }
+
+    return preg_match('/^\s*(WITH|SELECT)\b/is', $t) === 1;
 }
 
 /**

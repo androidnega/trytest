@@ -1272,12 +1272,17 @@
         })
             .then(function (res) {
                 return res.json().then(function (body) {
+                    var o = body && typeof body === 'object' ? body : {};
                     if (!res.ok) {
-                        return { ok: false, _http: true };
+                        o.ok = false;
+                        if (typeof o.error === 'undefined') {
+                            o.error = res.status >= 500 ? 'Server error (' + res.status + ').' : 'Request failed (' + res.status + ').';
+                        }
+                        return o;
                     }
-                    return body;
+                    return o;
                 }).catch(function () {
-                    return { ok: false };
+                    return { ok: false, error: 'Could not read response.' };
                 });
             })
             .then(function (data) {
@@ -1286,8 +1291,16 @@
                     locked = false;
                     if (fbEl) {
                         fbEl.classList.remove('hidden');
+                        var detail =
+                            data && data.error
+                                ? '<p class="mt-2 text-xs leading-snug text-red-700 dark:text-red-300">' +
+                                  escapeHtml(String(data.error)) +
+                                  '</p>'
+                                : '';
                         fbEl.innerHTML =
-                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not grade right now. Try again.</p>';
+                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not grade right now.</p>' +
+                            detail +
+                            '<p class="mt-2 text-xs text-zinc-600 dark:text-zinc-400">If you mixed SELECT with INSERT, remove the extra lines and keep one INSERT statement only.</p>';
                     }
                     return;
                 }
