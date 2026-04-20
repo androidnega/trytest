@@ -1257,10 +1257,20 @@
             return !/^\s*\d+\s*$/.test(line);
         });
         sql = lines.join('\n').trim();
-        var insRe = /\b(REPLACE\s+INTO|INSERT\s+INTO)\b/i;
-        var m = insRe.exec(sql);
-        if (m) {
-            sql = sql.slice(m.index);
+        var patterns = [
+            /\bINSERT\s+OR\s+REPLACE\s+INTO\b/i,
+            /\bINSERT\s+INTO\b/i,
+            /\bREPLACE\s+INTO\b/i,
+        ];
+        var found = null;
+        for (var pi = 0; pi < patterns.length; pi++) {
+            found = patterns[pi].exec(sql);
+            if (found) {
+                break;
+            }
+        }
+        if (found) {
+            sql = sql.slice(found.index);
             var semi = sql.indexOf(';');
             if (semi !== -1) {
                 sql = sql.slice(0, semi + 1);
@@ -1360,11 +1370,13 @@
                     triggerCardWrongFeedback();
                 }
                 const sim =
-                    typeof data.similarity === 'number'
-                        ? '<p class="mt-2 text-[13px] tabular-nums text-zinc-600 dark:text-zinc-400">Overlap: ' +
-                          Math.round(data.similarity * 100) +
-                          '%</p>'
-                        : '';
+                    data.sqlite_error
+                        ? ''
+                        : typeof data.similarity === 'number'
+                          ? '<p class="mt-2 text-[13px] tabular-nums text-zinc-600 dark:text-zinc-400">Overlap: ' +
+                            Math.round(data.similarity * 100) +
+                            '%</p>'
+                          : '';
                 const marksNote =
                     '<p class="mt-2 text-[13px] font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">Marks: ' +
                     String(qMarks) +
@@ -1399,9 +1411,11 @@
                     userAnswer: shortSql,
                     correctAnswer:
                         'Automatic result-set grade' +
-                        (typeof data.similarity === 'number'
-                            ? ' (~' + Math.round(data.similarity * 100) + '% overlap)'
-                            : ''),
+                        (data.sqlite_error
+                            ? ' (statement did not execute)'
+                            : typeof data.similarity === 'number'
+                              ? ' (~' + Math.round(data.similarity * 100) + '% overlap)'
+                              : ''),
                     verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
                     marksEarned: qMarks,
                     marksMax: MARKS_PER_QUESTION,

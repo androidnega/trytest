@@ -24,6 +24,98 @@ function trytest_sql_practice_strip_secrets(array $public): array
 }
 
 /**
+ * Remove lines that contain only paste artifact line numbers (e.g. PDF exports).
+ */
+function trytest_sql_strip_line_number_only_lines(string $sql): string
+{
+    $sql = trim($sql);
+    $lines = preg_split('/\R/', $sql) ?: [];
+    $kept = [];
+    foreach ($lines as $line) {
+        if (preg_match('/^\s*\d+\s*$/', $line) === 1) {
+            continue;
+        }
+        $kept[] = $line;
+    }
+
+    return trim(implode("\n", $kept));
+}
+
+/**
+ * Keep the first INSERT/REPLACE/UPDATE/DELETE … statement (through optional ';').
+ * INSERT may appear after stray SELECT/line-number junk; plain SELECT/WITH queries are left intact.
+ */
+function trytest_sql_extract_first_dml_statement(string $sql): string
+{
+    $sql = trim($sql);
+    $insertPatterns = [
+        '/\bINSERT\s+OR\s+REPLACE\s+INTO\b/is',
+        '/\bINSERT\s+INTO\b/is',
+        '/\bREPLACE\s+INTO\b/is',
+    ];
+    foreach ($insertPatterns as $re) {
+        if (preg_match($re, $sql, $m, PREG_OFFSET_CAPTURE)) {
+            $start = $m[0][1];
+            $rest = substr($sql, (int) $start);
+            $semi = strpos($rest, ';');
+            if ($semi !== false) {
+                $rest = substr($rest, 0, $semi + 1);
+            }
+
+            return trim($rest);
+        }
+    }
+
+    $head = trytest_sql_strip_sql_comments(rtrim($sql, ';'));
+    if ($head !== '' && preg_match('/^\s*(WITH|SELECT)\b/is', $head) === 1) {
+        return $sql;
+    }
+
+    if (preg_match('/^\s*UPDATE\s+/is', $sql)) {
+        $semi = strpos($sql, ';');
+
+        return $semi !== false ? trim(substr($sql, 0, $semi + 1)) : $sql;
+    }
+
+    if (preg_match('/^\s*DELETE\s+FROM\b/is', $sql)) {
+        $semi = strpos($sql, ';');
+
+        return $semi !== false ? trim(substr($sql, 0, $semi + 1)) : $sql;
+    }
+
+    return $sql;
+}
+
+/**
+ * Infer SELECT * FROM … for grading when the model answer is a single-table DML statement.
+ */
+function trytest_sql_infer_compare_select_from_model_dml(string $sql): ?string
+{
+    $san = trytest_sql_strip_sql_comments(rtrim(trim($sql), ';'));
+    if ($san === '') {
+        return null;
+    }
+    $insertForms = [
+        '/\bINSERT\s+OR\s+REPLACE\s+INTO\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s*(?:\(|\s+VALUES\b|\s+DEFAULT\s+VALUES\b|\s+SELECT\b|\s+WITH\b)/is',
+        '/\bINSERT\s+INTO\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s*(?:\(|\s+VALUES\b|\s+DEFAULT\s+VALUES\b|\s+SELECT\b|\s+WITH\b)/is',
+        '/\bREPLACE\s+INTO\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s*(?:\(|\s+VALUES\b|\s+DEFAULT\s+VALUES\b|\s+SELECT\b|\s+WITH\b)/is',
+    ];
+    foreach ($insertForms as $formRe) {
+        if (preg_match($formRe, $san, $m) === 1) {
+            return 'SELECT * FROM ' . $m[2];
+        }
+    }
+    if (preg_match('/\bUPDATE\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s+SET\b/is', $san, $m) === 1) {
+        return 'SELECT * FROM ' . $m[2];
+    }
+    if (preg_match('/\bDELETE\s+FROM\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\b/is', $san, $m) === 1) {
+        return 'SELECT * FROM ' . $m[2];
+    }
+
+    return null;
+}
+
+/**
  * @param array<string,mixed>|null $decoded
  * @return array{ok:bool,error?:string,setup?:string,reference?:string,golden?:string,hints:list<string>,simCorrect:float,simPartial:float}
  */
@@ -36,8 +128,32 @@ function trytest_sql_practice_parse_config(?array $decoded): array
     $ref = trim((string) ($decoded['reference_sql'] ?? ''));
     $golden = trim((string) ($decoded['golden_sql'] ?? ''));
     $compare = trim((string) ($decoded['compare_sql'] ?? $decoded['verify_sql'] ?? ''));
+
+    $ref = preg_replace('/^\xEF\xBB\xBF/', '', $ref);
+    $golden = preg_replace('/^\xEF\xBB\xBF/', '', $golden);
+    $compare = preg_replace('/^\xEF\xBB\xBF/', '', $compare);
+
+    $ref = trytest_sql_extract_first_dml_statement(trytest_sql_strip_line_number_only_lines($ref));
+    $golden = trytest_sql_strip_line_number_only_lines($golden);
+    if ($golden !== '') {
+        $golden = trytest_sql_extract_first_dml_statement($golden);
+    }
+    $compare = trytest_sql_strip_line_number_only_lines($compare);
+
     if ($ref === '') {
         return ['ok' => false, 'error' => 'sql_practice JSON must include reference_sql (and optional setup_sql).'];
+    }
+
+    $coreR = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
+    $coreG = trytest_sql_strip_sql_comments(rtrim(trim($golden), ';'));
+    if (
+        $golden !== ''
+        && $ref !== ''
+        && trytest_sql_student_answer_is_select($coreG)
+        && !trytest_sql_student_answer_is_select($coreR)
+        && preg_match('/\b(INSERT|REPLACE|UPDATE|DELETE)\b/is', $coreR) === 1
+    ) {
+        [$ref, $golden] = [$golden, $ref];
     }
 
     $coreRefBeforeSwap = trytest_sql_strip_sql_comments(rtrim(trim($ref), ';'));
@@ -45,9 +161,9 @@ function trytest_sql_practice_parse_config(?array $decoded): array
         $golden === ''
         && $compare === ''
         && $coreRefBeforeSwap !== ''
-        && preg_match('/^\s*(INSERT|REPLACE)\s+INTO\b/is', $coreRefBeforeSwap) === 1
+        && !trytest_sql_student_answer_is_select($coreRefBeforeSwap)
     ) {
-        $inferred = trytest_sql_infer_compare_select_from_insert($ref);
+        $inferred = trytest_sql_infer_compare_select_from_model_dml($ref);
         if ($inferred !== null) {
             $golden = $ref;
             $ref = $inferred;
@@ -208,57 +324,11 @@ function trytest_sql_strip_sql_comments(string $sql): string
 }
 
 /**
- * Infer SELECT * FROM table from INSERT INTO / REPLACE INTO … (simple forms).
- */
-function trytest_sql_infer_compare_select_from_insert(string $insertSql): ?string
-{
-    $san = trytest_sql_strip_sql_comments(rtrim(trim($insertSql), ';'));
-    if ($san === '') {
-        return null;
-    }
-    foreach (['INSERT', 'REPLACE'] as $kw) {
-        if (
-            preg_match(
-                '/\b' . $kw . '\s+INTO\s+(?:[`"]?(\w+)[`"]?\.)?[`"]?(\w+)[`"]?\s*(?:\(|\s+VALUES\b)/is',
-                $san,
-                $m
-            ) === 1
-        ) {
-            return 'SELECT * FROM ' . $m[2];
-        }
-    }
-
-    return null;
-}
-
-/**
- * Clean common paste garbage: lone line numbers, then keep the first INSERT/REPLACE … block only.
+ * Clean pasted noise (line numbers) then isolate the first DML statement where applicable.
  */
 function trytest_sql_normalize_student_sql(string $sql): string
 {
-    $sql = trim($sql);
-    $lines = preg_split('/\R/', $sql) ?: [];
-    $kept = [];
-    foreach ($lines as $line) {
-        if (preg_match('/^\s*\d+\s*$/', $line) === 1) {
-            continue;
-        }
-        $kept[] = $line;
-    }
-    $sql = trim(implode("\n", $kept));
-
-    if (preg_match('/\b(REPLACE\s+INTO|INSERT\s+INTO)\b/is', $sql, $m, PREG_OFFSET_CAPTURE)) {
-        $start = $m[0][1];
-        $rest = substr($sql, (int) $start);
-        $semi = strpos($rest, ';');
-        if ($semi !== false) {
-            $rest = substr($rest, 0, $semi + 1);
-        }
-
-        return trim($rest);
-    }
-
-    return $sql;
+    return trytest_sql_extract_first_dml_statement(trytest_sql_strip_line_number_only_lines($sql));
 }
 
 /**
