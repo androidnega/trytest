@@ -157,10 +157,12 @@ if ($studentIsSelect) {
 
     $stuExecErr = trytest_sql_exec_statement($sandbox, $sanStudent);
     if ($stuExecErr !== null) {
-        $tips = array_merge(
-            ['SQLite said: ' . $stuExecErr],
-            $hints
-        );
+        $tips = ['SQLite said: ' . $stuExecErr];
+        if (preg_match('/\bno column named\b/i', $stuExecErr) === 1) {
+            $tips[] =
+                'Your INSERT names a column that is not on the sandbox table for this question. Use the exact column names from that table\'s CREATE TABLE (check `setup_sql` / the brief), or ask the instructor to fix `setup_sql` if the brief expects names like ProductID but the table was created differently.';
+        }
+        $tips = array_merge($tips, $hints);
         echo json_encode(
             [
                 'ok' => true,
