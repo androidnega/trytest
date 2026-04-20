@@ -50,7 +50,7 @@
         if (!raw) return null;
         try {
             var o = JSON.parse(raw);
-            if (!o || o.v !== 1 || !Array.isArray(o.orderedIds)) return null;
+            if (!o || o.v !== 2 || !Array.isArray(o.orderedIds)) return null;
             if (!Array.isArray(o.adBreaksSeen)) o.adBreaksSeen = [];
             return o;
         } catch (e) {
@@ -84,6 +84,9 @@
         orderedIds = saved.orderedIds.slice();
         currentIndex = idx;
         score = Math.max(0, parseInt(String(saved.score), 10) || 0);
+        if (maxQuizMarks() > 0) {
+            score = Math.min(score, maxQuizMarks());
+        }
         var rem = parseInt(String(saved.remainingSeconds), 10);
         rem = isNaN(rem) ? durationCapSeconds : Math.max(0, rem);
         if (durationCapSeconds > 0) {
@@ -100,7 +103,7 @@
             timerHandle = null;
         }
         setScoreDisplay();
-        if (totalValue) totalValue.textContent = String(orderedIds.length);
+        if (totalValue) totalValue.textContent = String(maxQuizMarks());
         setFrozenTimerLabel();
         return true;
     }
@@ -112,7 +115,7 @@
             localStorage.setItem(
                 resumeStorageKey(),
                 JSON.stringify({
-                    v: 1,
+                    v: 2,
                     orderedIds: orderedIds,
                     currentIndex: currentIndex,
                     score: score,
@@ -154,6 +157,13 @@
     /** @type {object[]} */
     let examReviewItems = [];
 
+    /** Each quiz item is graded out of this many marks (MCQ, theory, SQL, etc.). */
+    const MARKS_PER_QUESTION = 10;
+
+    function maxQuizMarks() {
+        return orderedIds.length * MARKS_PER_QUESTION;
+    }
+
     function shuffleInPlace(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -177,7 +187,7 @@
             if (progressBar) progressBar.style.width = '0%';
             return;
         }
-        if (totalValue) totalValue.textContent = String(orderedIds.length);
+        if (totalValue) totalValue.textContent = String(maxQuizMarks());
         if (currentIndex >= orderedIds.length) {
             progressLabel.textContent = orderedIds.length + ' / ' + orderedIds.length;
             if (progressBar) progressBar.style.width = '100%';
@@ -1286,13 +1296,23 @@
                 }
                 const verdict = String(data.verdict || 'wrong');
                 const lines = Array.isArray(data.feedback) ? data.feedback : [];
+                let qMarks =
+                    typeof data.marks === 'number' && !isNaN(data.marks)
+                        ? Math.max(0, Math.min(MARKS_PER_QUESTION, Math.round(data.marks)))
+                        : Math.max(
+                              0,
+                              Math.min(
+                                  MARKS_PER_QUESTION,
+                                  Math.round(MARKS_PER_QUESTION * (typeof data.similarity === 'number' ? data.similarity : 0))
+                              )
+                          );
+                score += qMarks;
+                setScoreDisplay();
                 let badge =
                     '<span class="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100">Review</span>';
                 if (verdict === 'correct') {
                     badge =
                         '<span class="rounded-full bg-zinc-300 px-2 py-0.5 text-[11px] font-bold text-zinc-900 dark:bg-zinc-600 dark:text-zinc-100">Correct</span>';
-                    score++;
-                    setScoreDisplay();
                     triggerCardCorrectFeedback();
                 } else if (verdict === 'partial') {
                     badge =
@@ -1307,6 +1327,12 @@
                           Math.round(data.similarity * 100) +
                           '%</p>'
                         : '';
+                const marksNote =
+                    '<p class="mt-1 text-xs font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">Marks for this question: ' +
+                    String(qMarks) +
+                    ' / ' +
+                    String(MARKS_PER_QUESTION) +
+                    '</p>';
                 const ul =
                     '<ul class="mt-2 list-disc space-y-1 pl-4 text-sm">' +
                     lines
@@ -1321,6 +1347,7 @@
                         '<div class="mb-2 flex flex-wrap items-center gap-2">' +
                         badge +
                         '</div>' +
+                        marksNote +
                         sim +
                         ul;
                 }
@@ -1336,6 +1363,8 @@
                             ? ' (~' + Math.round(data.similarity * 100) + '% overlap)'
                             : ''),
                     verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
+                    marksEarned: qMarks,
+                    marksMax: MARKS_PER_QUESTION,
                 };
                 renderNextButton();
             })
@@ -1604,7 +1633,7 @@
             btn.className =
                 'option w-full rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-left text-base font-semibold text-zinc-900 success-pop shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
-            score++;
+            score += MARKS_PER_QUESTION;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
@@ -1626,6 +1655,8 @@
             userAnswer: String(selected),
             correctAnswer: formatCorrectAnswerForReview(q),
             verdict: ok ? 'correct' : 'wrong',
+            marksEarned: ok ? MARKS_PER_QUESTION : 0,
+            marksMax: MARKS_PER_QUESTION,
         };
 
         renderNextButton();
@@ -1659,6 +1690,8 @@
         });
         const isTheory = !!document.getElementById('theoryInput');
         let verdict = 'wrong';
+        /** @type {{ verdict: string, pct: number, missing: string[], acceptHit: boolean } | null} */
+        let theoryEv = null;
         let feedbackLine = '';
 
         function setFreeInputState(v) {
@@ -1683,20 +1716,20 @@
         }
 
         if (isTheory) {
-            const ev = evaluateTheory(userParts[0] || '', q);
-            verdict = ev.verdict;
-            if (verdict === 'partial' && ev.missing && ev.missing.length) {
+            theoryEv = evaluateTheory(userParts[0] || '', q);
+            verdict = theoryEv.verdict;
+            if (verdict === 'partial' && theoryEv.missing && theoryEv.missing.length) {
                 feedbackLine =
                     '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Missing key ideas: ' +
-                    escapeHtml(ev.missing.slice(0, 4).join(', ')) +
+                    escapeHtml(theoryEv.missing.slice(0, 4).join(', ')) +
                     '.</p>';
             } else if (verdict === 'partial') {
                 feedbackLine =
                     '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Close — add a bit more detail.</p>';
-            } else if (verdict === 'wrong' && ev.missing && ev.missing.length) {
+            } else if (verdict === 'wrong' && theoryEv.missing && theoryEv.missing.length) {
                 feedbackLine =
                     '<p class="mt-2 text-sm text-amber-900/90 dark:text-amber-200">Hint — try including: ' +
-                    escapeHtml(ev.missing.slice(0, 4).join(', ')) +
+                    escapeHtml(theoryEv.missing.slice(0, 4).join(', ')) +
                     '.</p>';
             }
         } else {
@@ -1713,12 +1746,22 @@
             }
         }
 
+        let frMarks = 0;
+        if (verdict === 'correct') {
+            frMarks = MARKS_PER_QUESTION;
+        } else if (verdict === 'partial' && theoryEv) {
+            frMarks = Math.max(
+                0,
+                Math.min(MARKS_PER_QUESTION, Math.round((MARKS_PER_QUESTION * theoryEv.pct) / 100))
+            );
+        }
+
         if (verdict === 'correct') {
             setFreeInputState('correct');
             submit.className =
                 'mt-4 w-full min-h-[48px] rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-base font-semibold text-zinc-900 success-pop shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             submit.innerHTML = 'Correct <span aria-hidden="true" class="text-zinc-600 dark:text-zinc-300">✓</span>';
-            score++;
+            score += frMarks;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else if (verdict === 'partial') {
@@ -1726,6 +1769,8 @@
             submit.className =
                 'mt-4 w-full min-h-[48px] rounded-xl border border-amber-300 bg-amber-50 p-4 text-base font-semibold text-amber-950 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/35 dark:text-amber-100';
             submit.innerHTML = 'Partially correct <span aria-hidden="true">◆</span>';
+            score += frMarks;
+            setScoreDisplay();
         } else {
             setFreeInputState('wrong');
             submit.className =
@@ -1753,6 +1798,8 @@
             userAnswer: ua,
             correctAnswer: formatCorrectAnswerForReview(q),
             verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
+            marksEarned: frMarks,
+            marksMax: MARKS_PER_QUESTION,
         };
 
         renderNextButton();
@@ -1762,7 +1809,7 @@
     }
 
     function renderExamReviewThenSave() {
-        const total = orderedIds.length;
+        const total = maxQuizMarks();
         const parts = [];
         for (let i = 0; i < examReviewItems.length; i++) {
             const row = examReviewItems[i];
@@ -1777,6 +1824,14 @@
                     '<span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:bg-red-900/40 dark:text-red-200">Wrong</span>';
             }
             const stemShort = String(row.stem || '').length > 220 ? String(row.stem).slice(0, 217) + '…' : String(row.stem || '');
+            const marksLine =
+                row.marksMax != null && row.marksEarned != null
+                    ? '<p class="mt-1 text-xs tabular-nums font-medium text-zinc-500 dark:text-zinc-400">Marks: ' +
+                      escapeHtml(String(row.marksEarned)) +
+                      ' / ' +
+                      escapeHtml(String(row.marksMax)) +
+                      '</p>'
+                    : '';
             parts.push(
                 '<li class="rounded-xl border border-zinc-200 bg-white p-3 text-left shadow-sm dark:border-zinc-600 dark:bg-zinc-950/40">' +
                     '<div class="mb-2 flex flex-wrap items-start justify-between gap-2">' +
@@ -1785,6 +1840,7 @@
                     '</p>' +
                     badge +
                     '</div>' +
+                    marksLine +
                     '<p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Your answer</p>' +
                     '<p class="mt-0.5 text-sm text-zinc-800 dark:text-zinc-200">' +
                     escapeHtml(String(row.userAnswer || '—')) +
@@ -1908,7 +1964,7 @@
         if (!quizId || orderedIds.length < 1) return;
         var doneUrl = absTrytestPath('?done=' + encodeURIComponent(String(quizId)));
         var finalScore = score;
-        var finalTotal = orderedIds.length;
+        var finalTotal = maxQuizMarks();
         fetch(absTrytestPath('save_score'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1983,7 +2039,7 @@
                 score = 0;
                 adBreaksSeen = [];
                 setScoreDisplay();
-                if (totalValue) totalValue.textContent = String(orderedIds.length);
+                if (totalValue) totalValue.textContent = String(maxQuizMarks());
                 startDurationSyncPolling();
                 showQuestionAtCurrentIndex();
             })

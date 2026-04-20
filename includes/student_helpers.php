@@ -424,9 +424,18 @@ function trytest_quiz_review_json_normalize(?array $rows, int $totalQuestions): 
         $playType = match ($pt) {
             'theory' => 'theory',
             'fill', 'fillin' => 'fill',
+            'sql' => 'sql',
             default => 'mcq',
         };
-        $out[] = [
+        $marksEarned = isset($row['marksEarned']) ? (int) $row['marksEarned'] : null;
+        $marksMax = isset($row['marksMax']) ? (int) $row['marksMax'] : null;
+        if ($marksEarned !== null) {
+            $marksEarned = max(0, min(1000, $marksEarned));
+        }
+        if ($marksMax !== null) {
+            $marksMax = max(0, min(1000, $marksMax));
+        }
+        $entry = [
             'questionId' => (int) ($row['questionId'] ?? 0),
             'playType' => $playType,
             'stem' => $stem,
@@ -434,6 +443,11 @@ function trytest_quiz_review_json_normalize(?array $rows, int $totalQuestions): 
             'correctAnswer' => $ca,
             'verdict' => $verdict,
         ];
+        if ($marksEarned !== null && $marksMax !== null) {
+            $entry['marksEarned'] = $marksEarned;
+            $entry['marksMax'] = $marksMax;
+        }
+        $out[] = $entry;
         $i++;
     }
     if ($out === []) {

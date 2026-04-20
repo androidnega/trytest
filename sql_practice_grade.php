@@ -87,6 +87,8 @@ if ($bad !== null) {
             'graded' => true,
             'verdict' => 'wrong',
             'similarity' => 0.0,
+            'marks' => 0,
+            'marks_max' => 10,
             'feedback' => [$bad],
             'sqlite_error' => null,
             'expected_rows' => null,
@@ -132,6 +134,8 @@ if ($stuResult['error'] !== null) {
             'graded' => true,
             'verdict' => 'wrong',
             'similarity' => 0.0,
+            'marks' => 0,
+            'marks_max' => 10,
             'feedback' => $tips,
             'sqlite_error' => $stuResult['error'],
             'expected_rows' => count($refResult['rows']),
@@ -153,6 +157,7 @@ if ($f1 >= $simCorrect) {
 }
 
 $feedback = trytest_sql_feedback_lines($cmp, $f1, $hints);
+$marks = trytest_sql_marks_from_similarity($f1, $simCorrect);
 
 echo json_encode(
     [
@@ -162,6 +167,8 @@ echo json_encode(
         'similarity' => round($f1, 4),
         'precision' => round((float) ($cmp['precision'] ?? 0), 4),
         'recall' => round((float) ($cmp['recall'] ?? 0), 4),
+        'marks' => $marks,
+        'marks_max' => 10,
         'feedback' => $feedback,
         'sqlite_error' => null,
         'expected_rows' => count($refResult['rows']),

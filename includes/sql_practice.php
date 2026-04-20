@@ -34,13 +34,17 @@ function trytest_sql_practice_parse_config(?array $decoded): array
     }
     $setup = trim((string) ($decoded['setup_sql'] ?? ''));
     $ref = trim((string) ($decoded['reference_sql'] ?? ''));
-    if ($setup === '' || $ref === '') {
-        return ['ok' => false, 'error' => 'sql_practice JSON must include setup_sql and reference_sql.'];
+    if ($ref === '') {
+        return ['ok' => false, 'error' => 'sql_practice JSON must include reference_sql (and optional setup_sql).'];
     }
     $hints = [];
     if (isset($decoded['hints']) && is_array($decoded['hints'])) {
         foreach ($decoded['hints'] as $h) {
+            if (is_array($h)) {
+                continue;
+            }
             $t = trim((string) $h);
+            $t = trytest_strip_ai_citation_noise($t);
             if ($t !== '') {
                 $hints[] = strlen($t) > 500 ? substr($t, 0, 500) : $t;
             }
@@ -90,6 +94,17 @@ function trytest_sql_student_query_allowed(string $sql): ?string
     }
 
     return null;
+}
+
+/**
+ * Strip citation junk AI tools inject ([cite_start], [cite: …]) — hint lines or a full JSON paste.
+ */
+function trytest_strip_ai_citation_noise(string $text): string
+{
+    $t = preg_replace('/\[cite_start\]/i', '', $text) ?? $text;
+    $t = preg_replace('/\[cite\s*:[^\]]*\]/i', '', $t) ?? $t;
+
+    return trim($t);
 }
 
 function trytest_sql_strip_sql_comments(string $sql): string
@@ -254,6 +269,17 @@ function trytest_sql_compare_result_sets(array $expected, array $actual): array
         'actual_rows' => $a,
         'matched' => $matched,
     ];
+}
+
+/**
+ * Map result-set similarity to 0–10 marks. Full marks when F1 reaches the quiz's "correct"
+ * threshold (not requiring a perfect 100% overlap).
+ */
+function trytest_sql_marks_from_similarity(float $f1, float $simCorrect): int
+{
+    $den = max($simCorrect, 1e-9);
+    $ratio = min(1.0, max(0.0, $f1 / $den));
+    return max(0, min(10, (int) round(10.0 * $ratio)));
 }
 
 /**
