@@ -215,8 +215,12 @@ function trytest_student_avatar_svg(string $seed, int $size = 56, int $userId = 
     );
 }
 
-/** @return list<array{user_id:int,index_number:string,department:string,best_score:int,best_total:int,first_best_at:string}> */
-function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string $level = null, ?string $department = null): array
+/**
+ * @param string|null $_department Unused; kept for existing call sites.
+ *
+ * @return list<array{user_id:int,index_number:string,department:string,best_score:int,best_total:int,first_best_at:string}>
+ */
+function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string $level = null, ?string $_department = null): array
 {
     if ($quizId < 1) {
         return [];
@@ -242,14 +246,9 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string
         WHERE r.rn = 1';
     $params = [$quizId];
     $lv = trim((string) ($level ?? ''));
-    $dp = trim((string) ($department ?? ''));
     if ($lv !== '') {
         $sql .= ' AND LOWER(TRIM(COALESCE(u.level, \'\'))) = LOWER(TRIM(?))';
         $params[] = $lv;
-    }
-    if ($dp !== '') {
-        $sql .= ' AND LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))';
-        $params[] = $dp;
     }
     $sql .= '
         ORDER BY CASE WHEN r.total > 0 THEN (CAST(r.score AS REAL) / r.total) ELSE 0 END DESC,
@@ -275,15 +274,22 @@ function trytest_quiz_leaderboard(PDO $db, int $quizId, int $limit = 40, ?string
     return $out;
 }
 
-/** @return list<array{user_id:int,index_number:string,department:string,total_points:int}> */
-function trytest_level_leaderboard(PDO $db, string $level, string $department, int $limit = 40): array
+/**
+ * Points leaders among all students with the same canonical level (e.g. 100 vs 200), any program.
+ *
+ * @param string $_department Unused; kept for existing call sites.
+ * @return list<array{user_id:int,index_number:string,department:string,total_points:int}>
+ */
+function trytest_level_leaderboard(PDO $db, string $level, string $_department, int $limit = 40): array
 {
     $lv = trim($level);
-    $dp = trim($department);
-    if ($lv === '' || $dp === '') {
+    if ($lv === '') {
         return [];
     }
     $wantCanon = trytest_student_level_canon($lv);
+    if ($wantCanon === '') {
+        return [];
+    }
     $lim = max(1, min(100, $limit));
     $stmt = $db->prepare(
         'SELECT u.id AS user_id, u.index_number AS index_number, u.department AS department,
@@ -291,16 +297,14 @@ function trytest_level_leaderboard(PDO $db, string $level, string $department, i
                 COALESCE(SUM(s.score), 0) AS total_points
          FROM users u
          LEFT JOIN scores s ON s.user_id = u.id AND s.user_id IS NOT NULL
-         WHERE LOWER(TRIM(COALESCE(u.department, \'\'))) = LOWER(TRIM(?))
-         GROUP BY u.id, u.index_number, u.department, u.level
-         ORDER BY total_points DESC, u.index_number ASC'
+         GROUP BY u.id, u.index_number, u.department, u.level'
     );
-    $stmt->execute([$dp]);
+    $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $candidates = [];
     foreach ($rows as $r) {
         $ul = trytest_student_level_canon((string) ($r['user_level'] ?? ''));
-        if ($wantCanon === '' || $ul === '' || $ul !== $wantCanon) {
+        if ($ul === '' || $ul !== $wantCanon) {
             continue;
         }
         $candidates[] = [
@@ -310,6 +314,18 @@ function trytest_level_leaderboard(PDO $db, string $level, string $department, i
             'total_points' => (int) ($r['total_points'] ?? 0),
         ];
     }
+    usort(
+        $candidates,
+        static function (array $a, array $b): int {
+            $ta = $a['total_points'];
+            $tb = $b['total_points'];
+            if ($ta !== $tb) {
+                return $tb <=> $ta;
+            }
+
+            return strcmp($a['index_number'], $b['index_number']);
+        }
+    );
 
     return array_slice($candidates, 0, $lim);
 }
