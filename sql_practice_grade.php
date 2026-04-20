@@ -77,6 +77,7 @@ if (!$cfg['ok']) {
 
 $setup = $cfg['setup'];
 $reference = $cfg['reference'];
+$goldenSql = (string) ($cfg['golden'] ?? '');
 $hints = $cfg['hints'];
 $simCorrect = $cfg['simCorrect'];
 $simPartial = $cfg['simPartial'];
@@ -117,15 +118,130 @@ if ($setupErr !== null) {
     exit;
 }
 
-$refResult = trytest_sql_run_select($sandbox, $reference);
-if ($refResult['error'] !== null) {
+$studentIsSelect = trytest_sql_student_answer_is_select($sanStudent);
+$expectedRows = [];
+$stuResult = null;
+
+if ($studentIsSelect) {
+    $refResult = trytest_sql_run_select($sandbox, $reference);
+    if ($refResult['error'] !== null) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'Reference query failed: ' . $refResult['error']], JSON_THROW_ON_ERROR);
+        exit;
+    }
+    $stuResult = trytest_sql_run_select($sandbox, $sanStudent);
+    $expectedRows = $refResult['rows'];
+} else {
+    if ($goldenSql === '') {
+        echo json_encode(
+            [
+                'ok' => true,
+                'graded' => true,
+                'verdict' => 'wrong',
+                'similarity' => 0.0,
+                'marks' => 0,
+                'marks_max' => 10,
+                'feedback' => [
+                    'For INSERT/UPDATE/DELETE or DDL answers, the question needs a `golden_sql` field in sql_practice (the instructor\'s solution, one statement). We then compare the result of `reference_sql` after your answer vs after `golden_sql`.',
+                    'Ask your instructor to add golden_sql to this question\'s SQL practice JSON.',
+                ],
+                'sqlite_error' => null,
+                'expected_rows' => null,
+                'actual_rows' => null,
+            ],
+            JSON_THROW_ON_ERROR
+        );
+        exit;
+    }
+
+    $stuExecErr = trytest_sql_exec_statement($sandbox, $sanStudent);
+    if ($stuExecErr !== null) {
+        $tips = array_merge(
+            ['SQLite said: ' . $stuExecErr],
+            $hints
+        );
+        echo json_encode(
+            [
+                'ok' => true,
+                'graded' => true,
+                'verdict' => 'wrong',
+                'similarity' => 0.0,
+                'marks' => 0,
+                'marks_max' => 10,
+                'feedback' => $tips,
+                'sqlite_error' => $stuExecErr,
+                'expected_rows' => null,
+                'actual_rows' => null,
+            ],
+            JSON_THROW_ON_ERROR
+        );
+        exit;
+    }
+
+    $stuResult = trytest_sql_run_select($sandbox, $reference);
+    if ($stuResult['error'] !== null) {
+        $tips = array_merge(
+            ['After your statement, reference_sql failed: ' . $stuResult['error']],
+            $hints
+        );
+        echo json_encode(
+            [
+                'ok' => true,
+                'graded' => true,
+                'verdict' => 'wrong',
+                'similarity' => 0.0,
+                'marks' => 0,
+                'marks_max' => 10,
+                'feedback' => $tips,
+                'sqlite_error' => $stuResult['error'],
+                'expected_rows' => null,
+                'actual_rows' => null,
+            ],
+            JSON_THROW_ON_ERROR
+        );
+        exit;
+    }
+
+    [$sandboxGold, $gErr] = trytest_sql_new_sandbox();
+    if ($gErr !== null || !$sandboxGold instanceof PDO) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => $gErr ?? 'sandbox'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+    $setupErrGold = trytest_sql_run_setup($sandboxGold, $setup);
+    if ($setupErrGold !== null) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => $setupErrGold], JSON_THROW_ON_ERROR);
+        exit;
+    }
+    $goldExecErr = trytest_sql_exec_statement($sandboxGold, $goldenSql);
+    if ($goldExecErr !== null) {
+        http_response_code(500);
+        echo json_encode(
+            ['ok' => false, 'error' => 'golden_sql failed (check instructor config): ' . $goldExecErr],
+            JSON_THROW_ON_ERROR
+        );
+        exit;
+    }
+    $goldRef = trytest_sql_run_select($sandboxGold, $reference);
+    if ($goldRef['error'] !== null) {
+        http_response_code(500);
+        echo json_encode(
+            ['ok' => false, 'error' => 'reference_sql failed after golden_sql: ' . $goldRef['error']],
+            JSON_THROW_ON_ERROR
+        );
+        exit;
+    }
+    $expectedRows = $goldRef['rows'];
+}
+
+if ($stuResult === null) {
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Reference query failed: ' . $refResult['error']], JSON_THROW_ON_ERROR);
+    echo json_encode(['ok' => false, 'error' => 'internal grade state'], JSON_THROW_ON_ERROR);
     exit;
 }
 
-$stuResult = trytest_sql_run_select($sandbox, $sanStudent);
-if ($stuResult['error'] !== null) {
+if ($studentIsSelect && $stuResult['error'] !== null) {
     $tips = array_merge(
         ['SQLite said: ' . $stuResult['error']],
         $hints
@@ -140,7 +256,7 @@ if ($stuResult['error'] !== null) {
             'marks_max' => 10,
             'feedback' => $tips,
             'sqlite_error' => $stuResult['error'],
-            'expected_rows' => count($refResult['rows']),
+            'expected_rows' => count($expectedRows),
             'actual_rows' => null,
         ],
         JSON_THROW_ON_ERROR
@@ -148,7 +264,7 @@ if ($stuResult['error'] !== null) {
     exit;
 }
 
-$cmp = trytest_sql_compare_result_sets($refResult['rows'], $stuResult['rows']);
+$cmp = trytest_sql_compare_result_sets($expectedRows, $stuResult['rows']);
 $f1 = (float) ($cmp['f1'] ?? 0);
 
 $verdict = 'wrong';
@@ -173,7 +289,7 @@ echo json_encode(
         'marks_max' => 10,
         'feedback' => $feedback,
         'sqlite_error' => null,
-        'expected_rows' => count($refResult['rows']),
+        'expected_rows' => count($expectedRows),
         'actual_rows' => count($stuResult['rows']),
     ],
     JSON_THROW_ON_ERROR

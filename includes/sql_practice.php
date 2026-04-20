@@ -3,29 +3,29 @@
 declare(strict_types=1);
 
 /**
- * SQL practical tasks: student writes SELECT-only queries; we grade against a hidden reference query.
+ * SQL practical tasks: student SQL runs in a fresh in-memory SQLite sandbox; grading compares result sets.
  *
  * How it works:
- * - Admin stores JSON in questions.sql_practice: setup_sql (creates seed data), reference_sql (model query),
- *   optional hints[], thresholds (similarity_correct, similarity_partial).
- * - Each grade request opens a fresh :memory: SQLite DB, runs setup_sql, then runs reference_sql and student_sql.
- * - We compare result *sets* (multiset of normalized rows), not raw SQL text — so equivalent queries can pass.
- * - Marking is intentionally lenient: uses multiset overlap (F1-style score). Defaults: ≥0.88 → correct,
- *   ≥0.55 → partial, else wrong. Extra/missing rows reduce the score smoothly.
- * - Student SQL must be a single SELECT or WITH … SELECT; destructive keywords are rejected.
+ * - Admin stores JSON in questions.sql_practice: setup_sql, reference_sql (usually a SELECT to compare),
+ *   optional hints[], thresholds, optional golden_sql (see below).
+ * - SELECT / WITH … SELECT answers: after setup, we run reference_sql then student_sql on the same DB (read-only).
+ * - INSERT/UPDATE/DELETE/DDL answers: after setup we run the student statement, then reference_sql on that DB.
+ *   Expected rows come from a second sandbox: setup → optional golden_sql (instructor solution) → reference_sql.
+ *   For DML tasks, configure golden_sql with the canonical INSERT/UPDATE/etc. so outcomes can be compared.
+ * - We compare result *sets* (multiset of normalized rows). Lenient F1-style overlap; configurable thresholds.
  */
 
 /** @param array<string,mixed> $public */
 function trytest_sql_practice_strip_secrets(array $public): array
 {
-    unset($public['reference_sql']);
+    unset($public['reference_sql'], $public['golden_sql']);
 
     return $public;
 }
 
 /**
  * @param array<string,mixed>|null $decoded
- * @return array{ok:bool,error?:string,setup?:string,reference?:string,hints:list<string>,simCorrect:float,simPartial:float}
+ * @return array{ok:bool,error?:string,setup?:string,reference?:string,golden?:string,hints:list<string>,simCorrect:float,simPartial:float}
  */
 function trytest_sql_practice_parse_config(?array $decoded): array
 {
@@ -34,6 +34,7 @@ function trytest_sql_practice_parse_config(?array $decoded): array
     }
     $setup = trim((string) ($decoded['setup_sql'] ?? ''));
     $ref = trim((string) ($decoded['reference_sql'] ?? ''));
+    $golden = trim((string) ($decoded['golden_sql'] ?? ''));
     if ($ref === '') {
         return ['ok' => false, 'error' => 'sql_practice JSON must include reference_sql (and optional setup_sql).'];
     }
@@ -62,17 +63,23 @@ function trytest_sql_practice_parse_config(?array $decoded): array
         'ok' => true,
         'setup' => $setup,
         'reference' => $ref,
+        'golden' => $golden,
         'hints' => $hints,
         'simCorrect' => $simCorrect,
         'simPartial' => $simPartial,
     ];
 }
 
+/**
+ * Basic safety checks only (sandbox is in-memory SQLite). Allows SELECT, DML, DDL.
+ *
+ * @return string|null Error message or null if OK.
+ */
 function trytest_sql_student_query_allowed(string $sql): ?string
 {
     $t = trim($sql);
     if ($t === '') {
-        return 'Write a SELECT query (you can start with WITH for common table expressions).';
+        return 'Write a SQL statement.';
     }
     if (strlen($t) > 12000) {
         return 'Query is too long.';
@@ -86,11 +93,33 @@ function trytest_sql_student_query_allowed(string $sql): ?string
     if ($san === '') {
         return 'After removing comments, the query is empty.';
     }
-    if (preg_match('/\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH|DETACH|VACUUM|REINDEX|REPLACE|PRAGMA|TRUNCATE|GRANT|REVOKE|CALL|EXEC|EXECUTE)\b/i', $san) === 1) {
-        return 'Only read-only SELECT queries are allowed here (no DDL/DML).';
+    // Avoid attaching external databases from the student script.
+    if (preg_match('/\b(ATTACH|DETACH)\b/i', $san) === 1) {
+        return 'ATTACH and DETACH are not allowed here.';
     }
-    if (preg_match('/^\s*(WITH|SELECT)\b/is', $san) !== 1) {
-        return 'Start your answer with SELECT or WITH … SELECT.';
+
+    return null;
+}
+
+/**
+ * True if the statement is treated as a read-only SELECT (same-sandbox grading as before).
+ */
+function trytest_sql_student_answer_is_select(string $sanitizedSql): bool
+{
+    return preg_match('/^\s*(WITH|SELECT)\b/is', $sanitizedSql) === 1;
+}
+
+/**
+ * Run a mutating or DDL statement (not a row-returning SELECT).
+ *
+ * @return string|null SQLite error message or null on success.
+ */
+function trytest_sql_exec_statement(PDO $pdo, string $sql): ?string
+{
+    try {
+        $pdo->exec($sql);
+    } catch (Throwable $e) {
+        return $e->getMessage();
     }
 
     return null;
