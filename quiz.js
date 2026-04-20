@@ -215,23 +215,23 @@
         if (tone === 'done') {
             quizStatus.classList.add(
                 'border',
-                'border-[#84B8B8]',
-                'bg-[#84B8B8]/20',
-                'text-[#2C6A7D]',
+                'border-zinc-300',
+                'bg-zinc-100',
+                'text-zinc-700',
                 'dark:border-zinc-600',
                 'dark:bg-zinc-800',
-                'dark:text-[#7eb8b8]'
+                'dark:text-zinc-200'
             );
             return;
         }
         quizStatus.classList.add(
             'border',
-            'border-[#84B8B8]',
-            'bg-[#84B8B8]/20',
-            'text-[#2C6A7D]',
+            'border-zinc-300',
+            'bg-zinc-100',
+            'text-zinc-700',
             'dark:border-zinc-600',
             'dark:bg-zinc-800',
-            'dark:text-[#7eb8b8]'
+            'dark:text-zinc-200'
         );
     }
 
@@ -453,12 +453,9 @@
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;
         quizCard.classList.add('quiz-card--correct');
-        spawnCelebrationShimmer();
-        spawnCelebrationSparkles();
-        spawnCelebrationEmojis();
         setTimeout(function () {
             quizCard.classList.remove('quiz-card--correct');
-        }, 700);
+        }, 500);
     }
 
     function ensureFxLayer() {
@@ -649,7 +646,7 @@
             quoteHtml +
             '</p>' +
             (author !== ''
-                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm dark:border-zinc-700 dark:text-[#7eb8b8]">' +
+                ? '<p class="mt-2 border-t border-zinc-100 pt-2 text-xs font-medium tracking-wide text-zinc-600 sm:text-sm dark:border-zinc-700 dark:text-zinc-400">' +
                   escapeHtml(author) +
                   '</p>'
                 : '') +
@@ -679,7 +676,7 @@
                 if (contBtn) {
                     contBtn.disabled = false;
                     contBtn.className =
-                        'w-full cursor-pointer rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5 dark:border-[#c4080f] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]';
+                        'w-full cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] sm:py-3.5 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white';
                 }
                 return;
             }
@@ -710,7 +707,7 @@
     function renderFetchError(message, onRetry) {
         questionBox.innerHTML =
             '<p class="mb-4 text-left text-slate-600 dark:text-zinc-400">' + escapeHtml(message) + '</p>' +
-            '<button type="button" id="retryBtn" class="w-full rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white active:scale-[0.99] dark:bg-[#c4080f]">' +
+            '<button type="button" id="retryBtn" class="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-base font-semibold text-white shadow-sm hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">' +
             'Retry</button>';
         const btn = document.getElementById('retryBtn');
         if (btn) btn.addEventListener('click', onRetry);
@@ -877,7 +874,7 @@
             var clsMuted =
                 'w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700';
             var clsUnmuted =
-                'w-full cursor-pointer rounded-xl border border-emerald-500/90 bg-emerald-900/35 px-3 py-2.5 text-sm font-semibold text-emerald-50 hover:bg-emerald-800/50 dark:border-emerald-500/70 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/45';
+                'w-full cursor-pointer rounded-xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-500 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600';
             function syncAdSoundButtonUi() {
                 if (!unmuteBtn) return;
                 if (!adMuted) {
@@ -911,7 +908,8 @@
             }
             clearInterval(unlockTimer);
             btn.disabled = false;
-            btn.className = 'w-full rounded-2xl bg-[#E50914] p-3 text-sm font-bold text-white dark:bg-[#c4080f]';
+            btn.className =
+                'w-full rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white';
             btn.textContent = 'Continue quiz';
         }, 1000);
         if (btn) {
@@ -1052,7 +1050,7 @@
         entries.forEach(function (text) {
             const safe = escapeHtml(String(text));
             parts.push(
-                '<button type="button" class="option w-full rounded-2xl border border-slate-200 bg-white p-4 text-left text-base font-medium text-slate-800 transition-all duration-300 hover:bg-slate-200 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
+                '<button type="button" class="option w-full rounded-xl border border-zinc-200 bg-white p-4 text-left text-base font-medium text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
                     escapeAttr(String(text)) +
                     '">' +
                     safe +
@@ -1113,7 +1111,7 @@
         const raw = String(q.question || '');
         const parts = raw.split('____');
         const inputClass =
-            'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border-2 border-slate-200 bg-white px-2 py-2 text-center text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 sm:max-w-[16rem] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+            'fill-blank-input mx-0.5 my-1 inline-block min-h-[44px] min-w-[6rem] max-w-full flex-1 rounded-xl border border-zinc-200 bg-white px-2 py-2 text-center text-base text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 sm:max-w-[16rem] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
         let inner =
             '<div class="mb-6 text-left text-base font-medium leading-relaxed text-slate-900 md:text-lg dark:text-zinc-100">';
         if (parts.length < 2) {
@@ -1138,7 +1136,7 @@
         inner += '</div>';
         questionBox.innerHTML =
             inner +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white transition-all duration-300 active:scale-[0.99] dark:bg-[#c4080f]">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
@@ -1150,9 +1148,9 @@
             '</h2>' +
             '<label for="theoryInput" class="mb-1.5 block text-xs font-medium text-slate-600 dark:text-zinc-400">Your answer</label>' +
             '<textarea id="theoryInput" rows="3" maxlength="2000" autocomplete="off" ' +
-            'class="w-full min-h-[88px] resize-y rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-base text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/35 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" ' +
+            'class="w-full min-h-[88px] resize-y rounded-xl border border-zinc-200 bg-white px-3 py-3 text-base text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" ' +
             'placeholder="Type your answer…"></textarea>' +
-            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-2xl bg-[#E50914] p-4 text-base font-semibold text-white transition-all duration-300 active:scale-[0.99] dark:bg-[#c4080f]">Check answer</button>';
+            '<button type="button" id="frSubmit" class="mt-4 w-full min-h-[48px] rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Check answer</button>';
         bindFreeResponseHandlers(q);
     }
 
@@ -1358,7 +1356,7 @@
         if (document.getElementById('nextBtn')) return;
         questionBox.insertAdjacentHTML(
             'beforeend',
-            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-2xl border-2 border-slate-800 bg-slate-900 p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800 dark:border-zinc-200 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">Continue</button>'
+            '<button type="button" id="nextBtn" class="mt-4 w-full rounded-xl border border-zinc-300 bg-zinc-900 p-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:border-zinc-600 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Continue</button>'
         );
         const nextBtn = document.getElementById('nextBtn');
         if (nextBtn) {
@@ -1380,16 +1378,16 @@
         if (ok) {
             btn.textContent = selected;
             btn.className =
-                'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white success-pop shadow-sm';
-            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
+                'option w-full rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-left text-base font-semibold text-zinc-900 success-pop shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
             score++;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
             btn.textContent = selected;
             btn.className =
-                'option w-full rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-left text-base font-semibold text-white shadow-sm';
-            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">❌</span>');
+                'option w-full rounded-xl border border-red-300 bg-red-50 p-4 text-left text-base font-semibold text-red-950 shadow-sm dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
+            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 opacity-90" aria-hidden="true">✗</span>');
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
@@ -1417,8 +1415,8 @@
             }
             b.textContent = val;
             b.className =
-                'option w-full rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-left text-base font-semibold text-white shadow-sm';
-            b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0" aria-hidden="true">✅</span>');
+                'option w-full rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-left text-base font-semibold text-zinc-900 shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+            b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
         });
     }
 
@@ -1445,13 +1443,13 @@
                     'ring-2',
                     'ring-red-500',
                     'border-red-500',
-                    'ring-emerald-500',
-                    'border-emerald-500',
+                    'ring-zinc-400',
+                    'border-zinc-400',
                     'ring-amber-500',
                     'border-amber-500'
                 );
                 if (v === 'correct') {
-                    inp.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
+                    inp.classList.add('ring-2', 'ring-zinc-400', 'border-zinc-400');
                 } else if (v === 'partial') {
                     inp.classList.add('ring-2', 'ring-amber-500', 'border-amber-500');
                 } else {
@@ -1494,21 +1492,21 @@
         if (verdict === 'correct') {
             setFreeInputState('correct');
             submit.className =
-                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-emerald-600 bg-emerald-500 p-4 text-base font-semibold text-white success-pop shadow-sm';
-            submit.innerHTML = 'Correct <span aria-hidden="true">✅</span>';
+                'mt-4 w-full min-h-[48px] rounded-xl border border-zinc-400 bg-zinc-100 p-4 text-base font-semibold text-zinc-900 success-pop shadow-sm dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+            submit.innerHTML = 'Correct <span aria-hidden="true" class="text-zinc-600 dark:text-zinc-300">✓</span>';
             score++;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else if (verdict === 'partial') {
             setFreeInputState('partial');
             submit.className =
-                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-amber-600 bg-amber-500 p-4 text-base font-semibold text-white shadow-sm';
+                'mt-4 w-full min-h-[48px] rounded-xl border border-amber-300 bg-amber-50 p-4 text-base font-semibold text-amber-950 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/35 dark:text-amber-100';
             submit.innerHTML = 'Partially correct <span aria-hidden="true">◆</span>';
         } else {
             setFreeInputState('wrong');
             submit.className =
-                'mt-4 w-full min-h-[48px] rounded-2xl border-2 border-red-600 bg-red-500 p-4 text-base font-semibold text-white shadow-sm';
-            submit.innerHTML = 'Wrong <span aria-hidden="true">❌</span>';
+                'mt-4 w-full min-h-[48px] rounded-xl border border-red-300 bg-red-50 p-4 text-base font-semibold text-red-950 shadow-sm dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-100';
+            submit.innerHTML = 'Wrong <span aria-hidden="true">✗</span>';
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
@@ -1556,19 +1554,19 @@
             }
             const stemShort = String(row.stem || '').length > 220 ? String(row.stem).slice(0, 217) + '…' : String(row.stem || '');
             parts.push(
-                '<li class="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-left dark:border-zinc-600 dark:bg-zinc-800/80">' +
+                '<li class="rounded-xl border border-zinc-200 bg-white p-3 text-left shadow-sm dark:border-zinc-600 dark:bg-zinc-950/40">' +
                     '<div class="mb-2 flex flex-wrap items-start justify-between gap-2">' +
-                    '<p class="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-zinc-100">' +
+                    '<p class="min-w-0 flex-1 text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">' +
                     escapeHtml(stemShort) +
                     '</p>' +
                     badge +
                     '</div>' +
-                    '<p class="text-xs font-medium text-slate-500 dark:text-zinc-400">Your answer</p>' +
-                    '<p class="mt-0.5 text-sm text-slate-800 dark:text-zinc-200">' +
+                    '<p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Your answer</p>' +
+                    '<p class="mt-0.5 text-sm text-zinc-800 dark:text-zinc-200">' +
                     escapeHtml(String(row.userAnswer || '—')) +
                     '</p>' +
-                    '<p class="mt-2 text-xs font-medium text-slate-500 dark:text-zinc-400">Correct answer</p>' +
-                    '<p class="mt-0.5 text-sm font-medium text-[#2C6A7D] dark:text-[#7eb8b8]">' +
+                    '<p class="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Correct answer</p>' +
+                    '<p class="mt-0.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">' +
                     escapeHtml(String(row.correctAnswer || '—')) +
                     '</p>' +
                     '</li>'
@@ -1576,26 +1574,26 @@
         }
         const listHtml =
             parts.length > 0
-                ? '<ol class="list-decimal space-y-3 pl-4 marker:font-semibold marker:text-slate-400 dark:marker:text-zinc-500">' +
+                ? '<ol class="list-decimal space-y-3 pl-4 marker:font-semibold marker:text-zinc-400 dark:marker:text-zinc-500">' +
                   parts.join('') +
                   '</ol>'
-                : '<p class="text-sm text-slate-500 dark:text-zinc-400">No question details to show.</p>';
+                : '<p class="text-sm text-zinc-500 dark:text-zinc-400">No question details to show.</p>';
         questionBox.innerHTML =
             '<div class="touch-manipulation space-y-4">' +
             '<div>' +
-            '<h2 class="text-xl font-bold text-slate-900 dark:text-zinc-100">Exam complete</h2>' +
-            '<p class="mt-1 text-2xl font-semibold text-[#2C6A7D] dark:text-[#7eb8b8]">' +
+            '<h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Exam complete</h2>' +
+            '<p class="mt-1 text-2xl font-semibold text-zinc-800 dark:text-zinc-200">' +
             score +
-            ' <span class="text-lg font-normal text-slate-400 dark:text-zinc-500">/</span> ' +
+            ' <span class="text-lg font-normal text-zinc-400 dark:text-zinc-500">/</span> ' +
             total +
             '</p>' +
-            '<p class="mt-1 text-sm text-slate-600 dark:text-zinc-400">Review your answers below, then save to see rankings.</p>' +
+            '<p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Review your answers below, then save to see rankings.</p>' +
             '</div>' +
-            '<div class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 dark:border-zinc-600 dark:bg-zinc-900/50 sm:p-4">' +
-            '<p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">All questions</p>' +
+            '<div class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-2xl border border-zinc-200/90 bg-white p-3 shadow-sm dark:border-zinc-600 dark:bg-zinc-900 sm:p-4">' +
+            '<p class="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">All questions</p>' +
             listHtml +
             '</div>' +
-            '<button type="button" id="examReviewSaveBtn" class="w-full rounded-2xl bg-[#E50914] p-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-red-700 active:scale-[0.99] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]">' +
+            '<button type="button" id="examReviewSaveBtn" class="w-full rounded-xl border border-zinc-900 bg-zinc-900 p-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">' +
             'Save &amp; continue to results' +
             '</button>' +
             '</div>';
@@ -1659,13 +1657,13 @@
             escapeHtml(String(finalTotal)) +
             '</p>' +
             (author !== ''
-                ? '<p class="mt-2 border-t border-slate-100 pt-2 text-xs font-medium tracking-wide text-[#2C6A7D] sm:text-sm dark:border-zinc-700 dark:text-[#7eb8b8]">' +
+                ? '<p class="mt-2 border-t border-zinc-100 pt-2 text-xs font-medium tracking-wide text-zinc-600 sm:text-sm dark:border-zinc-700 dark:text-zinc-400">' +
                   escapeHtml(author) +
                   '</p>'
                 : '') +
             '</div></div></div>' +
             '<div class="mx-auto mt-6 w-full max-w-md">' +
-            '<button type="button" id="quizOutroContinue" class="w-full rounded-2xl border border-[#E50914] bg-[#E50914] py-3 text-sm font-bold text-white transition hover:bg-red-700 active:scale-[0.99] sm:py-3.5 dark:border-[#c4080f] dark:bg-[#c4080f] dark:hover:bg-[#a0070c]">' +
+            '<button type="button" id="quizOutroContinue" class="w-full rounded-xl border border-zinc-900 bg-zinc-900 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] sm:py-3.5 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">' +
             'Continue to results' +
             '</button></div>';
         var gone = false;
@@ -1694,6 +1692,7 @@
                 quiz_id: quizId,
                 score: finalScore,
                 total: finalTotal,
+                review: examReviewItems,
             }),
         })
             .then(function (res) {

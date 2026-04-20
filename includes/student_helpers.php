@@ -386,6 +386,68 @@ function trytest_student_quiz_results_rows(PDO $db, int $userId, string $userLev
 }
 
 /**
+ * Normalize per-question review rows from the quiz client for storage on scores.review_json.
+ *
+ * @param list<mixed>|null $rows
+ */
+function trytest_quiz_review_json_normalize(?array $rows, int $totalQuestions): ?string
+{
+    if ($rows === null || $totalQuestions < 1 || $rows === []) {
+        return null;
+    }
+    $out = [];
+    $i = 0;
+    foreach ($rows as $row) {
+        if ($i >= 600) {
+            break;
+        }
+        if (!is_array($row)) {
+            continue;
+        }
+        $verdict = (string) ($row['verdict'] ?? '');
+        if (!in_array($verdict, ['correct', 'partial', 'wrong'], true)) {
+            continue;
+        }
+        $stem = (string) ($row['stem'] ?? '');
+        if (strlen($stem) > 12000) {
+            $stem = substr($stem, 0, 12000);
+        }
+        $ua = (string) ($row['userAnswer'] ?? '');
+        if (strlen($ua) > 8000) {
+            $ua = substr($ua, 0, 8000);
+        }
+        $ca = (string) ($row['correctAnswer'] ?? '');
+        if (strlen($ca) > 8000) {
+            $ca = substr($ca, 0, 8000);
+        }
+        $pt = strtolower((string) preg_replace('/[^a-z]/i', '', (string) ($row['playType'] ?? 'mcq')));
+        $playType = match ($pt) {
+            'theory' => 'theory',
+            'fill', 'fillin' => 'fill',
+            default => 'mcq',
+        };
+        $out[] = [
+            'questionId' => (int) ($row['questionId'] ?? 0),
+            'playType' => $playType,
+            'stem' => $stem,
+            'userAnswer' => $ua,
+            'correctAnswer' => $ca,
+            'verdict' => $verdict,
+        ];
+        $i++;
+    }
+    if ($out === []) {
+        return null;
+    }
+    $json = json_encode($out, JSON_UNESCAPED_UNICODE);
+    if ($json === false || strlen($json) > 900000) {
+        return null;
+    }
+
+    return $json;
+}
+
+/**
  * Remove this student’s saved score and attempt history for a quiz (try again).
  */
 function trytest_student_wipe_quiz_results(PDO $db, int $userId, int $quizId): void

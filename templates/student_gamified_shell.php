@@ -378,7 +378,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             <section class="mb-4">
                 <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D] dark:text-[#7eb8b8]">← Home</a>
                 <h2 class="mt-2 text-xl font-bold dark:text-zinc-100">My results</h2>
-                <p class="mt-1 text-xs text-slate-600 dark:text-zinc-400">Scores from quizzes you have finished. Try again clears your score and history for that quiz so you can start fresh.</p>
+                <p class="mt-1 text-xs text-slate-600 dark:text-zinc-400">Scores from quizzes you have finished. <strong>View quiz</strong> shows each question with right or wrong. <strong>Try again</strong> removes your saved score and attempts, then opens a fresh run.</p>
             </section>
             <?php if ($quizResultsRows === []): ?>
                 <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
@@ -408,11 +408,11 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                                 </div>
                             </div>
                             <div class="mt-3 flex flex-wrap gap-2">
-                                <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $rqid); ?>" class="inline-flex items-center rounded-lg bg-[#2C6A7D] px-3 py-2 text-xs font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91] dark:hover:bg-[#356d7f]">View quiz</a>
-                                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="inline" onsubmit="return confirm('Try again? Your saved score and attempts for this quiz will be removed.');">
+                                <a href="<?php echo $h(trytest_url('quiz_review?quiz_id=' . $rqid)); ?>" class="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">View quiz</a>
+                                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="inline" onsubmit="return confirm('Reset this quiz? Your saved score and attempts will be removed, then you start fresh.');">
                                     <input type="hidden" name="action" value="reset_student_quiz">
                                     <input type="hidden" name="quiz_id" value="<?php echo $rqid; ?>">
-                                    <button type="submit" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">Try again</button>
+                                    <button type="submit" class="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Try again</button>
                                 </form>
                             </div>
                         </li>

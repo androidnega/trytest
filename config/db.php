@@ -202,6 +202,18 @@ if (!$hasTheoryRubric) {
     $db->exec('ALTER TABLE questions ADD COLUMN theory_rubric TEXT');
 }
 
+$scoreColsReview = $db->query('PRAGMA table_info(scores)')->fetchAll();
+$hasScoresReviewJson = false;
+foreach ($scoreColsReview as $column) {
+    if (($column['name'] ?? '') === 'review_json') {
+        $hasScoresReviewJson = true;
+        break;
+    }
+}
+if (!$hasScoresReviewJson) {
+    $db->exec('ALTER TABLE scores ADD COLUMN review_json TEXT');
+}
+
 $quizColsSchedule = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
 $hasQuizStartsAt = false;
 $hasQuizEndsAt = false;

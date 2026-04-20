@@ -256,29 +256,31 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         }
         .success-pop { animation: success-pop 0.45s ease-out; }
         @keyframes quiz-card-wrong-pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.28); }
+            0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+            50% { box-shadow: 0 0 0 6px rgba(244 63 94 / 0.15); }
         }
         #quizCard.quiz-card--wrong {
             animation: quiz-card-wrong-pulse 0.36s ease-out 2;
-            border-color: rgb(248 113 113);
+            border-color: rgb(251 113 133);
+            background-color: rgb(255 241 242);
         }
         @keyframes quiz-card-correct-glow {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-            45% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.4); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+            45% { box-shadow: 0 0 0 6px rgba(161 161 170 / 0.35); }
+            100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
         }
         #quizCard.quiz-card--correct {
-            animation: quiz-card-correct-glow 0.65s ease-out;
-            border-color: rgb(52 211 153);
-            background-color: rgb(236 253 245);
+            animation: quiz-card-correct-glow 0.55s ease-out;
+            border-color: rgb(161 161 170);
+            background-color: rgb(250 250 250);
         }
         html.dark #quizCard.quiz-card--correct {
-            background-color: rgba(6, 78, 59, 0.45);
-            border-color: rgb(52 211 153);
+            background-color: rgba(39 39 42 / 0.65);
+            border-color: rgb(113 113 122);
         }
         html.dark #quizCard.quiz-card--wrong {
-            border-color: rgb(248 113 113);
+            border-color: rgb(225 29 72);
+            background-color: rgba(136 19 55 / 0.25);
         }
         .quiz-card-emoji-layer {
             position: absolute;
@@ -362,7 +364,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         }
     </style>
 </head>
-<body class="min-h-screen touch-manipulation bg-white pb-6 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
+<body class="min-h-screen touch-manipulation bg-stone-100 pb-6 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
 
 <div id="quizIntroOverlay" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white p-4 sm:p-6 dark:bg-zinc-950" role="dialog" aria-modal="true" aria-labelledby="quizIntroMsg"<?php echo $showQuizIntro ? '' : ' style="display:none;" aria-hidden="true"'; ?>>
     <div id="quizIntroMount" class="w-full max-w-lg"></div>
@@ -372,32 +374,32 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <div id="quizOutroMount" class="w-full max-w-lg"></div>
 </div>
 
-<div id="quizAppShell" class="min-h-screen touch-manipulation dark:bg-zinc-950">
-<div class="sticky top-0 z-30 border-b border-slate-200 bg-white backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+<div id="quizAppShell" class="min-h-screen touch-manipulation bg-stone-100 dark:bg-zinc-950">
+<div class="sticky top-0 z-30 border-b border-zinc-200/90 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
     <div class="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
-        <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 hover:bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-label="Back to dashboard">←</a>
+        <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-label="Back to dashboard">←</a>
         <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-bold dark:text-zinc-100"><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></p>
-            <p id="progressLabel" class="text-[11px] text-slate-500 dark:text-zinc-400"></p>
+            <p id="progressLabel" class="text-[11px] text-zinc-500 dark:text-zinc-400"></p>
         </div>
-        <span id="quizStatus" class="shrink-0 rounded-full border border-[#84B8B8] bg-[#84B8B8]/20 px-2.5 py-1 text-[10px] font-semibold text-[#2C6A7D] dark:border-zinc-600 dark:bg-zinc-800 dark:text-[#7eb8b8]">…</span>
+        <span id="quizStatus" class="shrink-0 rounded-full border border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">…</span>
     </div>
     <div class="mx-auto max-w-lg px-4 pb-3">
-        <div class="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-zinc-700">
-            <div id="progressBar" class="h-full rounded-full bg-[#E50914] transition-all duration-500" style="width: 0%;"></div>
+        <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+            <div id="progressBar" class="h-full rounded-full bg-zinc-600 transition-all duration-500 dark:bg-zinc-400" style="width: 0%;"></div>
         </div>
     </div>
 </div>
 
 <main class="mx-auto max-w-lg px-4 pt-4">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200/90 bg-white px-3 py-3 text-sm shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <div>
-            <p class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-zinc-400">Score</p>
-            <p class="text-xl font-extrabold text-[#E50914] dark:text-[#ff5c5c]"><span id="scoreValue">0</span><span class="text-sm font-normal text-slate-400 dark:text-zinc-500"> / </span><span id="totalValue" class="text-slate-700 dark:text-zinc-200">0</span></p>
+            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Score</p>
+            <p class="text-xl font-extrabold text-zinc-900 dark:text-zinc-50"><span id="scoreValue">0</span><span class="text-sm font-normal text-zinc-400 dark:text-zinc-500"> / </span><span id="totalValue" class="text-zinc-700 dark:text-zinc-200">0</span></p>
         </div>
         <div class="text-right">
-            <p class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-zinc-400">Time</p>
-            <p id="timerLabel" class="text-lg font-bold text-[#2C6A7D] dark:text-[#7eb8b8]"><?php
+            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Time</p>
+            <p id="timerLabel" class="text-lg font-bold text-zinc-700 dark:text-zinc-200"><?php
                 if ($effectiveDurationSeconds > 0) {
                     $tm = intdiv($effectiveDurationSeconds, 60);
                     $ts = $effectiveDurationSeconds % 60;
@@ -409,7 +411,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         </div>
     </div>
 
-    <div class="relative touch-manipulation overflow-visible rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-300 dark:border-zinc-700 dark:bg-zinc-900" id="quizCard">
+    <div class="relative touch-manipulation overflow-visible rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-md transition-[border-color,box-shadow] duration-300 dark:border-zinc-700 dark:bg-zinc-900" id="quizCard">
         <div id="questionBox"></div>
     </div>
 </main>
