@@ -3,13 +3,17 @@
 declare(strict_types=1);
 
 /**
- * SQL practical tasks: student SQL runs in a fresh in-memory SQLite sandbox; grading compares result sets.
+ * SQL practical tasks: student SQL runs only in a fresh in-memory SQLite sandbox (`sqlite::memory:`).
+ * It never uses or mutates the application quiz database (config/db.php); each grade request opens a new PDO sandbox.
+ *
+ * Flow: new in-memory DB → run setup_sql (CREATE/INSERT, etc.) → run student + reference queries → compare rows.
  *
  * How it works:
  * - Admin stores JSON in questions.sql_practice: setup_sql, reference_sql (usually a SELECT to compare),
  *   optional hints[], thresholds, optional golden_sql (see below).
  * - SELECT / WITH … SELECT answers: after setup, we run reference_sql then student_sql on the same DB (read-only).
- * - INSERT/UPDATE/DELETE/DDL answers: after setup we run the student statement, then reference_sql on that DB.
+ * - INSERT/UPDATE answers (and similar): after setup we run the student statement, then reference_sql on that DB.
+ *   Student submissions of DELETE are rejected by trytest_sql_student_query_allowed (sandbox safety); model DELETE may still run as golden_sql server-side.
  *   Expected rows come from a second sandbox: setup → optional golden_sql (instructor solution) → reference_sql.
  *   For DML tasks, configure golden_sql with the canonical INSERT/UPDATE/etc. so outcomes can be compared.
  * - We compare result *sets* (multiset of normalized rows). Lenient F1-style overlap; configurable thresholds.
@@ -224,7 +228,8 @@ function trytest_sql_practice_parse_config(?array $decoded): array
 }
 
 /**
- * Basic safety checks only (sandbox is in-memory SQLite). Allows SELECT, DML, DDL.
+ * Basic safety checks for student SQL in the in-memory sandbox (not the production DB).
+ * Blocks schema/destructive patterns; INSERT/UPDATE/REPLACE still allowed for graded DML tasks.
  *
  * @return string|null Error message or null if OK.
  */
@@ -249,6 +254,19 @@ function trytest_sql_student_query_allowed(string $sql): ?string
     // Avoid attaching external databases from the student script.
     if (preg_match('/\b(ATTACH|DETACH)\b/i', $san) === 1) {
         return 'ATTACH and DETACH are not allowed here.';
+    }
+    // Destructive / schema-changing in the practice DB (narrow patterns to avoid matching inside strings).
+    if (preg_match('/\bDELETE\s+FROM\b/i', $san) === 1) {
+        return 'DELETE is not allowed in the practice sandbox.';
+    }
+    if (preg_match('/\bDROP\s+(?:TABLE|VIEW|INDEX|TRIGGER|DATABASE|SCHEMA)\b/i', $san) === 1) {
+        return 'DROP is not allowed in the practice sandbox.';
+    }
+    if (preg_match('/\bALTER\s+(?:TABLE|VIEW|INDEX)\b/i', $san) === 1) {
+        return 'ALTER is not allowed in the practice sandbox.';
+    }
+    if (preg_match('/\bTRUNCATE\s+/i', $san) === 1) {
+        return 'TRUNCATE is not allowed in the practice sandbox.';
     }
 
     return null;
@@ -416,6 +434,288 @@ function trytest_sql_run_setup(PDO $pdo, string $setupSql): ?string
     }
 
     return null;
+}
+
+/**
+ * Extract bare table name from SQLite "no such table" errors (e.g. main.Products).
+ */
+function trytest_sql_parse_no_such_table_name(string $msg): ?string
+{
+    if (preg_match('/no such table:\s*(?:\w+\.)?[`"\[]?(\w+)[`"\]]?/i', $msg, $m) === 1) {
+        return $m[1];
+    }
+
+    return null;
+}
+
+/**
+ * Content between balanced parentheses starting at $openIdx (must point at '(').
+ */
+function trytest_sql_extract_between_parens(string $s, int $openIdx): ?string
+{
+    if (!isset($s[$openIdx]) || $s[$openIdx] !== '(') {
+        return null;
+    }
+    $depth = 1;
+    $inStr = false;
+    $len = strlen($s);
+    $start = $openIdx + 1;
+    for ($i = $openIdx + 1; $i < $len; $i++) {
+        $c = $s[$i];
+        if ($inStr) {
+            if ($c === "'" && $i + 1 < $len && $s[$i + 1] === "'") {
+                $i++;
+            } elseif ($c === "'") {
+                $inStr = false;
+            }
+        } elseif ($c === "'") {
+            $inStr = true;
+        } elseif ($c === '(') {
+            $depth++;
+        } elseif ($c === ')') {
+            $depth--;
+            if ($depth === 0) {
+                return substr($s, $start, $i - $start);
+            }
+        }
+    }
+
+    return null;
+}
+
+/** Commas separating top-level SQL value expressions (depth 0, outside strings). */
+function trytest_sql_count_value_commas(string $tupleInner): int
+{
+    $depth = 0;
+    $inStr = false;
+    $commas = 0;
+    $len = strlen($tupleInner);
+    for ($i = 0; $i < $len; $i++) {
+        $c = $tupleInner[$i];
+        if ($inStr) {
+            if ($c === "'" && $i + 1 < $len && $tupleInner[$i + 1] === "'") {
+                $i++;
+            } elseif ($c === "'") {
+                $inStr = false;
+            }
+        } elseif ($c === "'") {
+            $inStr = true;
+        } elseif ($c === '(') {
+            $depth++;
+        } elseif ($c === ')') {
+            $depth = max(0, $depth - 1);
+        } elseif ($c === ',' && $depth === 0) {
+            $commas++;
+        }
+    }
+
+    return $commas;
+}
+
+/**
+ * Build CREATE TABLE ... (col TEXT, ...) from INSERT INTO t (cols) VALUES ...
+ */
+function trytest_sql_infer_create_from_insert_columns(string $wantTable, string $sql): ?string
+{
+    $san = trytest_sql_strip_sql_comments($sql);
+    if (
+        preg_match(
+            '/\bINSERT\s+(?:OR\s+\w+\s+)?INTO\s+(?:[`"\[]?\w+[`"\]]?\.)?[`"\[]?(\w+)[`"\]]?\s*\(([^)]+)\)\s*VALUES/is',
+            $san,
+            $m
+        ) !== 1
+    ) {
+        return null;
+    }
+    if (strcasecmp($m[1], $wantTable) !== 0) {
+        return null;
+    }
+    $tname = $m[1];
+    $rawCols = trim($m[2]);
+    if ($rawCols === '') {
+        return null;
+    }
+    $parts = array_map('trim', explode(',', $rawCols));
+    $defs = [];
+    foreach ($parts as $col) {
+        if ($col === '') {
+            continue;
+        }
+        $col = preg_replace('/^[`"\[]+|[`"\]]+$/', '', $col);
+        if ($col === '') {
+            continue;
+        }
+        $defs[] = $col . ' TEXT';
+    }
+    if ($defs === []) {
+        return null;
+    }
+
+    return 'CREATE TABLE IF NOT EXISTS ' . $tname . ' (' . implode(', ', $defs) . ')';
+}
+
+/**
+ * INSERT INTO t VALUES (...) without column list — infer arity only (all TEXT columns).
+ */
+function trytest_sql_infer_create_from_insert_values(string $wantTable, string $sql): ?string
+{
+    $san = trytest_sql_strip_sql_comments($sql);
+    if (
+        preg_match(
+            '/\bINSERT\s+(?:OR\s+\w+\s+)?INTO\s+(?:[`"\[]?\w+[`"\]]?\.)?[`"\[]?(\w+)[`"\]]?\s+VALUES\s*\(/is',
+            $san,
+            $m,
+            PREG_OFFSET_CAPTURE
+        ) !== 1
+    ) {
+        return null;
+    }
+    if (strcasecmp($m[1][0], $wantTable) !== 0) {
+        return null;
+    }
+    $tname = $m[1][0];
+    $openIdx = $m[0][1] + strlen($m[0][0]) - 1;
+    $inner = trytest_sql_extract_between_parens($san, $openIdx);
+    if ($inner === null || trim($inner) === '') {
+        return null;
+    }
+    $n = trytest_sql_count_value_commas($inner) + 1;
+    if ($n < 1) {
+        return null;
+    }
+    $defs = [];
+    for ($i = 0; $i < $n; $i++) {
+        $defs[] = 'c' . ($i + 1) . ' TEXT';
+    }
+
+    return 'CREATE TABLE IF NOT EXISTS ' . $tname . ' (' . implode(', ', $defs) . ')';
+}
+
+/**
+ * SELECT a, b FROM table — build minimal schema (skips SELECT *).
+ */
+function trytest_sql_infer_create_from_select_list(string $wantTable, string $sql): ?string
+{
+    $san = trytest_sql_strip_sql_comments($sql);
+    if (
+        preg_match(
+            '/\bSELECT\s+(?:DISTINCT\s+)?(.+?)\s+FROM\s+(?:[`"\[]?\w+[`"\]]?\.)?[`"\[]?(\w+)\b/is',
+            $san,
+            $m
+        ) !== 1
+        || strcasecmp($m[2], $wantTable) !== 0
+    ) {
+        return null;
+    }
+    $tname = $m[2];
+    $list = trim($m[1]);
+    if ($list === '' || preg_match('/^\s*\*\s*$/', $list) === 1) {
+        return null;
+    }
+    $parts = array_map('trim', explode(',', $list));
+    $defs = [];
+    foreach ($parts as $p) {
+        if ($p === '') {
+            continue;
+        }
+        if (preg_match('/\bas\s+([`"\[]?\w+[`"\]]?)\s*$/i', $p, $am) === 1) {
+            $name = trim($am[1], '`"[]');
+        } elseif (preg_match('/^[`"\[]?(\w+)[`"\]]?$/', $p, $bm) === 1) {
+            $name = $bm[1];
+        } elseif (preg_match('/\b(\w+)\s*$/', $p, $cm) === 1) {
+            $name = $cm[1];
+        } else {
+            continue;
+        }
+        if (strcasecmp($name, $wantTable) === 0) {
+            continue;
+        }
+        $defs[] = $name . ' TEXT';
+    }
+    if ($defs === []) {
+        return null;
+    }
+
+    return 'CREATE TABLE IF NOT EXISTS ' . $tname . ' (' . implode(', ', $defs) . ')';
+}
+
+/**
+ * When setup fails with "no such table", infer a minimal CREATE from instructor/student SQL (quiz sandbox only).
+ */
+function trytest_sql_infer_create_for_missing_table(
+    string $missingTable,
+    string $goldenSql,
+    string $setupSql,
+    string $studentSql,
+    string $referenceSql
+): ?string {
+    $sources = [$goldenSql, $setupSql, $studentSql, $referenceSql];
+    foreach ($sources as $src) {
+        $src = trim($src);
+        if ($src === '') {
+            continue;
+        }
+        $c = trytest_sql_infer_create_from_insert_columns($missingTable, $src);
+        if ($c !== null) {
+            return $c;
+        }
+        $c = trytest_sql_infer_create_from_insert_values($missingTable, $src);
+        if ($c !== null) {
+            return $c;
+        }
+    }
+    foreach ($sources as $src) {
+        $src = trim($src);
+        if ($src === '') {
+            continue;
+        }
+        $c = trytest_sql_infer_create_from_select_list($missingTable, $src);
+        if ($c !== null) {
+            return $c;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Open in-memory DB and apply setup; on "no such table", prepend inferred CREATE and retry on a fresh DB.
+ *
+ * @return array{0: ?PDO, 1: ?string, 2: string} PDO, error message or null, setup string actually applied
+ */
+function trytest_sql_prepare_sandbox(
+    string $setup,
+    string $goldenSql,
+    string $referenceSql,
+    string $studentSql
+): array {
+    [$pdo, $initErr] = trytest_sql_new_sandbox();
+    if ($initErr !== null || !$pdo instanceof PDO) {
+        return [null, $initErr ?? 'Could not start SQL sandbox.', $setup];
+    }
+    $err = trytest_sql_run_setup($pdo, $setup);
+    if ($err === null) {
+        return [$pdo, null, $setup];
+    }
+    $missing = trytest_sql_parse_no_such_table_name($err);
+    $prepend = null;
+    if ($missing !== null) {
+        $prepend = trytest_sql_infer_create_for_missing_table($missing, $goldenSql, $setup, $studentSql, $referenceSql);
+    }
+    if ($prepend === null) {
+        return [$pdo, $err, $setup];
+    }
+    $combined = trim($prepend) . "\n" . $setup;
+    [$pdo2, $e2] = trytest_sql_new_sandbox();
+    if ($e2 !== null || !$pdo2 instanceof PDO) {
+        return [null, $e2 ?? 'Could not start SQL sandbox.', $setup];
+    }
+    $err3 = trytest_sql_run_setup($pdo2, $combined);
+    if ($err3 !== null) {
+        return [$pdo2, $err3, $combined];
+    }
+
+    return [$pdo2, null, $combined];
 }
 
 /**

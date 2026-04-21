@@ -30,6 +30,8 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/sql_practice.php';
 
+// Student SQL is graded only inside trytest_sql_* sandboxes (sqlite::memory:). This script reads question config from the app DB but never runs student SQL against it.
+
 $userId = !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
 $userLevel = trim((string) ($_SESSION['user_level'] ?? ''));
 $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
@@ -115,23 +117,16 @@ if ($bad !== null) {
 
 $sanStudent = trytest_sql_strip_sql_comments(rtrim(trim($studentSql), ';'));
 
-[$sandbox, $serr] = trytest_sql_new_sandbox();
-if ($serr !== null || !$sandbox instanceof PDO) {
-    trytest_sql_emit_graded_wrong([
-        'Could not start the in-memory SQL practice database. Try again in a moment.',
-        'Nothing you type here runs on the real course database — it is quiz-only.',
-    ]);
-}
-
-$setupErr = trytest_sql_run_setup($sandbox, $setup);
-if ($setupErr !== null) {
-    trytest_sql_emit_graded_wrong(
-        [
-            'The practice database could not be built for this question.',
-            $setupErr,
-            'Your answer is not graded against the model until setup runs. Ask your instructor to check setup_sql (include CREATE TABLE before INSERT/SELECT).',
-        ]
-    );
+[$sandbox, $setupErr, $setupUsed] = trytest_sql_prepare_sandbox($setup, $goldenSql, $reference, $sanStudent);
+if ($setupErr !== null || !$sandbox instanceof PDO) {
+    $fb = [
+        'The practice database could not be built for this question.',
+    ];
+    if ($setupErr !== null && $setupErr !== '') {
+        $fb[] = $setupErr;
+    }
+    $fb[] = 'Setup must run successfully before your query is graded. Ask your instructor to check setup_sql (CREATE TABLE and seed data before SELECT/INSERT).';
+    trytest_sql_emit_graded_wrong($fb);
 }
 
 $studentIsSelect = trytest_sql_student_answer_is_select($sanStudent);
@@ -218,7 +213,7 @@ if ($studentIsSelect) {
             'Could not start a second practice database for grading. Try again in a moment.',
         ]);
     }
-    $setupErrGold = trytest_sql_run_setup($sandboxGold, $setup);
+    $setupErrGold = trytest_sql_run_setup($sandboxGold, $setupUsed);
     if ($setupErrGold !== null) {
         trytest_sql_emit_graded_wrong(
             [
