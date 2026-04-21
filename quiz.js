@@ -103,7 +103,6 @@
             timerHandle = null;
         }
         setScoreDisplay();
-        if (totalValue) totalValue.textContent = String(maxQuizMarks());
         setFrozenTimerLabel();
         return true;
     }
@@ -132,6 +131,7 @@
     const progressLabel = document.getElementById('progressLabel');
     const scoreValue = document.getElementById('scoreValue');
     const totalValue = document.getElementById('totalValue');
+    const marksScaleHint = document.getElementById('marksScaleHint');
     const progressBar = document.getElementById('progressBar');
     const quizStatus = document.getElementById('quizStatus');
     const timerLabel = document.getElementById('timerLabel');
@@ -182,18 +182,19 @@
     function setProgress() {
         if (!progressLabel) return;
         if (orderedIds.length === 0) {
-            progressLabel.textContent = '0 / 0';
+            progressLabel.textContent = 'No questions';
             if (totalValue) totalValue.textContent = '0';
             if (progressBar) progressBar.style.width = '0%';
             return;
         }
         if (totalValue) totalValue.textContent = String(maxQuizMarks());
         if (currentIndex >= orderedIds.length) {
-            progressLabel.textContent = orderedIds.length + ' / ' + orderedIds.length;
+            progressLabel.textContent = 'All ' + orderedIds.length + ' questions seen';
             if (progressBar) progressBar.style.width = '100%';
             return;
         }
-        progressLabel.textContent = 'Question ' + (currentIndex + 1) + ' / ' + orderedIds.length;
+        progressLabel.textContent =
+            'Question ' + (currentIndex + 1) + ' of ' + orderedIds.length + ' · marks max ' + String(maxQuizMarks());
         if (progressBar) {
             const done = currentIndex / orderedIds.length;
             progressBar.style.width = Math.max(0, Math.min(100, done * 100)) + '%';
@@ -203,6 +204,20 @@
     function setScoreDisplay() {
         if (scoreValue) {
             scoreValue.textContent = String(score);
+        }
+        if (totalValue) {
+            totalValue.textContent = orderedIds.length > 0 ? String(maxQuizMarks()) : '0';
+        }
+        if (marksScaleHint && orderedIds.length > 0) {
+            marksScaleHint.textContent =
+                String(orderedIds.length) +
+                ' questions × ' +
+                String(MARKS_PER_QUESTION) +
+                ' marks each → ' +
+                String(maxQuizMarks()) +
+                ' max';
+        } else if (marksScaleHint) {
+            marksScaleHint.textContent = '';
         }
     }
 
@@ -2097,7 +2112,6 @@
                 score = 0;
                 adBreaksSeen = [];
                 setScoreDisplay();
-                if (totalValue) totalValue.textContent = String(maxQuizMarks());
                 startDurationSyncPolling();
                 showQuestionAtCurrentIndex();
             })

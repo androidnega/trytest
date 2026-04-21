@@ -396,8 +396,9 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
 <main class="mx-auto max-w-lg px-3 pt-3 sm:px-4 sm:pt-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200/90 bg-white px-3 py-2.5 text-sm shadow-sm sm:mb-4 sm:py-3 dark:border-zinc-700 dark:bg-zinc-900">
         <div>
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Score</p>
-            <p class="text-xl font-extrabold text-zinc-900 dark:text-zinc-50"><span id="scoreValue">0</span><span class="text-sm font-normal text-zinc-400 dark:text-zinc-500"> / </span><span id="totalValue" class="text-zinc-700 dark:text-zinc-200">0</span></p>
+            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Marks</p>
+            <p class="text-xl font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50"><span id="scoreValue">0</span><span class="text-sm font-normal text-zinc-400 dark:text-zinc-500"> / </span><span id="totalValue" class="text-zinc-700 dark:text-zinc-200">0</span></p>
+            <p id="marksScaleHint" class="mt-0.5 text-[10px] leading-snug text-zinc-500 dark:text-zinc-400"></p>
         </div>
         <div class="text-right">
             <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Time</p>
