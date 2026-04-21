@@ -268,17 +268,17 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         }
         @keyframes quiz-card-correct-glow {
             0% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
-            45% { box-shadow: 0 0 0 6px rgba(161 161 170 / 0.35); }
+            45% { box-shadow: 0 0 0 6px rgba(16 185 129 / 0.28); }
             100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
         }
         #quizCard.quiz-card--correct {
             animation: quiz-card-correct-glow 0.55s ease-out;
-            border-color: rgb(161 161 170);
-            background-color: rgb(250 250 250);
+            border-color: rgb(110 231 183);
+            background-color: rgb(236 253 245);
         }
         html.dark #quizCard.quiz-card--correct {
-            background-color: rgba(39 39 42 / 0.65);
-            border-color: rgb(113 113 122);
+            background-color: rgba(6 78 59 / 0.35);
+            border-color: rgb(52 211 153);
         }
         html.dark #quizCard.quiz-card--wrong {
             border-color: rgb(225 29 72);

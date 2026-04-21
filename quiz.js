@@ -460,12 +460,15 @@
     function triggerCardCorrectFeedback() {
         playQuizCorrectSound();
         if (!quizCard) return;
+        spawnCelebrationShimmer();
+        spawnCelebrationSparkles();
+        spawnCelebrationEmojis();
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;
         quizCard.classList.add('quiz-card--correct');
         setTimeout(function () {
             quizCard.classList.remove('quiz-card--correct');
-        }, 500);
+        }, 1000);
     }
 
     function ensureFxLayer() {
