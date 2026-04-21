@@ -1195,10 +1195,11 @@
             '<h2 class="mb-3 text-left text-base font-bold leading-snug text-zinc-900 sm:text-lg dark:text-zinc-100">' +
             prompt +
             '</h2>' +
-            '<div id="sqlCmMount" class="mb-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white text-sm shadow-inner dark:border-zinc-600 dark:bg-zinc-900">' +
+            '<div id="sqlCmMount" class="mb-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white text-sm shadow-inner dark:border-zinc-600 dark:bg-zinc-900">' +
             '<textarea id="sqlStudentTa" rows="12" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-3 font-mono text-[15px] leading-relaxed sm:text-[13px]">' +
             '-- Practice query\nSELECT ' +
             '</textarea></div>' +
+            '<p class="mb-3 text-xs leading-snug text-zinc-500 dark:text-zinc-400">Your query runs in a temporary in-memory database for this quiz only — it cannot read or change real course data.</p>' +
             '<button type="button" id="sqlRunBtn" class="flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm active:bg-zinc-950 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:active:bg-white">Run SQL check</button>' +
             '<div id="sqlFeedback" class="mt-4 hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left text-[15px] leading-relaxed text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-200"></div>';
 
@@ -1333,9 +1334,9 @@
                                   '</p>'
                                 : '';
                         fbEl.innerHTML =
-                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not grade right now.</p>' +
+                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not reach the grader.</p>' +
                             detail +
-                            '<p class="mt-2 text-xs text-zinc-600 dark:text-zinc-400">If you mixed SELECT with INSERT, remove the extra lines and keep one INSERT statement only.</p>';
+                            '<p class="mt-2 text-xs text-zinc-600 dark:text-zinc-400">Use a single SQL statement (no multiple queries separated by ;). INSERT answers: remove any extra SELECT lines so only the INSERT is submitted.</p>';
                     }
                     return;
                 }

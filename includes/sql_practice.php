@@ -127,6 +127,9 @@ function trytest_sql_practice_parse_config(?array $decoded): array
     $setup = trim((string) ($decoded['setup_sql'] ?? ''));
     $ref = trim((string) ($decoded['reference_sql'] ?? ''));
     $golden = trim((string) ($decoded['golden_sql'] ?? ''));
+    if ($golden === '') {
+        $golden = trim((string) ($decoded['canonical_dml'] ?? $decoded['model_dml'] ?? $decoded['model_insert'] ?? ''));
+    }
     $compare = trim((string) ($decoded['compare_sql'] ?? $decoded['verify_sql'] ?? ''));
 
     $ref = preg_replace('/^\xEF\xBB\xBF/', '', $ref);
@@ -348,13 +351,68 @@ function trytest_sql_new_sandbox(): array
     }
 }
 
+/**
+ * Split SQL into statements on `;` outside of single-quoted strings (SQLite '...' with '' escapes).
+ *
+ * @return list<string>
+ */
+function trytest_sql_split_into_statements(string $sql): array
+{
+    $sql = trim($sql);
+    if ($sql === '') {
+        return [];
+    }
+    $parts = [];
+    $buf = '';
+    $len = strlen($sql);
+    $inString = false;
+    for ($i = 0; $i < $len; $i++) {
+        $c = $sql[$i];
+        if ($inString) {
+            $buf .= $c;
+            if ($c === "'" && ($i + 1 < $len && $sql[$i + 1] === "'")) {
+                $buf .= $sql[++$i];
+            } elseif ($c === "'") {
+                $inString = false;
+            }
+        } elseif ($c === "'") {
+            $inString = true;
+            $buf .= $c;
+        } elseif ($c === ';') {
+            $t = trim($buf);
+            if ($t !== '') {
+                $parts[] = $t;
+            }
+            $buf = '';
+        } else {
+            $buf .= $c;
+        }
+    }
+    $t = trim($buf);
+    if ($t !== '') {
+        $parts[] = $t;
+    }
+
+    return $parts;
+}
+
 /** @return ?string error message */
 function trytest_sql_run_setup(PDO $pdo, string $setupSql): ?string
 {
-    try {
-        $pdo->exec($setupSql);
-    } catch (Throwable $e) {
-        return 'Setup error (contact instructor): ' . $e->getMessage();
+    $setupSql = trim($setupSql);
+    if ($setupSql === '') {
+        return null;
+    }
+    $parts = trytest_sql_split_into_statements($setupSql);
+    if ($parts === []) {
+        return null;
+    }
+    foreach ($parts as $stmt) {
+        try {
+            $pdo->exec($stmt);
+        } catch (Throwable $e) {
+            return 'Setup error (contact instructor): ' . $e->getMessage();
+        }
     }
 
     return null;
@@ -488,6 +546,35 @@ function trytest_sql_marks_from_similarity(float $f1, float $simCorrect): int
     $den = max($simCorrect, 1e-9);
     $ratio = min(1.0, max(0.0, $f1 / $den));
     return max(0, min(10, (int) round(10.0 * $ratio)));
+}
+
+/**
+ * Quiz-only: always return HTTP 200 with graded payload so the client can record marks (often 0) and continue.
+ *
+ * @param list<string> $feedback
+ */
+function trytest_sql_emit_graded_wrong(
+    array $feedback,
+    ?string $sqliteError = null,
+    ?int $expectedRows = null,
+    ?int $actualRows = null
+): never {
+    echo json_encode(
+        [
+            'ok' => true,
+            'graded' => true,
+            'verdict' => 'wrong',
+            'similarity' => 0.0,
+            'marks' => 0,
+            'marks_max' => 10,
+            'feedback' => $feedback,
+            'sqlite_error' => $sqliteError,
+            'expected_rows' => $expectedRows,
+            'actual_rows' => $actualRows,
+        ],
+        JSON_THROW_ON_ERROR
+    );
+    exit;
 }
 
 /**

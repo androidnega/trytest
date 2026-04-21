@@ -55,7 +55,7 @@ if (!trytest_student_can_access_quiz($db, $quizId, $userLevel, $userDepartment))
 }
 
 $stmt = $db->prepare(
-    'SELECT id, quiz_id, question_type, sql_practice
+    'SELECT id, quiz_id, question_type, sql_practice, correct_answer
      FROM questions
      WHERE id = ? AND quiz_id = ? AND status = \'approved\''
 );
@@ -70,14 +70,23 @@ if ($row === false || strtolower((string) ($row['question_type'] ?? '')) !== 'sq
 $decoded = json_decode((string) ($row['sql_practice'] ?? ''), true);
 $cfg = trytest_sql_practice_parse_config(is_array($decoded) ? $decoded : null);
 if (!$cfg['ok']) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $cfg['error'] ?? 'bad_config'], JSON_THROW_ON_ERROR);
-    exit;
+    trytest_sql_emit_graded_wrong(
+        [
+            (string) ($cfg['error'] ?? 'Invalid SQL practice configuration.'),
+            'Ask your instructor to fix the question JSON (setup_sql / reference_sql).',
+        ]
+    );
 }
 
 $setup = $cfg['setup'];
 $reference = $cfg['reference'];
 $goldenSql = (string) ($cfg['golden'] ?? '');
+if ($goldenSql === '') {
+    $ca = trim((string) ($row['correct_answer'] ?? ''));
+    if ($ca !== '' && $ca !== '-' && preg_match('/^\s*(INSERT|REPLACE|UPDATE|DELETE)\b/is', $ca) === 1) {
+        $goldenSql = trytest_sql_extract_first_dml_statement(trytest_sql_strip_line_number_only_lines($ca));
+    }
+}
 $hints = $cfg['hints'];
 $simCorrect = $cfg['simCorrect'];
 $simPartial = $cfg['simPartial'];
@@ -108,16 +117,21 @@ $sanStudent = trytest_sql_strip_sql_comments(rtrim(trim($studentSql), ';'));
 
 [$sandbox, $serr] = trytest_sql_new_sandbox();
 if ($serr !== null || !$sandbox instanceof PDO) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $serr ?? 'sandbox'], JSON_THROW_ON_ERROR);
-    exit;
+    trytest_sql_emit_graded_wrong([
+        'Could not start the in-memory SQL practice database. Try again in a moment.',
+        'Nothing you type here runs on the real course database — it is quiz-only.',
+    ]);
 }
 
 $setupErr = trytest_sql_run_setup($sandbox, $setup);
 if ($setupErr !== null) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $setupErr], JSON_THROW_ON_ERROR);
-    exit;
+    trytest_sql_emit_graded_wrong(
+        [
+            'The practice database could not be built for this question.',
+            $setupErr,
+            'Your answer is not graded against the model until setup runs. Ask your instructor to check setup_sql (include CREATE TABLE before INSERT/SELECT).',
+        ]
+    );
 }
 
 $studentIsSelect = trytest_sql_student_answer_is_select($sanStudent);
@@ -127,32 +141,25 @@ $stuResult = null;
 if ($studentIsSelect) {
     $refResult = trytest_sql_run_select($sandbox, $reference);
     if ($refResult['error'] !== null) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => 'Reference query failed: ' . $refResult['error']], JSON_THROW_ON_ERROR);
-        exit;
+        trytest_sql_emit_graded_wrong(
+            [
+                'The reference check query failed after setup.',
+                'Reference error: ' . $refResult['error'],
+                'Ask your instructor to verify reference_sql matches the tables created in setup_sql.',
+            ],
+            $refResult['error']
+        );
     }
     $stuResult = trytest_sql_run_select($sandbox, $sanStudent);
     $expectedRows = $refResult['rows'];
 } else {
     if ($goldenSql === '') {
-        echo json_encode(
+        trytest_sql_emit_graded_wrong(
             [
-                'ok' => true,
-                'graded' => true,
-                'verdict' => 'wrong',
-                'similarity' => 0.0,
-                'marks' => 0,
-                'marks_max' => 10,
-                'feedback' => [
-                    'This question is not set up for INSERT/UPDATE/DELETE yet. The instructor should add either: (1) `golden_sql` (model statement) with `reference_sql` as a SELECT that checks the table, or (2) put the model INSERT in `reference_sql` and the checking SELECT in `compare_sql` (or `verify_sql`).',
-                ],
-                'sqlite_error' => null,
-                'expected_rows' => null,
-                'actual_rows' => null,
-            ],
-            JSON_THROW_ON_ERROR
+                'This question needs a model answer for INSERT/UPDATE/DELETE grading.',
+                'The instructor should add `golden_sql` (canonical statement) with `reference_sql` as the checking SELECT, or put the model DML in `reference_sql` and the checking SELECT in `compare_sql` / `verify_sql`. You can also store the model INSERT in the question\'s correct answer field for SQL items.',
+            ]
         );
-        exit;
     }
 
     $stuExecErr = trytest_sql_exec_statement($sandbox, $sanStudent);
@@ -207,33 +214,40 @@ if ($studentIsSelect) {
 
     [$sandboxGold, $gErr] = trytest_sql_new_sandbox();
     if ($gErr !== null || !$sandboxGold instanceof PDO) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => $gErr ?? 'sandbox'], JSON_THROW_ON_ERROR);
-        exit;
+        trytest_sql_emit_graded_wrong([
+            'Could not start a second practice database for grading. Try again in a moment.',
+        ]);
     }
     $setupErrGold = trytest_sql_run_setup($sandboxGold, $setup);
     if ($setupErrGold !== null) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => $setupErrGold], JSON_THROW_ON_ERROR);
-        exit;
+        trytest_sql_emit_graded_wrong(
+            [
+                'Could not rebuild the practice database for the model answer.',
+                $setupErrGold,
+            ]
+        );
     }
     $goldExecErr = trytest_sql_exec_statement($sandboxGold, $goldenSql);
     if ($goldExecErr !== null) {
-        http_response_code(500);
-        echo json_encode(
-            ['ok' => false, 'error' => 'golden_sql failed (check instructor config): ' . $goldExecErr],
-            JSON_THROW_ON_ERROR
+        trytest_sql_emit_graded_wrong(
+            [
+                'The model answer (golden_sql) could not run in the practice database.',
+                'golden_sql error: ' . $goldExecErr,
+                'Ask your instructor to fix golden_sql or the table definition in setup_sql.',
+            ],
+            $goldExecErr
         );
-        exit;
     }
     $goldRef = trytest_sql_run_select($sandboxGold, $reference);
     if ($goldRef['error'] !== null) {
-        http_response_code(500);
-        echo json_encode(
-            ['ok' => false, 'error' => 'reference_sql failed after golden_sql: ' . $goldRef['error']],
-            JSON_THROW_ON_ERROR
+        trytest_sql_emit_graded_wrong(
+            [
+                'The checking SELECT failed after the model statement.',
+                'Error: ' . $goldRef['error'],
+                'Ask your instructor to align reference_sql with setup_sql and golden_sql.',
+            ],
+            $goldRef['error']
         );
-        exit;
     }
     $expectedRows = $goldRef['rows'];
 }
