@@ -25,11 +25,17 @@ if ($incomingShareQuiz < 1) {
         $incomingShareQuiz = trytest_quiz_id_from_share_code($db, $sIncoming);
     }
 }
+$incomingShareQuizTitle = '';
 if ($incomingShareQuiz > 0) {
-    $qc = $db->prepare('SELECT id FROM quizzes WHERE id = ?');
+    $qc = $db->prepare('SELECT id, title FROM quizzes WHERE id = ?');
     $qc->execute([$incomingShareQuiz]);
-    if ($qc->fetchColumn()) {
+    $shareQuizRow = $qc->fetch(PDO::FETCH_ASSOC);
+    if ($shareQuizRow) {
         $_SESSION['pending_shared_quiz_id'] = $incomingShareQuiz;
+        $incomingShareQuizTitle = trim((string) ($shareQuizRow['title'] ?? ''));
+        if ($incomingShareQuizTitle === '') {
+            $incomingShareQuizTitle = 'Quiz';
+        }
     }
 }
 
@@ -466,15 +472,27 @@ $htmlRootClasses = trim(implode(' ', array_filter([trytest_student_zoom_lock_htm
 <html lang="en" class="<?php echo htmlspecialchars($htmlRootClasses, ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
-    <?php trytest_link_preview_meta([
+    <?php
+    $docTitle = 'Trytest';
+    $previewMeta = [
         'title' => 'Trytest',
         'description' => 'Student sign-in, quizzes, and downloads.',
-    ]); ?>
+    ];
+    if ($incomingShareQuizTitle !== '') {
+        $docTitle = $incomingShareQuizTitle . ' · Trytest';
+        $previewMeta = [
+            'title' => $incomingShareQuizTitle,
+            'description' => 'Sign in with your index number on Trytest to take this quiz.',
+            'omit_path' => true,
+        ];
+    }
+    trytest_link_preview_meta($previewMeta);
+    ?>
     <meta name="viewport" content="<?php echo htmlspecialchars(trytest_student_locked_viewport_content(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($isUserLoggedIn) {
         trytest_student_theme_head_early();
     } ?>
-    <title>Trytest</title>
+    <title><?php echo htmlspecialchars($docTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
