@@ -31,14 +31,11 @@ if (!is_array($data)) {
 }
 
 $stars = (int) ($data['stars'] ?? 0);
+if ($stars < 0 || $stars > 5) {
+    $stars = 0;
+}
 $body = trim((string) ($data['body'] ?? ''));
 $quizRef = trim((string) ($data['quiz_ref'] ?? ''));
-
-if ($stars < 1 || $stars > 5) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'stars'], JSON_THROW_ON_ERROR);
-    exit;
-}
 $bodyLen = function_exists('mb_strlen') ? mb_strlen($body) : strlen($body);
 if ($body === '' || $bodyLen > 2000) {
     http_response_code(400);

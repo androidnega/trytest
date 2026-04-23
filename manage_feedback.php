@@ -50,7 +50,7 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
             <ul class="space-y-3">
                 <?php foreach ($rows as $r): ?>
                     <?php
-                    $stars = max(1, min(5, (int) ($r['stars'] ?? 0)));
+                    $stars = (int) ($r['stars'] ?? 0);
                     $nick = trim((string) ($r['nickname'] ?? ''));
                     $label = $nick !== '' ? $nick : (string) ($r['index_number'] ?? '');
                     ?>
@@ -60,7 +60,11 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
                                 <span class="font-normal text-slate-400">·</span>
                                 <span class="font-mono text-xs text-slate-500"><?php echo $h((string) ($r['index_number'] ?? '')); ?></span>
                             </p>
-                            <p class="text-amber-500" aria-label="<?php echo $stars; ?> stars"><?php echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); ?></p>
+                            <?php if ($stars >= 1 && $stars <= 5): ?>
+                                <p class="text-amber-500" aria-label="<?php echo $stars; ?> stars"><?php echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); ?></p>
+                            <?php else: ?>
+                                <p class="text-xs font-medium text-slate-400">No rating</p>
+                            <?php endif; ?>
                         </div>
                         <?php if (trim((string) ($r['quiz_ref'] ?? '')) !== ''): ?>
                             <p class="mt-1 text-xs text-slate-500">Ref: <span class="font-medium text-slate-700"><?php echo $h(trim((string) $r['quiz_ref'])); ?></span></p>

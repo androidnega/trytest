@@ -414,12 +414,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         </div>
                         <div class="min-w-0 flex-1">
                             <h2 id="trytest-feedback-title" class="text-xs font-bold text-slate-900 dark:text-zinc-100">Rate Trytest</h2>
-                            <p class="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">1–5 stars, optional quiz reference, emojis welcome. Helps us improve.</p>
-                            <div id="trytestFeedbackStars" class="mt-2 flex flex-wrap gap-1" role="group" aria-label="Star rating">
-                                <?php for ($si = 1; $si <= 5; $si++): ?>
-                                    <button type="button" data-star="<?php echo $si; ?>" class="trytest-star-btn rounded-md border border-slate-200 px-2 py-1 text-sm text-amber-500 hover:bg-amber-50 dark:border-zinc-600 dark:hover:bg-zinc-800" aria-pressed="false">★</button>
-                                <?php endfor; ?>
-                            </div>
+                            <p class="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Optional quiz reference, emojis welcome. Helps us improve.</p>
                             <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackQuizRef">Reference (quiz name, #id, or topic)</label>
                             <input id="trytestFeedbackQuizRef" type="text" maxlength="120" class="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" placeholder="e.g. Data Structures quiz #3">
                             <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackBody">Your comment</label>
@@ -439,12 +434,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             <section class="mb-4">
                 <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D] dark:text-[#7eb8b8]">← Home</a>
                 <h2 class="mt-2 text-xl font-bold dark:text-zinc-100">Leaderboard</h2>
-                <p class="mt-1 flex flex-nowrap items-center gap-x-2 overflow-x-auto text-xs text-slate-600 dark:text-zinc-400">
-                    <span class="shrink-0 whitespace-nowrap font-medium text-slate-800 dark:text-zinc-200">Lv&nbsp;<?php echo $h($userLevel); ?></span>
-                    <span class="shrink-0 text-slate-300 dark:text-zinc-600" aria-hidden="true">·</span>
-                    <span class="min-w-0 shrink truncate"><?php echo $h($deptLabel); ?></span>
-                    <span class="shrink-0 whitespace-nowrap tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?> pts</span>
-                </p>
             </section>
             <?php echo trytest_render_level_podium_html($levelLeaderboardRows, $userId, $h); ?>
         <?php endif; ?>
@@ -582,43 +571,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 (function () {
     var api = <?php echo json_encode($studentFeedbackApiUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
     if (!api) return;
-    var stars = 0;
-    var starWrap = document.getElementById('trytestFeedbackStars');
     var bodyEl = document.getElementById('trytestFeedbackBody');
     var refEl = document.getElementById('trytestFeedbackQuizRef');
     var msg = document.getElementById('trytestFeedbackMsg');
     var submit = document.getElementById('trytestFeedbackSubmit');
-    if (!starWrap || !bodyEl || !submit) return;
-    function paintStars() {
-        var btns = starWrap.querySelectorAll('.trytest-star-btn');
-        for (var i = 0; i < btns.length; i++) {
-            var n = i + 1;
-            var on = stars >= n;
-            btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
-            btns[i].className =
-                'trytest-star-btn rounded-md border px-2 py-1 text-sm ' +
-                (on
-                    ? 'border-amber-400 bg-amber-50 text-amber-600 dark:border-amber-500 dark:bg-amber-950/50'
-                    : 'border-slate-200 text-amber-500 hover:bg-amber-50 dark:border-zinc-600 dark:hover:bg-zinc-800');
-        }
-    }
-    starWrap.addEventListener('click', function (e) {
-        var t = e.target;
-        if (!t || !t.getAttribute) return;
-        var s = parseInt(t.getAttribute('data-star') || '0', 10);
-        if (s >= 1 && s <= 5) {
-            stars = s;
-            paintStars();
-        }
-    });
-    paintStars();
+    if (!bodyEl || !submit) return;
     submit.addEventListener('click', function () {
-        if (stars < 1) {
-            msg.textContent = 'Pick a star rating first.';
-            msg.classList.remove('hidden', 'text-emerald-700');
-            msg.classList.add('text-amber-700');
-            return;
-        }
         var body = (bodyEl.value || '').trim();
         if (!body) {
             msg.textContent = 'Please write a short comment.';
@@ -633,7 +591,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                stars: stars,
+                stars: 0,
                 body: body,
                 quiz_ref: (refEl && refEl.value) ? refEl.value.trim() : '',
             }),
