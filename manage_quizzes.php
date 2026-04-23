@@ -6,6 +6,7 @@ session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/quiz_share.php';
+require_once __DIR__ . '/includes/levels.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -108,6 +109,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = 'Quiz schedule and time limit updated.';
         }
     }
+    if ($action === 'update_quiz_level') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
+        $levelOpts = trytest_level_dropdown_options($db);
+        if ($id < 1) {
+            $error = 'Invalid quiz.';
+        } elseif ($levelRaw === '__inherit__') {
+            $db->prepare('UPDATE quizzes SET level = ? WHERE id = ?')->execute(['', $id]);
+            $message = 'Quiz level cleared. Students in the right course/program match use course level only.';
+        } else {
+            $resolved = trytest_resolve_level_for_save($levelRaw, $levelOpts);
+            if ($resolved === null) {
+                $error = 'Choose a level from the list, or “Any (course only)” to clear the quiz-level filter.';
+            } else {
+                $db->prepare('UPDATE quizzes SET level = ? WHERE id = ?')->execute([$resolved, $id]);
+                $message = 'Quiz level updated to ' . $resolved . '. Student access and listings use this immediately.';
+            }
+        }
+    }
     if ($action === 'delete_quiz') {
         $id = (int) ($_POST['id'] ?? 0);
         if ($id > 0) {
@@ -150,6 +170,7 @@ foreach ($questionRows as $row) {
     }
     $questionsByQuiz[$qid][] = $row;
 }
+$levelPresets = trytest_level_dropdown_options($db);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -269,6 +290,36 @@ foreach ($questionRows as $row) {
                                     </div>
                                 </div>
                             </div>
+                            <form method="post" class="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/40 p-2 space-y-2">
+                                <input type="hidden" name="action" value="update_quiz_level">
+                                <input type="hidden" name="id" value="<?php echo $quizId; ?>">
+                                <p class="text-[11px] font-semibold text-slate-700">Quiz level <span class="text-slate-400 font-normal">(who may open it)</span></p>
+                                <p class="text-[10px] leading-snug text-slate-600">Must match a student’s level unless you use “Any”. Course must still match their program and level for the quiz to appear.</p>
+                                <div class="flex flex-wrap items-end gap-2">
+                                    <select name="level" class="min-w-[8rem] flex-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs" required>
+                                        <?php
+                                        $qLev = trim((string) ($quiz['level'] ?? ''));
+                                        $qCanon = trytest_level_canon($qLev);
+                                        $quizLevelInPresets = false;
+                                        foreach ($levelPresets as $lo) {
+                                            if ($qLev !== '' && trytest_level_canon((string) ($lo['value'] ?? '')) === $qCanon) {
+                                                $quizLevelInPresets = true;
+                                                break;
+                                            }
+                                        }
+                                        ?>
+                                        <option value="__inherit__" <?php echo $qLev === '' ? 'selected' : ''; ?>>Any (course only)</option>
+                                        <?php if (!$quizLevelInPresets && $qLev !== ''): ?>
+                                            <option value="<?php echo htmlspecialchars($qLev, ENT_QUOTES, 'UTF-8'); ?>" selected><?php echo htmlspecialchars($qLev, ENT_QUOTES, 'UTF-8'); ?> (current)</option>
+                                        <?php endif; ?>
+                                        <?php foreach ($levelPresets as $lo): ?>
+                                            <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                            <option value="<?php echo htmlspecialchars($lv, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $quizLevelInPresets && trytest_level_canon($lv) === $qCanon ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) ($lo['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Save level</button>
+                                </div>
+                            </form>
                             <form method="post" class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
                                 <input type="hidden" name="action" value="update_quiz_schedule">
                                 <input type="hidden" name="id" value="<?php echo $quizId; ?>">
