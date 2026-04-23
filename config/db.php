@@ -477,12 +477,41 @@ CREATE TABLE IF NOT EXISTS student_system_feedback (
 ');
 $db->exec('CREATE INDEX IF NOT EXISTS idx_student_feedback_created ON student_system_feedback(created_at DESC)');
 
+$db->exec('
+CREATE TABLE IF NOT EXISTS trytest_boot_flags (
+    flag TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
+
+// One-time bulk fill for quiz share codes. Previously this ran on every HTTP request and could
+// take minutes with many quizzes (N UPDATE attempts). Lazy assignment still runs via quiz_share.php
+// when a quiz is opened or listed where needed.
 require_once dirname(__DIR__) . '/includes/quiz_share.php';
-foreach ($db->query('SELECT id FROM quizzes WHERE share_code IS NULL OR TRIM(share_code) = \'\'')->fetchAll() as $row) {
-    $rid = (int) ($row['id'] ?? 0);
-    if ($rid > 0) {
-        trytest_quiz_ensure_share_code($db, $rid);
+try {
+    $flagDone = (bool) $db->query(
+        "SELECT 1 FROM trytest_boot_flags WHERE flag = 'quiz_share_code_bulk_v1' LIMIT 1"
+    )->fetchColumn();
+    if (!$flagDone) {
+        $missing = (int) $db->query(
+            "SELECT COUNT(*) FROM quizzes WHERE share_code IS NULL OR TRIM(share_code) = ''"
+        )->fetchColumn();
+        if ($missing > 0) {
+            foreach (
+                $db->query(
+                    'SELECT id FROM quizzes WHERE share_code IS NULL OR TRIM(share_code) = \'\''
+                )->fetchAll() as $row
+            ) {
+                $rid = (int) ($row['id'] ?? 0);
+                if ($rid > 0) {
+                    trytest_quiz_ensure_share_code($db, $rid);
+                }
+            }
+        }
+        $db->prepare('INSERT OR IGNORE INTO trytest_boot_flags (flag) VALUES (?)')->execute(['quiz_share_code_bulk_v1']);
     }
+} catch (Throwable $e) {
+    // Do not block app boot if migration helper fails.
 }
 
 // Keep SQLite file writable for the web server user in local XAMPP setups.
