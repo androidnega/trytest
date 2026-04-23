@@ -100,58 +100,49 @@ CREATE TABLE IF NOT EXISTS quiz_courses (
 
 $db->exec('CREATE INDEX IF NOT EXISTS idx_score_attempts_user_quiz_id ON score_attempts(user_id, quiz_id, id DESC)');
 
-$quizColumns = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
-$hasDurationMinutes = false;
-foreach ($quizColumns as $column) {
-    if (($column['name'] ?? '') === 'duration_minutes') {
-        $hasDurationMinutes = true;
-        break;
+$quizCol = [];
+foreach ($db->query('PRAGMA table_info(quizzes)')->fetchAll() as $column) {
+    $n = (string) ($column['name'] ?? '');
+    if ($n !== '') {
+        $quizCol[$n] = true;
     }
 }
-if (!$hasDurationMinutes) {
+if (!isset($quizCol['duration_minutes'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN duration_minutes INTEGER');
+    $quizCol['duration_minutes'] = true;
 }
 
-$scoreColumns = $db->query('PRAGMA table_info(scores)')->fetchAll();
-$hasScoreUserId = false;
-foreach ($scoreColumns as $column) {
-    if (($column['name'] ?? '') === 'user_id') {
-        $hasScoreUserId = true;
-        break;
+$scoreCol = [];
+foreach ($db->query('PRAGMA table_info(scores)')->fetchAll() as $column) {
+    $n = (string) ($column['name'] ?? '');
+    if ($n !== '') {
+        $scoreCol[$n] = true;
     }
 }
-if (!$hasScoreUserId) {
+if (!isset($scoreCol['user_id'])) {
     $db->exec('ALTER TABLE scores ADD COLUMN user_id INTEGER');
+    $scoreCol['user_id'] = true;
 }
 
-$quizColumns = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
-$hasLevel = false;
-$hasCourseId = false;
-foreach ($quizColumns as $column) {
-    if (($column['name'] ?? '') === 'level') {
-        $hasLevel = true;
-    }
-    if (($column['name'] ?? '') === 'course_id') {
-        $hasCourseId = true;
-    }
-}
-if (!$hasLevel) {
+if (!isset($quizCol['level'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN level TEXT');
+    $quizCol['level'] = true;
 }
-if (!$hasCourseId) {
+if (!isset($quizCol['course_id'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN course_id INTEGER');
+    $quizCol['course_id'] = true;
 }
 
-$userColumns = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasPasswordHash = false;
-foreach ($userColumns as $column) {
-    if (($column['name'] ?? '') === 'password_hash') {
-        $hasPasswordHash = true;
-        break;
+$userCol = [];
+foreach ($db->query('PRAGMA table_info(users)')->fetchAll() as $column) {
+    $n = (string) ($column['name'] ?? '');
+    if ($n !== '') {
+        $userCol[$n] = true;
     }
 }
-if (!$hasPasswordHash) {
+if (!isset($userCol['password_hash'])) {
     $db->exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+    $userCol['password_hash'] = true;
 }
 
 $courseCols = $db->query('PRAGMA table_info(courses)')->fetchAll();
@@ -166,52 +157,29 @@ if (!$hasCourseDepartment) {
     $db->exec('ALTER TABLE courses ADD COLUMN department TEXT NOT NULL DEFAULT \'\'');
 }
 
-$userCols2 = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasUserDepartment = false;
-foreach ($userCols2 as $column) {
-    if (($column['name'] ?? '') === 'department') {
-        $hasUserDepartment = true;
-        break;
-    }
-}
-if (!$hasUserDepartment) {
+if (!isset($userCol['department'])) {
     $db->exec('ALTER TABLE users ADD COLUMN department TEXT NOT NULL DEFAULT \'\'');
+    $userCol['department'] = true;
 }
 
-$questionCols = $db->query('PRAGMA table_info(questions)')->fetchAll();
-$hasQuestionStatus = false;
-foreach ($questionCols as $column) {
-    if (($column['name'] ?? '') === 'status') {
-        $hasQuestionStatus = true;
-        break;
+$questionCol = [];
+foreach ($db->query('PRAGMA table_info(questions)')->fetchAll() as $column) {
+    $n = (string) ($column['name'] ?? '');
+    if ($n !== '') {
+        $questionCol[$n] = true;
     }
 }
-if (!$hasQuestionStatus) {
+if (!isset($questionCol['status'])) {
     $db->exec('ALTER TABLE questions ADD COLUMN status TEXT NOT NULL DEFAULT \'approved\'');
+    $questionCol['status'] = true;
 }
-
-$questionColsRubric = $db->query('PRAGMA table_info(questions)')->fetchAll();
-$hasTheoryRubric = false;
-foreach ($questionColsRubric as $column) {
-    if (($column['name'] ?? '') === 'theory_rubric') {
-        $hasTheoryRubric = true;
-        break;
-    }
-}
-if (!$hasTheoryRubric) {
+if (!isset($questionCol['theory_rubric'])) {
     $db->exec('ALTER TABLE questions ADD COLUMN theory_rubric TEXT');
+    $questionCol['theory_rubric'] = true;
 }
-
-$questionColsSqlPractice = $db->query('PRAGMA table_info(questions)')->fetchAll();
-$hasSqlPractice = false;
-foreach ($questionColsSqlPractice as $column) {
-    if (($column['name'] ?? '') === 'sql_practice') {
-        $hasSqlPractice = true;
-        break;
-    }
-}
-if (!$hasSqlPractice) {
+if (!isset($questionCol['sql_practice'])) {
     $db->exec('ALTER TABLE questions ADD COLUMN sql_practice TEXT');
+    $questionCol['sql_practice'] = true;
 }
 
 try {
@@ -220,35 +188,18 @@ try {
     // ignore
 }
 
-$scoreColsReview = $db->query('PRAGMA table_info(scores)')->fetchAll();
-$hasScoresReviewJson = false;
-foreach ($scoreColsReview as $column) {
-    if (($column['name'] ?? '') === 'review_json') {
-        $hasScoresReviewJson = true;
-        break;
-    }
-}
-if (!$hasScoresReviewJson) {
+if (!isset($scoreCol['review_json'])) {
     $db->exec('ALTER TABLE scores ADD COLUMN review_json TEXT');
+    $scoreCol['review_json'] = true;
 }
 
-$quizColsSchedule = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
-$hasQuizStartsAt = false;
-$hasQuizEndsAt = false;
-foreach ($quizColsSchedule as $column) {
-    $n = (string) ($column['name'] ?? '');
-    if ($n === 'quiz_starts_at') {
-        $hasQuizStartsAt = true;
-    }
-    if ($n === 'quiz_ends_at') {
-        $hasQuizEndsAt = true;
-    }
-}
-if (!$hasQuizStartsAt) {
+if (!isset($quizCol['quiz_starts_at'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN quiz_starts_at TEXT');
+    $quizCol['quiz_starts_at'] = true;
 }
-if (!$hasQuizEndsAt) {
+if (!isset($quizCol['quiz_ends_at'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN quiz_ends_at TEXT');
+    $quizCol['quiz_ends_at'] = true;
 }
 
 $db->exec('
@@ -260,16 +211,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
 );
 ');
 
-$userColsYt = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasYoutubeRefresh = false;
-foreach ($userColsYt as $column) {
-    if (($column['name'] ?? '') === 'youtube_refresh_token') {
-        $hasYoutubeRefresh = true;
-        break;
-    }
-}
-if (!$hasYoutubeRefresh) {
+if (!isset($userCol['youtube_refresh_token'])) {
     $db->exec('ALTER TABLE users ADD COLUMN youtube_refresh_token TEXT');
+    $userCol['youtube_refresh_token'] = true;
 }
 
 $db->exec('
@@ -367,52 +311,24 @@ CREATE TABLE IF NOT EXISTS student_document_downloads (
 );
 ');
 
-$userColsSeen = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasDownloadsLastSeen = false;
-foreach ($userColsSeen as $column) {
-    if (($column['name'] ?? '') === 'downloads_last_seen_at') {
-        $hasDownloadsLastSeen = true;
-        break;
-    }
-}
-if (!$hasDownloadsLastSeen) {
+if (!isset($userCol['downloads_last_seen_at'])) {
     $db->exec('ALTER TABLE users ADD COLUMN downloads_last_seen_at TEXT');
+    $userCol['downloads_last_seen_at'] = true;
 }
 
-$userColsQuizFeed = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasQuizzesFeedLastSeen = false;
-foreach ($userColsQuizFeed as $column) {
-    if (($column['name'] ?? '') === 'quizzes_feed_last_seen_at') {
-        $hasQuizzesFeedLastSeen = true;
-        break;
-    }
-}
-if (!$hasQuizzesFeedLastSeen) {
+if (!isset($userCol['quizzes_feed_last_seen_at'])) {
     $db->exec('ALTER TABLE users ADD COLUMN quizzes_feed_last_seen_at TEXT');
+    $userCol['quizzes_feed_last_seen_at'] = true;
 }
 
-$userColsNickname = $db->query('PRAGMA table_info(users)')->fetchAll();
-$hasNickname = false;
-foreach ($userColsNickname as $column) {
-    if (($column['name'] ?? '') === 'nickname') {
-        $hasNickname = true;
-        break;
-    }
-}
-if (!$hasNickname) {
+if (!isset($userCol['nickname'])) {
     $db->exec('ALTER TABLE users ADD COLUMN nickname TEXT NOT NULL DEFAULT \'\'');
+    $userCol['nickname'] = true;
 }
 
-$quizColsCreated = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
-$hasQuizCreatedAt = false;
-foreach ($quizColsCreated as $column) {
-    if (($column['name'] ?? '') === 'created_at') {
-        $hasQuizCreatedAt = true;
-        break;
-    }
-}
-if (!$hasQuizCreatedAt) {
+if (!isset($quizCol['created_at'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN created_at TEXT');
+    $quizCol['created_at'] = true;
     // Legacy rows: do not flood the “new quiz” home badge after this migration ships.
     $db->exec("UPDATE quizzes SET created_at = '2000-01-01 00:00:00' WHERE created_at IS NULL OR TRIM(COALESCE(created_at, '')) = ''");
 }
@@ -442,16 +358,9 @@ foreach ([['100', 100], ['200', 200], ['300', 300], ['400', 400]] as $lvSeed) {
     }
 }
 
-$quizColsShare = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
-$hasQuizShareCode = false;
-foreach ($quizColsShare as $column) {
-    if (($column['name'] ?? '') === 'share_code') {
-        $hasQuizShareCode = true;
-        break;
-    }
-}
-if (!$hasQuizShareCode) {
+if (!isset($quizCol['share_code'])) {
     $db->exec('ALTER TABLE quizzes ADD COLUMN share_code TEXT NOT NULL DEFAULT \'\'');
+    $quizCol['share_code'] = true;
 }
 $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_quizzes_share_code ON quizzes(share_code) WHERE share_code != \'\'');
 
@@ -514,9 +423,13 @@ try {
     // Do not block app boot if migration helper fails.
 }
 
-// Keep SQLite file writable for the web server user in local XAMPP setups.
+// Keep SQLite file writable for the web server user in local XAMPP setups (avoid chmod every request).
 if (!$dbFileExisted && is_file($dbFile)) {
     @chmod($dbFile, 0666);
 }
-@chmod($dataDir, 0777);
-@chmod($dbFile, 0666);
+if (!is_writable($dataDir)) {
+    @chmod($dataDir, 0777);
+}
+if (is_file($dbFile) && !is_writable($dbFile)) {
+    @chmod($dbFile, 0666);
+}

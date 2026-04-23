@@ -16,7 +16,7 @@ if (empty($_SESSION['is_admin'])) {
 }
 
 $courseCount = (int) $db->query('SELECT COUNT(*) FROM courses')->fetchColumn();
-$departmentDropdownCount = count(trytest_department_dropdown_options($db));
+$departmentDropdownCount = trytest_department_dropdown_option_count($db);
 $levelPresetCount = (int) $db->query('SELECT COUNT(*) FROM levels')->fetchColumn();
 $quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
 $userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();

@@ -8,6 +8,27 @@ declare(strict_types=1);
  *
  * @return list<array{value:string,label:string}>
  */
+/** Count of distinct department labels (same merge as trytest_department_dropdown_options, without building rows). */
+function trytest_department_dropdown_option_count(PDO $db): int
+{
+    try {
+        $stmt = $db->query(
+            "SELECT COUNT(*) FROM (
+                SELECT DISTINCT trim(x.d) AS d FROM (
+                    SELECT trim(name) AS d FROM departments WHERE trim(COALESCE(name, '')) != ''
+                    UNION
+                    SELECT trim(department) AS d FROM courses WHERE trim(COALESCE(department, '')) != ''
+                ) AS x
+                WHERE trim(x.d) != ''
+            ) AS t"
+        );
+
+        return $stmt ? (int) $stmt->fetchColumn() : 0;
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
 function trytest_department_dropdown_options(PDO $db): array
 {
     try {
