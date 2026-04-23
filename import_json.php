@@ -156,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $seenQuestions = [];
                     $db->beginTransaction();
                     try {
+                        $db->prepare('DELETE FROM questions WHERE quiz_id = ?')->execute([$quizId]);
                         foreach ($data as $item) {
                             if (!is_array($item)) {
                                 continue;
@@ -275,14 +276,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue;
                             }
                         }
-                        $db->commit();
                         if ($imported > 0) {
-                            $message = $imported . ' questions imported successfully.';
+                            $db->commit();
+                            $message = $imported . ' questions imported (replaced previous questions for this quiz).';
                             if ($skippedDuplicates > 0) {
                                 $message .= ' ' . $skippedDuplicates . ' duplicates skipped while merging parts.';
                             }
                         } else {
-                            $message = 'No valid question records found in JSON.';
+                            if ($db->inTransaction()) {
+                                $db->rollBack();
+                            }
+                            $message = 'No valid question records found in JSON. Existing questions were left unchanged.';
                         }
                     } catch (Throwable $e) {
                         if ($db->inTransaction()) {
@@ -318,7 +322,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
-                <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs and import in one clean step.</p>
+                <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs in one step. Importing <strong>replaces all existing questions</strong> for the quiz you select (same quiz + new JSON overwrites the set).</p>
                 <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items; <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>; or bucketed objects <code class="rounded bg-slate-100 px-1">mcq_questions</code>, <code class="rounded bg-slate-100 px-1">fill_in_questions</code>, <code class="rounded bg-slate-100 px-1">theory_questions</code>, and optional <code class="rounded bg-slate-100 px-1">fill_questions</code> (merged in order). Use <code class="rounded bg-slate-100 px-1">type</code>: <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code>, or <code class="rounded bg-slate-100 px-1">theory</code> (keywords / accept / answer).</p>
             </div>
             <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
@@ -373,7 +377,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                             </div>
                             <p class="text-xs text-slate-500">Paste remaining questions if AI stopped early.</p>
                             <textarea id="jsonInputContinue" name="json_continue" rows="12" class="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm" placeholder='Paste continuation JSON here (e.g remaining questions)...'><?php echo htmlspecialchars($jsonTextContinue, ENT_QUOTES, 'UTF-8'); ?></textarea>
-                            <p class="text-xs text-slate-500">Importer merges both parts and skips duplicates using question text.</p>
+                            <p class="text-xs text-slate-500">Part 1 and Part 2 are merged; duplicate question text within the paste is skipped once. The quiz&rsquo;s prior questions are removed when at least one new row is imported.</p>
                         </div>
                     </div>
 
