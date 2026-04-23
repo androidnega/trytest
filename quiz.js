@@ -214,8 +214,8 @@
     /** @type {WebSocket | null} */
     let presenceWs = null;
 
-    /** Each quiz item is graded out of this many marks (MCQ, theory, fill, etc.). */
-    const MARKS_PER_QUESTION = 10;
+    /** Each quiz item counts as one mark (MCQ, theory, fill, etc.). */
+    const MARKS_PER_QUESTION = 1;
 
     function maxQuizMarks() {
         return orderedIds.length * MARKS_PER_QUESTION;
@@ -251,7 +251,14 @@
             return;
         }
         progressLabel.textContent =
-            'Question ' + (currentIndex + 1) + ' of ' + orderedIds.length + ' · marks max ' + String(maxQuizMarks());
+            MARKS_PER_QUESTION === 1
+                ? 'Question ' + (currentIndex + 1) + ' of ' + orderedIds.length
+                : 'Question ' +
+                  (currentIndex + 1) +
+                  ' of ' +
+                  orderedIds.length +
+                  ' · marks max ' +
+                  String(maxQuizMarks());
         if (progressBar) {
             const done = currentIndex / orderedIds.length;
             progressBar.style.width = Math.max(0, Math.min(100, done * 100)) + '%';
@@ -267,12 +274,14 @@
         }
         if (marksScaleHint && orderedIds.length > 0) {
             marksScaleHint.textContent =
-                String(orderedIds.length) +
-                ' questions × ' +
-                String(MARKS_PER_QUESTION) +
-                ' marks each → ' +
-                String(maxQuizMarks()) +
-                ' max';
+                MARKS_PER_QUESTION === 1
+                    ? String(orderedIds.length) + ' questions · 1 mark each'
+                    : String(orderedIds.length) +
+                      ' questions × ' +
+                      String(MARKS_PER_QUESTION) +
+                      ' marks each → ' +
+                      String(maxQuizMarks()) +
+                      ' max';
         } else if (marksScaleHint) {
             marksScaleHint.textContent = '';
         }
