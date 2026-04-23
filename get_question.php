@@ -19,7 +19,6 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/question_play_type.php';
 require_once __DIR__ . '/includes/theory_rubric.php';
-require_once __DIR__ . '/includes/sql_practice.php';
 
 $userLevel = (string) ($_SESSION['user_level'] ?? '');
 $userDepartment = trim((string) ($_SESSION['user_department'] ?? ''));
@@ -71,7 +70,7 @@ if ($questionId < 1) {
     // Playable pool: one DB round-trip — shuffle ids on server, send full question payloads so the
     // browser does not request each question separately (saves PHP/DB work under load).
     $stmt = $db->prepare(
-        "SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric, sql_practice
+        "SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric
          FROM questions WHERE quiz_id = ? AND status = 'approved' ORDER BY id"
     );
     $stmt->execute([$quizId]);
@@ -106,15 +105,6 @@ if ($questionId < 1) {
         $row['theory_keywords'] = $rubric['keywords'];
         $row['theory_accept'] = $rubric['accept'];
         unset($row['theory_rubric']);
-        $spRaw = trim((string) ($row['sql_practice'] ?? ''));
-        if ($spRaw !== '') {
-            $sj = json_decode($spRaw, true);
-            if (is_array($sj)) {
-                $row['sql_practice'] = trytest_sql_practice_strip_secrets($sj);
-            }
-        } else {
-            unset($row['sql_practice']);
-        }
         $row['play_type'] = trytest_question_play_type($row);
         $questionsOut[$qid] = $row;
     }
@@ -131,7 +121,7 @@ if ($questionId < 1) {
 }
 
 $stmt = $db->prepare(
-    'SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric, sql_practice
+    'SELECT id, question_type, question, option_a, option_b, option_c, option_d, correct_answer, theory_rubric
      FROM questions WHERE id = ? AND quiz_id = ? AND status = ?'
 );
 $stmt->execute([$questionId, $quizId, 'approved']);
@@ -147,16 +137,6 @@ $rubric = trytest_theory_rubric_decode(isset($row['theory_rubric']) ? (string) $
 $row['theory_keywords'] = $rubric['keywords'];
 $row['theory_accept'] = $rubric['accept'];
 unset($row['theory_rubric']);
-
-$spRaw = trim((string) ($row['sql_practice'] ?? ''));
-if ($spRaw !== '') {
-    $sj = json_decode($spRaw, true);
-    if (is_array($sj)) {
-        $row['sql_practice'] = trytest_sql_practice_strip_secrets($sj);
-    }
-} else {
-    unset($row['sql_practice']);
-}
 
 $row['play_type'] = trytest_question_play_type($row);
 

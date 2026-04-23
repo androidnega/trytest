@@ -6,7 +6,6 @@ session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/theory_rubric.php';
-require_once __DIR__ . '/includes/sql_practice.php';
 
 $error = '';
 $message = '';
@@ -25,7 +24,7 @@ function trytest_json_value_to_question_rows(array $decoded): array
     if (isset($decoded['questions']) && is_array($decoded['questions'])) {
         return array_values($decoded['questions']);
     }
-    $bucketOrder = ['mcq_questions', 'fill_in_questions', 'theory_questions', 'fill_questions', 'sql_questions'];
+    $bucketOrder = ['mcq_questions', 'fill_in_questions', 'theory_questions', 'fill_questions'];
     $merged = [];
     foreach ($bucketOrder as $bk) {
         if (!empty($decoded[$bk]) && is_array($decoded[$bk])) {
@@ -193,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $typeRaw = strtolower(trim((string) ($item['type'] ?? '')));
                             $type = $typeRaw;
-                            if (!in_array($type, ['mcq', 'fill', 'theory', 'sql'], true)) {
+                            if (!in_array($type, ['mcq', 'fill', 'theory'], true)) {
                                 if (strpos($question, '____') !== false) {
                                     $type = 'fill';
                                 } elseif (
@@ -208,18 +207,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 } else {
                                     $type = 'theory';
                                 }
-                            }
-
-                            $nestSql = $item['sql_practice'] ?? null;
-                            $hasTopSql =
-                                trim((string) ($item['setup_sql'] ?? '')) !== ''
-                                && trim((string) ($item['reference_sql'] ?? '')) !== '';
-                            $hasNestSql =
-                                is_array($nestSql)
-                                && trim((string) ($nestSql['setup_sql'] ?? '')) !== ''
-                                && trim((string) ($nestSql['reference_sql'] ?? '')) !== '';
-                            if ($hasTopSql || $hasNestSql) {
-                                $type = 'sql';
                             }
 
                             $qKey = mb_strtolower($question);
@@ -287,65 +274,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $imported++;
                                 continue;
                             }
-
-                            if ($type === 'sql') {
-                                $setup = trim((string) ($item['setup_sql'] ?? ''));
-                                $ref = trim((string) ($item['reference_sql'] ?? ''));
-                                $nested = $item['sql_practice'] ?? null;
-                                if (is_array($nested)) {
-                                    if ($setup === '') {
-                                        $setup = trim((string) ($nested['setup_sql'] ?? ''));
-                                    }
-                                    if ($ref === '') {
-                                        $ref = trim((string) ($nested['reference_sql'] ?? ''));
-                                    }
-                                }
-                                $hintsIn = $item['hints'] ?? (is_array($nested) ? ($nested['hints'] ?? []) : []);
-                                if (!is_array($hintsIn)) {
-                                    $hintsIn = [];
-                                }
-                                $payload = [
-                                    'setup_sql' => $setup,
-                                    'reference_sql' => $ref,
-                                    'hints' => array_values(
-                                        array_filter(
-                                            array_map(static fn ($x) => trim((string) $x), $hintsIn),
-                                            static fn ($x) => $x !== ''
-                                        )
-                                    ),
-                                ];
-                                if (isset($item['similarity_correct'])) {
-                                    $payload['similarity_correct'] = (float) $item['similarity_correct'];
-                                }
-                                if (isset($item['similarity_partial'])) {
-                                    $payload['similarity_partial'] = (float) $item['similarity_partial'];
-                                }
-                                if (is_array($nested)) {
-                                    if (isset($nested['similarity_correct'])) {
-                                        $payload['similarity_correct'] = (float) $nested['similarity_correct'];
-                                    }
-                                    if (isset($nested['similarity_partial'])) {
-                                        $payload['similarity_partial'] = (float) $nested['similarity_partial'];
-                                    }
-                                }
-                                $parsed = trytest_sql_practice_parse_config($payload);
-                                if (!$parsed['ok']) {
-                                    continue;
-                                }
-                                $sqlJson = json_encode(
-                                    [
-                                        'setup_sql' => $parsed['setup'],
-                                        'reference_sql' => $parsed['reference'],
-                                        'hints' => $parsed['hints'],
-                                        'similarity_correct' => $parsed['simCorrect'],
-                                        'similarity_partial' => $parsed['simPartial'],
-                                    ],
-                                    JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-                                );
-                                $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'sql', $question, '', '', '', '', '-', null, $sqlJson, 'pending']);
-                                $imported++;
-                            }
                         }
                         $db->commit();
                         if ($imported > 0) {
@@ -391,7 +319,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
                 <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs and import in one clean step.</p>
-                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items; <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>; or bucketed objects <code class="rounded bg-slate-100 px-1">mcq_questions</code>, <code class="rounded bg-slate-100 px-1">fill_in_questions</code>, <code class="rounded bg-slate-100 px-1">theory_questions</code>, optional <code class="rounded bg-slate-100 px-1">fill_questions</code>, and <code class="rounded bg-slate-100 px-1">sql_questions</code> (merged in order). Use <code class="rounded bg-slate-100 px-1">type</code>: <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code>, <code class="rounded bg-slate-100 px-1">theory</code> (keywords / accept / answer), or <code class="rounded bg-slate-100 px-1">sql</code> with <code class="rounded bg-slate-100 px-1">setup_sql</code> + <code class="rounded bg-slate-100 px-1">reference_sql</code> (+ optional hints). Rows with both setup and reference SQL are imported as SQL even if <code class="rounded bg-slate-100 px-1">type</code> is omitted.</p>
+                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items; <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>; or bucketed objects <code class="rounded bg-slate-100 px-1">mcq_questions</code>, <code class="rounded bg-slate-100 px-1">fill_in_questions</code>, <code class="rounded bg-slate-100 px-1">theory_questions</code>, and optional <code class="rounded bg-slate-100 px-1">fill_questions</code> (merged in order). Use <code class="rounded bg-slate-100 px-1">type</code>: <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code>, or <code class="rounded bg-slate-100 px-1">theory</code> (keywords / accept / answer).</p>
             </div>
             <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
         </div>

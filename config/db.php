@@ -214,6 +214,12 @@ if (!$hasSqlPractice) {
     $db->exec('ALTER TABLE questions ADD COLUMN sql_practice TEXT');
 }
 
+try {
+    $db->exec("DELETE FROM questions WHERE LOWER(TRIM(COALESCE(question_type, ''))) = 'sql'");
+} catch (Throwable $e) {
+    // ignore
+}
+
 $scoreColsReview = $db->query('PRAGMA table_info(scores)')->fetchAll();
 $hasScoresReviewJson = false;
 foreach ($scoreColsReview as $column) {

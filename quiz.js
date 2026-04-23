@@ -214,7 +214,7 @@
     /** @type {WebSocket | null} */
     let presenceWs = null;
 
-    /** Each quiz item is graded out of this many marks (MCQ, theory, SQL, etc.). */
+    /** Each quiz item is graded out of this many marks (MCQ, theory, fill, etc.). */
     const MARKS_PER_QUESTION = 10;
 
     function maxQuizMarks() {
@@ -1100,9 +1100,6 @@
 
     function formatCorrectAnswerForReview(q) {
         const play = String(q.play_type || detectPlayType(q)).toLowerCase();
-        if (play === 'sql') {
-            return 'Graded by comparing your result set to the instructor query on the same practice data.';
-        }
         if (play === 'mcq') {
             return String(resolveLetterMcqCorrect(q.correct_answer, q));
         }
@@ -1138,9 +1135,6 @@
     }
 
     function detectPlayType(q) {
-        if (String(q.question_type || '').toLowerCase() === 'sql') {
-            return 'sql';
-        }
         const stem = String(q.question || '');
         if (stem.indexOf('____') !== -1) {
             return 'fill';
@@ -1264,293 +1258,6 @@
         bindFreeResponseHandlers(q);
     }
 
-    var sqlCmLoadingPromise = null;
-    function ensureSqlCodeMirror() {
-        if (typeof CodeMirror !== 'undefined') {
-            return Promise.resolve();
-        }
-        if (sqlCmLoadingPromise) {
-            return sqlCmLoadingPromise;
-        }
-        sqlCmLoadingPromise = new Promise(function (resolve, reject) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css';
-            document.head.appendChild(link);
-            var s1 = document.createElement('script');
-            s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js';
-            s1.onload = function () {
-                var s2 = document.createElement('script');
-                s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js';
-                s2.onload = function () {
-                    resolve();
-                };
-                s2.onerror = reject;
-                document.head.appendChild(s2);
-            };
-            s1.onerror = reject;
-            document.head.appendChild(s1);
-        });
-        return sqlCmLoadingPromise;
-    }
-
-    function renderSqlQuestion(q) {
-        const prompt = escapeHtml(String(q.question || ''));
-        questionBox.innerHTML =
-            '<h2 class="mb-3 text-left text-base font-bold leading-snug text-zinc-900 sm:text-lg dark:text-zinc-100">' +
-            prompt +
-            '</h2>' +
-            '<div id="sqlCmMount" class="mb-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white text-sm shadow-inner dark:border-zinc-600 dark:bg-zinc-900">' +
-            '<textarea id="sqlStudentTa" rows="12" spellcheck="false" autocomplete="off" class="w-full resize-y px-3 py-3 font-mono text-[15px] leading-relaxed sm:text-[13px]">' +
-            '-- Practice query\nSELECT ' +
-            '</textarea></div>' +
-            '<p class="mb-3 text-xs leading-snug text-zinc-500 dark:text-zinc-400">Your query runs in a temporary in-memory database for this quiz only — it cannot read or change real course data.</p>' +
-            '<button type="button" id="sqlRunBtn" class="flex min-h-[52px] w-full touch-manipulation items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm active:bg-zinc-950 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:active:bg-white">Run SQL check</button>' +
-            '<div id="sqlFeedback" class="mt-4 hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left text-[15px] leading-relaxed text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-200"></div>';
-
-        const ta = document.getElementById('sqlStudentTa');
-        const runBtn = document.getElementById('sqlRunBtn');
-        const fb = document.getElementById('sqlFeedback');
-
-        function bindEditor(cmInstance) {
-            if (runBtn) {
-                runBtn.addEventListener('click', function () {
-                    runSqlCheck(q, cmInstance, fb);
-                });
-            }
-        }
-
-        ensureSqlCodeMirror()
-            .then(function () {
-                if (!ta || typeof CodeMirror === 'undefined') {
-                    return;
-                }
-                var cmCompact =
-                    typeof window.matchMedia === 'function' &&
-                    window.matchMedia('(max-width: 639px)').matches;
-                const cm = CodeMirror.fromTextArea(ta, {
-                    mode: 'text/x-sql',
-                    lineNumbers: !cmCompact,
-                    indentUnit: 2,
-                    lineWrapping: true,
-                    theme: 'default',
-                    tabSize: 2,
-                });
-                try {
-                    var winH = typeof window.innerHeight === 'number' ? window.innerHeight : 600;
-                    var hPx = cmCompact
-                        ? Math.round(Math.min(winH * 0.36, 340))
-                        : Math.round(Math.min(winH * 0.34, 400));
-                    cm.setSize('100%', hPx + 'px');
-                } catch (e1) {}
-                bindEditor(cm);
-            })
-            .catch(function () {
-                if (ta) {
-                    ta.className =
-                        'min-h-[13rem] w-full resize-y rounded-2xl border border-zinc-200 bg-white px-3 py-3 font-mono text-[15px] text-zinc-900 shadow-inner dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 sm:min-h-[240px] sm:text-sm';
-                    bindEditor({
-                        getValue: function () {
-                            return ta.value;
-                        },
-                    });
-                }
-            });
-    }
-
-    function normalizeSqlPracticeInput(sql) {
-        if (typeof sql !== 'string') {
-            return '';
-        }
-        var lines = sql.split(/\r?\n/).filter(function (line) {
-            return !/^\s*\d+\s*$/.test(line);
-        });
-        sql = lines.join('\n').trim();
-        var patterns = [
-            /\bINSERT\s+OR\s+REPLACE\s+INTO\b/i,
-            /\bINSERT\s+INTO\b/i,
-            /\bREPLACE\s+INTO\b/i,
-        ];
-        var found = null;
-        for (var pi = 0; pi < patterns.length; pi++) {
-            found = patterns[pi].exec(sql);
-            if (found) {
-                break;
-            }
-        }
-        if (found) {
-            sql = sql.slice(found.index);
-            var semi = sql.indexOf(';');
-            if (semi !== -1) {
-                sql = sql.slice(0, semi + 1);
-            }
-            return sql.trim();
-        }
-        return sql;
-    }
-
-    function runSqlCheck(q, cm, fbEl) {
-        if (locked) {
-            return;
-        }
-        locked = true;
-        if (fbEl) {
-            fbEl.classList.add('hidden');
-            fbEl.innerHTML = '';
-        }
-        const rawSql = cm && typeof cm.getValue === 'function' ? cm.getValue() : '';
-        const sqlText = normalizeSqlPracticeInput(rawSql);
-        runBtnBusy(true);
-        fetch(absTrytestPath('sql_practice_grade'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                quiz_id: quizId,
-                question_id: orderedIds[currentIndex],
-                sql: sqlText,
-            }),
-        })
-            .then(function (res) {
-                return res.json().then(function (body) {
-                    var o = body && typeof body === 'object' ? body : {};
-                    if (!res.ok) {
-                        o.ok = false;
-                        if (typeof o.error === 'undefined') {
-                            o.error = res.status >= 500 ? 'Server error (' + res.status + ').' : 'Request failed (' + res.status + ').';
-                        }
-                        return o;
-                    }
-                    return o;
-                }).catch(function () {
-                    return { ok: false, error: 'Could not read response.' };
-                });
-            })
-            .then(function (data) {
-                runBtnBusy(false);
-                if (!data || !data.ok) {
-                    locked = false;
-                    if (fbEl) {
-                        fbEl.classList.remove('hidden');
-                        var detail =
-                            data && data.error
-                                ? '<p class="mt-2 text-xs leading-snug text-red-700 dark:text-red-300">' +
-                                  escapeHtml(String(data.error)) +
-                                  '</p>'
-                                : '';
-                        fbEl.innerHTML =
-                            '<p class="font-semibold text-red-800 dark:text-red-200">Could not reach the grader.</p>' +
-                            detail +
-                            '<p class="mt-2 text-xs text-zinc-600 dark:text-zinc-400">Use a single SQL statement (no multiple queries separated by ;). INSERT answers: remove any extra SELECT lines so only the INSERT is submitted.</p>';
-                    }
-                    return;
-                }
-                const verdict = String(data.verdict || 'wrong');
-                var rawFeedback = Array.isArray(data.feedback) ? data.feedback : [];
-                var lines =
-                    verdict === 'correct'
-                        ? rawFeedback.filter(function (line) {
-                              return String(line).trim().indexOf('Hint:') !== 0;
-                          })
-                        : rawFeedback;
-                let qMarks =
-                    typeof data.marks === 'number' && !isNaN(data.marks)
-                        ? Math.max(0, Math.min(MARKS_PER_QUESTION, Math.round(data.marks)))
-                        : Math.max(
-                              0,
-                              Math.min(
-                                  MARKS_PER_QUESTION,
-                                  Math.round(MARKS_PER_QUESTION * (typeof data.similarity === 'number' ? data.similarity : 0))
-                              )
-                          );
-                score += qMarks;
-                setScoreDisplay();
-                let badge =
-                    '<span class="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100">Review</span>';
-                if (verdict === 'correct') {
-                    badge =
-                        '<span class="rounded-full bg-zinc-300 px-2 py-0.5 text-[11px] font-bold text-zinc-900 dark:bg-zinc-600 dark:text-zinc-100">Correct</span>';
-                    triggerCardCorrectFeedback();
-                } else if (verdict === 'partial') {
-                    badge =
-                        '<span class="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-950 dark:bg-amber-900/50 dark:text-amber-100">Partial</span>';
-                    triggerCardWrongFeedback();
-                } else {
-                    triggerCardWrongFeedback();
-                }
-                const sim =
-                    data.sqlite_error
-                        ? ''
-                        : typeof data.similarity === 'number'
-                          ? '<p class="mt-2 text-[13px] tabular-nums text-zinc-600 dark:text-zinc-400">Overlap: ' +
-                            Math.round(data.similarity * 100) +
-                            '%</p>'
-                          : '';
-                const marksNote =
-                    '<p class="mt-2 text-[13px] font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">Marks: ' +
-                    String(qMarks) +
-                    ' / ' +
-                    String(MARKS_PER_QUESTION) +
-                    '</p>';
-                const ul =
-                    lines.length > 0
-                        ? '<ul class="mt-3 list-disc space-y-1.5 pl-4 text-[14px] leading-snug marker:text-zinc-400">' +
-                          lines
-                              .map(function (line) {
-                                  return '<li>' + escapeHtml(String(line)) + '</li>';
-                              })
-                              .join('') +
-                          '</ul>'
-                        : '';
-                if (fbEl) {
-                    fbEl.classList.remove('hidden');
-                    fbEl.innerHTML =
-                        '<div class="mb-2 flex flex-wrap items-center gap-2">' +
-                        badge +
-                        '</div>' +
-                        marksNote +
-                        sim +
-                        ul;
-                }
-                const shortSql = sqlText.length > 900 ? sqlText.slice(0, 897) + '…' : sqlText;
-                pendingAttemptLog = {
-                    questionId: orderedIds[currentIndex],
-                    playType: 'sql',
-                    stem: String(q.question || ''),
-                    userAnswer: shortSql,
-                    correctAnswer:
-                        'Automatic result-set grade' +
-                        (data.sqlite_error
-                            ? ' (statement did not execute)'
-                            : typeof data.similarity === 'number'
-                              ? ' (~' + Math.round(data.similarity * 100) + '% overlap)'
-                              : ''),
-                    verdict: verdict === 'correct' ? 'correct' : verdict === 'partial' ? 'partial' : 'wrong',
-                    marksEarned: qMarks,
-                    marksMax: MARKS_PER_QUESTION,
-                };
-                renderNextButton();
-            })
-            .catch(function () {
-                runBtnBusy(false);
-                locked = false;
-                if (fbEl) {
-                    fbEl.classList.remove('hidden');
-                    fbEl.innerHTML =
-                        '<p class="font-semibold text-red-800 dark:text-red-200">Network error. Check your connection and try again.</p>';
-                }
-            });
-    }
-
-    function runBtnBusy(on) {
-        const b = document.getElementById('sqlRunBtn');
-        if (!b) {
-            return;
-        }
-        b.disabled = !!on;
-        b.textContent = on ? 'Checking…' : 'Run SQL check';
-    }
-
     function renderTheoryQuestion(q) {
         const prompt = escapeHtml(String(q.question || ''));
         questionBox.innerHTML =
@@ -1577,11 +1284,6 @@
 
         const playType = String(q.play_type || detectPlayType(q)).toLowerCase();
 
-        if (playType === 'sql') {
-            renderSqlQuestion(q);
-            saveQuizResume();
-            return;
-        }
         if (playType === 'fill') {
             renderFillQuestion(q);
             saveQuizResume();

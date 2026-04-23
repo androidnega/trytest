@@ -252,10 +252,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 'relative flex min-h-0 min-w-0 flex-row items-center gap-1.5 overflow-hidden ' . $tileH . ' '
                 . $tileRounded
                 . ' border border-slate-200 bg-white py-1.5 pl-1.5 pr-1 text-left text-slate-900 transition hover:bg-slate-50/90 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]';
-            $slimCardWide =
-                'relative flex min-h-0 min-w-0 flex-row items-center gap-2 overflow-hidden ' . $tileH . ' '
-                . $tileRounded
-                . ' border border-slate-200 bg-white px-2 py-1.5 text-left text-slate-900 transition hover:bg-slate-50/90 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]';
             $cheerSectionClass = $homeFlexLock
                 ? 'shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100'
                 : 'mb-4 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100';
@@ -348,13 +344,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             </span>
                         </a>
                     </div>
-                    <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCardWide); ?> w-full min-w-0">
-                        <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('rank', $tileSvg); ?></span>
-                        <span class="min-w-0 flex-1 overflow-hidden">
-                            <span class="block truncate text-[11px] font-bold leading-tight">Rank</span>
-                            <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Lv&nbsp;<?php echo $h($userLevel); ?> · <span class="tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalPoints; ?></span> pts</span>
-                        </span>
-                    </a>
                 </div>
             </section>
             <?php if ($studentFeedbackApiUrl !== ''): ?>

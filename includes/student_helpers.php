@@ -515,7 +515,7 @@ function trytest_quiz_review_json_normalize(?array $rows, int $totalQuestions): 
         $playType = match ($pt) {
             'theory' => 'theory',
             'fill', 'fillin' => 'fill',
-            'sql' => 'sql',
+            'sql' => 'mcq',
             default => 'mcq',
         };
         $marksEarned = isset($row['marksEarned']) ? (int) $row['marksEarned'] : null;
