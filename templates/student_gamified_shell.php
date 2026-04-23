@@ -28,6 +28,7 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var int $newQuizBadgeCount */
 /** @var string $quizUrlBase */
 /** @var string $studentFeedbackApiUrl */
+/** @var bool $studentFeedbackAlreadySubmitted True when this student already has a rating row (one-time only). */
 /** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
 /** @var string $dashboardFeaturedHtml Featured shell (Video | Words) — always present on home when logged in on home tab. */
@@ -66,6 +67,7 @@ $dashboardFeaturedHtml = (string) ($dashboardFeaturedHtml ?? $dashboardYoutubeVi
 $dashboardNudgesHtml = (string) ($dashboardNudgesHtml ?? '');
 $studentPortalPostUrl = isset($studentPortalPostUrl) ? (string) $studentPortalPostUrl : (string) ($dashboardUrl ?? '');
 $studentFeedbackApiUrl = isset($studentFeedbackApiUrl) ? (string) $studentFeedbackApiUrl : '';
+$studentFeedbackAlreadySubmitted = !empty($studentFeedbackAlreadySubmitted ?? false);
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
@@ -366,7 +368,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     <?php endif; ?>
                 </div>
             </section>
-            <?php if ($studentFeedbackApiUrl !== ''): ?>
+            <?php if ($studentFeedbackApiUrl !== '' || $studentFeedbackAlreadySubmitted): ?>
+                <?php if (!$studentFeedbackAlreadySubmitted): ?>
                 <style>
                     /* Standard star rating: empty = gray outline, filled = solid gold (always visible in light/dark). */
                     .trytest-feedback-card .trytest-feedback-star .trytest-feedback-star-icon path {
@@ -384,6 +387,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         stroke: #71717a;
                     }
                 </style>
+                <?php endif; ?>
                 <section class="trytest-feedback-card <?php echo $h($homeFlexLock ? 'min-h-0 shrink-0 overflow-y-auto' : 'mb-6'); ?> rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-zinc-800/50 dark:bg-[#1a1a1f]" aria-labelledby="trytest-feedback-title">
                     <div class="flex items-start gap-2">
                         <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full">
@@ -391,25 +395,29 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         </div>
                         <div class="min-w-0 flex-1">
                             <h2 id="trytest-feedback-title" class="text-xs font-bold text-slate-900 dark:text-zinc-100">Rate Trytest</h2>
-                            <p class="mt-1 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Tap a star to send your rating.</p>
-                            <div id="trytestFeedbackStars" class="mt-2.5 inline-flex max-w-full items-center gap-0.5 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-1 shadow-inner dark:border-zinc-700/90 dark:bg-zinc-900/60" role="group" aria-label="Star rating">
-                                <?php
-                                $starSvg = static function (int $si): void {
-                                    $label = $si . ' out of 5 stars';
-                                    ?>
-                                    <button type="button" class="trytest-feedback-star group flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6A7D] dark:hover:bg-zinc-800/80 dark:focus-visible:ring-[#7eb8b8]" data-star="<?php echo $si; ?>" aria-label="<?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <svg class="trytest-feedback-star-icon h-6 w-6 transition-transform duration-150 group-hover:scale-105" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M11.625 2.275c.131-.267.556-.267.687 0l2.204 4.457 4.93.717c.304.044.427.417.195.627l-3.566 3.477.842 4.905c.052.305-.267.539-.535.395l-4.408-2.317-4.408 2.317c-.268.144-.587-.09-.535-.395l.842-4.905-3.566-3.477c-.232-.21-.109-.583.195-.627l4.93-.717 2.204-4.457z"/>
-                                        </svg>
-                                    </button>
+                            <?php if ($studentFeedbackAlreadySubmitted): ?>
+                                <p class="mt-1 text-[10px] leading-snug text-slate-600 dark:text-zinc-400">You've already submitted your rating. Thank you — each student can rate only once.</p>
+                            <?php else: ?>
+                                <p class="mt-1 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Tap a star to send your rating (one time only).</p>
+                                <div id="trytestFeedbackStars" class="mt-2.5 inline-flex max-w-full items-center gap-0.5 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-1 shadow-inner dark:border-zinc-700/90 dark:bg-zinc-900/60" role="group" aria-label="Star rating">
                                     <?php
-                                };
-                                for ($si = 1; $si <= 5; $si++) {
-                                    $starSvg($si);
-                                }
-                                ?>
-                            </div>
-                            <p id="trytestFeedbackMsg" class="mt-1 hidden text-[11px] font-medium"></p>
+                                    $starSvg = static function (int $si): void {
+                                        $label = $si . ' out of 5 stars';
+                                        ?>
+                                        <button type="button" class="trytest-feedback-star group flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6A7D] dark:hover:bg-zinc-800/80 dark:focus-visible:ring-[#7eb8b8]" data-star="<?php echo $si; ?>" aria-label="<?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <svg class="trytest-feedback-star-icon h-6 w-6 transition-transform duration-150 group-hover:scale-105" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M11.625 2.275c.131-.267.556-.267.687 0l2.204 4.457 4.93.717c.304.044.427.417.195.627l-3.566 3.477.842 4.905c.052.305-.267.539-.535.395l-4.408-2.317-4.408 2.317c-.268.144-.587-.09-.535-.395l.842-4.905-3.566-3.477c-.232-.21-.109-.583.195-.627l4.93-.717 2.204-4.457z"/>
+                                            </svg>
+                                        </button>
+                                        <?php
+                                    };
+                                    for ($si = 1; $si <= 5; $si++) {
+                                        $starSvg($si);
+                                    }
+                                    ?>
+                                </div>
+                                <p id="trytestFeedbackMsg" class="mt-1 hidden text-[11px] font-medium"></p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </section>
@@ -560,6 +568,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 (function () {
     var api = <?php echo json_encode($studentFeedbackApiUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
     if (!api) return;
+    <?php if ($studentFeedbackAlreadySubmitted): ?>return;<?php endif; ?>
     var root = document.getElementById('trytestFeedbackStars');
     var msg = document.getElementById('trytestFeedbackMsg');
     if (!root || !msg) return;
@@ -624,9 +633,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             body: JSON.stringify({ stars: n }),
         })
             .then(function (r) {
-                return r.json();
+                return r.json().then(function (d) {
+                    return { ok: r.ok, d: d };
+                });
             })
-            .then(function (d) {
+            .then(function (res) {
+                var d = res.d;
                 if (d && d.ok) {
                     msg.textContent = 'Thanks — your rating was saved.';
                     msg.classList.remove('hidden', 'text-amber-700');
@@ -634,6 +646,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     committedRating = n;
                     pendingRating = 0;
                     hoverRating = 0;
+                    repaint();
+                } else if (d && d.error === 'already_rated') {
+                    msg.textContent = 'You already submitted a rating.';
+                    msg.classList.remove('hidden', 'text-emerald-700');
+                    msg.classList.add('text-amber-700', 'dark:text-amber-400');
+                    pendingRating = 0;
                     repaint();
                 } else {
                     throw new Error('fail');

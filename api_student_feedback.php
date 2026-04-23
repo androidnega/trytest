@@ -38,14 +38,17 @@ if ($stars < 1 || $stars > 5) {
 }
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
+
+$exists = $db->prepare('SELECT 1 FROM student_system_feedback WHERE user_id = ? LIMIT 1');
+$exists->execute([$userId]);
+if ((bool) $exists->fetchColumn()) {
+    http_response_code(409);
+    echo json_encode(['ok' => false, 'error' => 'already_rated'], JSON_THROW_ON_ERROR);
+    exit;
+}
+
 $ins = $db->prepare(
-    'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref, created_at)
-     VALUES (?, ?, ?, ?, datetime(\'now\'))
-     ON CONFLICT(user_id) DO UPDATE SET
-        stars = excluded.stars,
-        body = excluded.body,
-        quiz_ref = excluded.quiz_ref,
-        created_at = datetime(\'now\')'
+    'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
 );
 $ins->execute([$userId, $stars, '', '']);
 

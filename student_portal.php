@@ -577,6 +577,16 @@ if ($isUserLoggedIn) {
     /** POST targets a real .php file so requests are not rewritten via /dashboard/ (directory POST → GET). */
     $studentPortalPostUrl = trytest_url('student_portal.php');
     $studentFeedbackApiUrl = trytest_url('api_student_feedback');
+    $studentFeedbackAlreadySubmitted = false;
+    if ($userId > 0) {
+        try {
+            $sfChk = $db->prepare('SELECT 1 FROM student_system_feedback WHERE user_id = ? LIMIT 1');
+            $sfChk->execute([$userId]);
+            $studentFeedbackAlreadySubmitted = (bool) $sfChk->fetchColumn();
+        } catch (Throwable $e) {
+            $studentFeedbackAlreadySubmitted = false;
+        }
+    }
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <?php if (!empty($studentPasswordOnlyView)): ?>
