@@ -414,13 +414,13 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         </div>
                         <div class="min-w-0 flex-1">
                             <h2 id="trytest-feedback-title" class="text-xs font-bold text-slate-900 dark:text-zinc-100">Rate Trytest</h2>
-                            <p class="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Optional quiz reference, emojis welcome. Helps us improve.</p>
-                            <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackQuizRef">Reference (quiz name, #id, or topic)</label>
-                            <input id="trytestFeedbackQuizRef" type="text" maxlength="120" class="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" placeholder="e.g. Data Structures quiz #3">
-                            <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackBody">Your comment</label>
-                            <textarea id="trytestFeedbackBody" rows="3" maxlength="2000" class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" placeholder="Tell us what works and what to add…"></textarea>
+                            <p class="mt-1 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Tap a star to send your rating.</p>
+                            <div id="trytestFeedbackStars" class="mt-2 flex flex-wrap items-center gap-0.5" role="group" aria-label="Star rating">
+                                <?php for ($si = 1; $si <= 5; $si++): ?>
+                                    <button type="button" class="trytest-feedback-star rounded-md px-0.5 py-0.5 text-2xl leading-none text-amber-400 transition hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6A7D] dark:text-amber-400 dark:focus-visible:ring-[#7eb8b8]" data-star="<?php echo $si; ?>" aria-label="<?php echo $si; ?> out of 5 stars">★</button>
+                                <?php endfor; ?>
+                            </div>
                             <p id="trytestFeedbackMsg" class="mt-1 hidden text-[11px] font-medium"></p>
-                            <button type="button" id="trytestFeedbackSubmit" class="mt-2 w-full rounded-lg bg-[#2C6A7D] py-2 text-xs font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91]">Send feedback</button>
                         </div>
                     </div>
                 </section>
@@ -571,41 +571,34 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 (function () {
     var api = <?php echo json_encode($studentFeedbackApiUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
     if (!api) return;
-    var bodyEl = document.getElementById('trytestFeedbackBody');
-    var refEl = document.getElementById('trytestFeedbackQuizRef');
+    var root = document.getElementById('trytestFeedbackStars');
     var msg = document.getElementById('trytestFeedbackMsg');
-    var submit = document.getElementById('trytestFeedbackSubmit');
-    if (!bodyEl || !submit) return;
-    submit.addEventListener('click', function () {
-        var body = (bodyEl.value || '').trim();
-        if (!body) {
-            msg.textContent = 'Please write a short comment.';
-            msg.classList.remove('hidden', 'text-emerald-700');
-            msg.classList.add('text-amber-700');
-            return;
-        }
-        submit.disabled = true;
+    if (!root || !msg) return;
+    var stars = root.querySelectorAll('.trytest-feedback-star');
+    function setBusy(on) {
+        root.setAttribute('aria-busy', on ? 'true' : 'false');
+        stars.forEach(function (b) {
+            b.disabled = on;
+            b.classList.toggle('opacity-40', on);
+        });
+    }
+    function postRating(n) {
+        setBusy(true);
         msg.classList.add('hidden');
         fetch(api, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                stars: 0,
-                body: body,
-                quiz_ref: (refEl && refEl.value) ? refEl.value.trim() : '',
-            }),
+            body: JSON.stringify({ stars: n }),
         })
             .then(function (r) {
                 return r.json();
             })
             .then(function (d) {
                 if (d && d.ok) {
-                    msg.textContent = 'Thanks — your feedback was sent.';
+                    msg.textContent = 'Thanks — your rating was saved.';
                     msg.classList.remove('hidden', 'text-amber-700');
                     msg.classList.add('text-emerald-700', 'dark:text-emerald-400');
-                    bodyEl.value = '';
-                    if (refEl) refEl.value = '';
                 } else {
                     throw new Error('fail');
                 }
@@ -616,8 +609,16 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 msg.classList.add('text-amber-700');
             })
             .finally(function () {
-                submit.disabled = false;
+                setBusy(false);
             });
+    }
+    stars.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var n = parseInt(btn.getAttribute('data-star') || '0', 10);
+            if (n >= 1 && n <= 5) {
+                postRating(n);
+            }
+        });
     });
 })();
 </script>

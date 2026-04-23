@@ -69,7 +69,9 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
                         <?php if (trim((string) ($r['quiz_ref'] ?? '')) !== ''): ?>
                             <p class="mt-1 text-xs text-slate-500">Ref: <span class="font-medium text-slate-700"><?php echo $h(trim((string) $r['quiz_ref'])); ?></span></p>
                         <?php endif; ?>
-                        <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700"><?php echo $h((string) ($r['body'] ?? '')); ?></p>
+                        <?php if (trim((string) ($r['body'] ?? '')) !== ''): ?>
+                            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700"><?php echo $h((string) ($r['body'] ?? '')); ?></p>
+                        <?php endif; ?>
                         <p class="mt-2 text-[11px] text-slate-400"><?php echo $h((string) ($r['created_at'] ?? '')); ?></p>
                     </li>
                 <?php endforeach; ?>

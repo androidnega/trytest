@@ -69,7 +69,7 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
                 <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Feedback</dt>
                     <dd class="mt-1 text-2xl font-bold tabular-nums text-slate-900"><?php echo $feedbackCount; ?></dd>
-                    <dd class="mt-1"><a class="text-xs font-medium text-indigo-600 hover:underline" href="<?php echo $h(trytest_url('dashboard/manage_feedback')); ?>">View comments</a></dd>
+                    <dd class="mt-1"><a class="text-xs font-medium text-indigo-600 hover:underline" href="<?php echo $h(trytest_url('dashboard/manage_feedback')); ?>">View ratings</a></dd>
                 </div>
                 <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">YouTube gate</dt>
@@ -88,7 +88,7 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
                         <h2 class="truncate text-sm font-semibold text-slate-900">Student feedback</h2>
                         <span class="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600"><?php echo $feedbackCount; ?></span>
                     </div>
-                    <p class="mt-0.5 truncate text-xs text-slate-500">Comments from the home dashboard</p>
+                    <p class="mt-0.5 truncate text-xs text-slate-500">Star ratings from the home dashboard</p>
                 </div>
                 <i class="fa-solid fa-chevron-right shrink-0 text-xs text-slate-300 group-hover:text-slate-400" aria-hidden="true"></i>
             </a>

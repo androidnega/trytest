@@ -31,26 +31,16 @@ if (!is_array($data)) {
 }
 
 $stars = (int) ($data['stars'] ?? 0);
-if ($stars < 0 || $stars > 5) {
-    $stars = 0;
-}
-$body = trim((string) ($data['body'] ?? ''));
-$quizRef = trim((string) ($data['quiz_ref'] ?? ''));
-$bodyLen = function_exists('mb_strlen') ? mb_strlen($body) : strlen($body);
-if ($body === '' || $bodyLen > 2000) {
+if ($stars < 1 || $stars > 5) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'body'], JSON_THROW_ON_ERROR);
+    echo json_encode(['ok' => false, 'error' => 'stars'], JSON_THROW_ON_ERROR);
     exit;
-}
-$refLen = function_exists('mb_strlen') ? mb_strlen($quizRef) : strlen($quizRef);
-if ($refLen > 120) {
-    $quizRef = function_exists('mb_substr') ? mb_substr($quizRef, 0, 120) : substr($quizRef, 0, 120);
 }
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $ins = $db->prepare(
     'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref) VALUES (?, ?, ?, ?)'
 );
-$ins->execute([$userId, $stars, $body, $quizRef]);
+$ins->execute([$userId, $stars, '', '']);
 
 echo json_encode(['ok' => true], JSON_THROW_ON_ERROR);
