@@ -233,14 +233,16 @@ function trytest_base_path(): string
     }
     $file = __DIR__ . '/../config/app.php';
     if (!is_file($file)) {
-        $cached = trytest_is_local_dev_host() ? trytest_detect_base_path() : '';
+        $cached = trytest_detect_base_path();
         return $cached;
     }
     /** @var array{base_path?: string} $cfg */
     $cfg = require $file;
     $raw = isset($cfg['base_path']) ? trim((string) $cfg['base_path']) : 'auto';
     if (strtolower($raw) === 'auto') {
-        $cached = trytest_is_local_dev_host() ? trytest_detect_base_path() : '';
+        // Same detection on every host: subfolder production installs (e.g. cPanel) need this;
+        // localhost-only detection left /admin and trytest_url() out of sync with the real path.
+        $cached = trytest_detect_base_path();
         return $cached;
     }
     $p = rtrim($raw, '/');

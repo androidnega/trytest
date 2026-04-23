@@ -5,8 +5,9 @@ declare(strict_types=1);
 /**
  * Public URL path prefix for this installation (no trailing slash).
  *
- * - `auto` (recommended): localhost / LAN / *.local → detect subfolder (e.g. `/trytest`);
- *   any other host (production) → always `''` (site root; `/trytest` is not a public path).
+ * - `auto` (recommended): detect the URL prefix from the filesystem (app dir under `DOCUMENT_ROOT`),
+ *   e.g. `/trytest` for `public_html/trytest/`. On every host so production subfolder installs work.
+ *   `trytest` at site root (wrong prefix) is still blocked by trytest_reject_trytest_prefix_when_at_root.
  * - `''` : force site root on every host.
  * - `/subdir` : force that URL prefix on every host (only if the app is really served there).
  *
