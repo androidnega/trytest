@@ -15,6 +15,10 @@
     # Short quiz share URLs: /q/xxxx-xxxx → q.php?c=xxxx-xxxx
     RewriteRule ^q/([a-z0-9-]+)$ q.php?c=$1 [L,QSA]
 
+    # Wrong bookmark: /tryTest/... on a subdomain vhost with no subfolder (app at document root only).
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^tryTest/trytest_diagnostics\.php$ trytest_diagnostics.php [L,QSA]
+
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d

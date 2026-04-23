@@ -5,9 +5,13 @@ declare(strict_types=1);
 /**
  * Server diagnostics for Trytest URL / admin routing. DELETE this file when finished.
  *
- * 1) Upload to your server next to index.php, then open (adjust host and folder as needed):
- *    …/trytest_diagnostics.php?k=ttdiag_a7f3c9e2b8d14f6a0e4c1b5d9f2a8e3c6b0d4f7a1e5c9b2d6f0a3e7c1b4d8f2a5
- * 2) Read the "routing" and "suggestions" sections, then remove this file from the server.
+ * URL to open (one slash only after the host, no //):
+ *
+ *  · Dedicated subdomain / site root:   https://yoursub.example.com/trytest_diagnostics.php?k=SECRET
+ *  · App in a subfolder:                https://example.com/yourFolder/trytest_diagnostics.php?k=SECRET
+ *
+ * If the app is at the domain root, do not add a /tryTest/ or /trytest/ segment. Double slashes (//) break paths.
+ * Optional .htaccess maps /tryTest/trytest_diagnostics.php to this file for old bookmarks.
  */
 
 // URL query k=... must match. Change or remove this file on the server after use.
