@@ -16,6 +16,13 @@ if (empty($_SESSION['is_admin'])) {
     exit;
 }
 
+// Release PHP session lock before entering the long-lived SSE loop.
+// Without this, opening admin_presence_sse.php can block other admin pages
+// (they also call session_start and wait forever on the same session file lock).
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 ignore_user_abort(false);
 set_time_limit(0);
 
