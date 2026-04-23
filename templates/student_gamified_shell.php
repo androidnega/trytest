@@ -126,27 +126,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Level</span><span class="font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($userLevel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
-                        <?php if ($levelOptions !== [] || $levelOrphanForMenu !== null): ?>
-                            <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="border-t border-slate-100 px-3 py-2 dark:border-zinc-800">
-                                <input type="hidden" name="action" value="update_student_level">
-                                <?php if ($levelUpdateError !== ''): ?>
-                                    <p class="mb-1 text-[11px] font-medium text-red-600 dark:text-red-400"><?php echo $h($levelUpdateError); ?></p>
-                                <?php endif; ?>
-                                <label class="block text-[10px] font-medium text-slate-500 dark:text-zinc-400" for="trytestProfileLevelSelA">Change level</label>
-                                <div class="mt-1 flex gap-1.5">
-                                    <select id="trytestProfileLevelSelA" name="level" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" required>
-                                        <?php if ($levelOrphanForMenu !== null && $levelOrphanForMenu !== ''): ?>
-                                            <option value="<?php echo $h($levelOrphanForMenu); ?>" selected><?php echo $h($levelOrphanForMenu); ?> (current)</option>
-                                        <?php endif; ?>
-                                        <?php foreach ($levelOptions as $lox): ?>
-                                            <?php $lv = (string) ($lox['value'] ?? ''); ?>
-                                            <option value="<?php echo $h($lv); ?>" <?php echo $levelOrphanForMenu === null && trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lox['label'] ?? '')); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <button type="submit" class="shrink-0 rounded-lg bg-[#2C6A7D] px-2 py-1.5 text-[10px] font-bold text-white dark:bg-[#3d7d91]">Save</button>
-                                </div>
-                            </form>
-                        <?php endif; ?>
                         <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2 dark:border-zinc-800">
@@ -182,27 +161,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Level</span><span class="font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($userLevel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
-                        <?php if ($levelOptions !== [] || $levelOrphanForMenu !== null): ?>
-                            <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="border-t border-slate-100 px-3 py-2 dark:border-zinc-800">
-                                <input type="hidden" name="action" value="update_student_level">
-                                <?php if ($levelUpdateError !== ''): ?>
-                                    <p class="mb-1 text-[11px] font-medium text-red-600 dark:text-red-400"><?php echo $h($levelUpdateError); ?></p>
-                                <?php endif; ?>
-                                <label class="block text-[10px] font-medium text-slate-500 dark:text-zinc-400" for="trytestProfileLevelSelB">Change level</label>
-                                <div class="mt-1 flex gap-1.5">
-                                    <select id="trytestProfileLevelSelB" name="level" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" required>
-                                        <?php if ($levelOrphanForMenu !== null && $levelOrphanForMenu !== ''): ?>
-                                            <option value="<?php echo $h($levelOrphanForMenu); ?>" selected><?php echo $h($levelOrphanForMenu); ?> (current)</option>
-                                        <?php endif; ?>
-                                        <?php foreach ($levelOptions as $lox): ?>
-                                            <?php $lv = (string) ($lox['value'] ?? ''); ?>
-                                            <option value="<?php echo $h($lv); ?>" <?php echo $levelOrphanForMenu === null && trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lox['label'] ?? '')); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <button type="submit" class="shrink-0 rounded-lg bg-[#2C6A7D] px-2 py-1.5 text-[10px] font-bold text-white dark:bg-[#3d7d91]">Save</button>
-                                </div>
-                            </form>
-                        <?php endif; ?>
                         <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2 dark:border-zinc-800">
@@ -214,16 +172,36 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             </div>
         </div>
         <?php endif; ?>
+        <?php if ($levelUpdateError !== ''): ?>
+            <div class="<?php echo $dashboardFixedViewport ? 'mx-auto w-full max-w-md px-3 md:max-w-lg' : 'mx-auto max-w-5xl px-3'; ?>">
+                <p class="rounded-lg bg-red-50 px-2 py-1.5 text-center text-[11px] font-medium text-red-800 dark:bg-red-950/40 dark:text-red-200"><?php echo $h($levelUpdateError); ?></p>
+            </div>
+        <?php endif; ?>
         <div class="<?php echo $dashboardFixedViewport
-            ? 'mx-auto hidden w-full max-w-md flex-nowrap items-center justify-center gap-8 px-4 pb-2 text-sm font-semibold md:flex md:max-w-lg'
-            : 'mx-auto hidden max-w-5xl flex-nowrap items-center justify-center gap-8 pb-2 text-sm font-semibold md:flex'; ?>">
-            <a href="<?php echo $h($dashboardUrl); ?>" class="whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Home</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Leaderboard</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="whitespace-nowrap <?php echo $tabResults ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Results</a>
-            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                <a href="<?php echo $h($quizzesPageUrl); ?>" class="whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Quizzes</a>
+            ? 'mx-auto flex w-full max-w-md flex-nowrap items-center justify-start gap-4 overflow-x-auto px-3 pb-2 pt-1 text-sm font-semibold [-ms-overflow-style:none] [scrollbar-width:none] md:max-w-lg [&::-webkit-scrollbar]:hidden'
+            : 'mx-auto flex max-w-5xl flex-nowrap items-center justify-center gap-5 overflow-x-auto px-3 pb-2 pt-1 text-sm font-semibold [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'; ?>">
+            <?php if ($levelOptions !== [] || $levelOrphanForMenu !== null): ?>
+                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="flex shrink-0 items-center gap-1">
+                    <input type="hidden" name="action" value="update_student_level">
+                    <label class="sr-only" for="trytestDashboardNavLevel">Level</label>
+                    <select id="trytestDashboardNavLevel" name="level" title="Your level" class="min-w-[5.5rem] max-w-[10rem] shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-8 text-xs font-semibold text-slate-800 shadow-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" required onchange="var f=this.form;(f.requestSubmit)?f.requestSubmit():f.submit();">
+                        <?php if ($levelOrphanForMenu !== null && $levelOrphanForMenu !== ''): ?>
+                            <option value="<?php echo $h($levelOrphanForMenu); ?>" selected><?php echo $h($levelOrphanForMenu); ?></option>
+                        <?php endif; ?>
+                        <?php foreach ($levelOptions as $lox): ?>
+                            <?php $lv = (string) ($lox['value'] ?? ''); ?>
+                            <option value="<?php echo $h($lv); ?>" <?php echo $levelOrphanForMenu === null && trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lox['label'] ?? '')); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
             <?php endif; ?>
-            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Files<?php echo $downloadsNavBadge; ?></a>
+            <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Home</a>
+            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="shrink-0 whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Leaderboard</a>
+            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="shrink-0 whitespace-nowrap <?php echo $tabResults ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Results</a>
+            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                <a href="<?php echo $h($quizzesPageUrl); ?>" class="shrink-0 whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Quizzes</a>
+            <?php endif; ?>
+            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative shrink-0 whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Files<?php echo $downloadsNavBadge; ?></a>
         </div>
     </header>
 
