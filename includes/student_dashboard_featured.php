@@ -125,15 +125,15 @@ function trytest_student_dashboard_featured_quote_section_html(bool $compactLayo
 }
 
 /**
- * Main dashboard hero: either YouTube clip or two-line exam wish + quote image.
- * Always wrapped in the same Featured shell; only the inner card and badge (Video | Words) change.
+ * Featured hero HTML plus slot kind for dashboard layout (e.g. hide duplicate nav tiles when video shows).
  *
  * @param array<string, mixed> $ytSettings
+ * @return array{html:string, kind:'video'|'words'}
  */
-function trytest_student_dashboard_featured_html(array $ytSettings, bool $compactLayout, bool $homeTabActive): string
+function trytest_student_dashboard_featured_payload(array $ytSettings, bool $compactLayout, bool $homeTabActive): array
 {
     if (!$homeTabActive) {
-        return '';
+        return ['html' => '', 'kind' => 'words'];
     }
     $valid = trytest_youtube_dashboard_valid_embed_urls($ytSettings);
     $videoOk = $valid !== [];
@@ -141,6 +141,7 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
 
     $inner = '';
     $badge = 'Words';
+    $outKind = 'words';
 
     if ($kind === 'video' && $videoOk) {
         $url = trytest_youtube_dashboard_resolve_session_video_url($valid);
@@ -149,6 +150,7 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
             if ($card !== '') {
                 $inner = $card;
                 $badge = 'Video';
+                $outKind = 'video';
             }
         }
     }
@@ -157,7 +159,21 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
         $quote = trytest_exam_short_random_message_dashboard();
         $inner = trytest_student_dashboard_featured_quote_article_html($compactLayout, $quote);
         $badge = 'Words';
+        $outKind = 'words';
     }
 
-    return trytest_student_dashboard_featured_shell_html($compactLayout, $badge, $inner);
+    return [
+        'html' => trytest_student_dashboard_featured_shell_html($compactLayout, $badge, $inner),
+        'kind' => $outKind,
+    ];
+}
+
+/**
+ * Main dashboard hero: either YouTube clip or two-line exam wish + quote image.
+ *
+ * @param array<string, mixed> $ytSettings
+ */
+function trytest_student_dashboard_featured_html(array $ytSettings, bool $compactLayout, bool $homeTabActive): string
+{
+    return trytest_student_dashboard_featured_payload($ytSettings, $compactLayout, $homeTabActive)['html'];
 }

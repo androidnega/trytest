@@ -557,16 +557,19 @@ if ($isUserLoggedIn) {
     require_once __DIR__ . '/includes/student_dashboard_nudges.php';
     $dashboardNudgesHtml = '';
     $dashboardFeaturedHtml = '';
+    $dashboardFeaturedKind = 'words';
     if ($showHomeFeatured) {
         $rawNudgeHtml = trytest_student_dashboard_nudges_html(
             trytest_student_dashboard_nudges_collect($db, $userId, $ytSettings, $downloadsPageUrl),
             !empty($studentDashboardFixedViewport)
         );
-        $dashboardFeaturedHtml = trytest_student_dashboard_featured_html(
+        $featPayload = trytest_student_dashboard_featured_payload(
             $ytSettings,
             !empty($studentDashboardFixedViewport),
             $showHomeFeatured
         );
+        $dashboardFeaturedHtml = (string) ($featPayload['html'] ?? '');
+        $dashboardFeaturedKind = (string) ($featPayload['kind'] ?? 'words');
         $pickedNc = trytest_student_dashboard_nudge_or_cheer_slot($rawNudgeHtml, $dashboardEncouragement);
         $dashboardNudgesHtml = $pickedNc['nudge'];
         $dashboardEncouragement = $pickedNc['encouragement'];

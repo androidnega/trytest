@@ -31,6 +31,7 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
 /** @var string $dashboardFeaturedHtml Featured shell (Video | Words) — always present on home when logged in on home tab. */
+/** @var string $dashboardFeaturedKind "video" when featured slot is YouTube; "words" when quote + image (layout unchanged). */
 /** @var string $dashboardNudgesHtml Dismissible tips (praise, last quiz, downloads, YouTube). */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -244,6 +245,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 ? 'mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95'
                 : 'mt-0.5 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95';
             $quickSectionClass = $homeFlexLock ? 'min-w-0 shrink-0 overflow-hidden' : 'mb-6';
+            $dashboardFeaturedKind = trim((string) ($dashboardFeaturedKind ?? 'words'));
+            $homeQuickVideoLayout = trim((string) ($dashboardFeaturedHtml ?? '')) !== '' && $dashboardFeaturedKind === 'video';
             ?>
             <style>
                 @keyframes trytest-quiz-icon-breathe {
@@ -281,54 +284,86 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             <?php endif; ?>
             <section class="<?php echo $h($quickSectionClass); ?>" aria-label="Quick links">
                 <div class="flex w-full min-w-0 flex-col gap-1.5 sm:gap-2">
-                    <div class="<?php echo $h($tileRow2); ?>">
-                        <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
-                            <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
-                            <span class="min-w-0 flex-1 overflow-hidden">
-                                <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
-                                <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Level ranks</span>
-                            </span>
-                        </a>
-                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
-                            <?php if ($downloadsBadgeCount > 0): ?>
-                                <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
-                            <?php endif; ?>
-                            <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
-                            <span class="min-w-0 flex-1 overflow-hidden">
-                                <span class="block truncate text-[11px] font-bold leading-tight">Files</span>
-                                <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Downloads</span>
-                            </span>
-                        </a>
-                    </div>
-                    <div class="<?php echo $h($tileRow2); ?>">
-                        <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                            <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
-                                <?php if ($newQuizBadgeCount > 0): ?>
-                                    <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
-                                <?php endif; ?>
-                                <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
-                                <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
-                                    <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
+                    <?php if ($homeQuickVideoLayout): ?>
+                        <div class="<?php echo $h($tileRow2); ?>">
+                            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
+                                <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
+                                <span class="min-w-0 flex-1 overflow-hidden">
+                                    <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
+                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Level ranks</span>
                                 </span>
                             </a>
-                        <?php else: ?>
-                            <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
-                                <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                                <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
+                                    <?php if ($newQuizBadgeCount > 0): ?>
+                                        <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                    <?php endif; ?>
+                                    <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                                    <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
+                                        <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
+                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
+                                    </span>
+                                </a>
+                            <?php else: ?>
+                                <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
+                                    <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                                    <span class="min-w-0 flex-1 overflow-hidden">
+                                        <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
+                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="<?php echo $h($tileRow2); ?>">
+                            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
+                                <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
                                 <span class="min-w-0 flex-1 overflow-hidden">
-                                    <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
+                                    <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
+                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Level ranks</span>
                                 </span>
-                            </div>
-                        <?php endif; ?>
-                        <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $h($slimCard); ?>">
-                            <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', $tileSvg); ?></span>
-                            <span class="min-w-0 flex-1 overflow-hidden">
-                                <span class="block truncate text-[11px] font-bold leading-tight">Results</span>
-                                <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">My scores</span>
-                            </span>
-                        </a>
-                    </div>
+                            </a>
+                            <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
+                                <?php if ($downloadsBadgeCount > 0): ?>
+                                    <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                                <?php endif; ?>
+                                <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
+                                <span class="min-w-0 flex-1 overflow-hidden">
+                                    <span class="block truncate text-[11px] font-bold leading-tight">Files</span>
+                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Downloads</span>
+                                </span>
+                            </a>
+                        </div>
+                        <div class="<?php echo $h($tileRow2); ?>">
+                            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
+                                <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
+                                    <?php if ($newQuizBadgeCount > 0): ?>
+                                        <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                    <?php endif; ?>
+                                    <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                                    <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
+                                        <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
+                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
+                                    </span>
+                                </a>
+                            <?php else: ?>
+                                <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
+                                    <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
+                                    <span class="min-w-0 flex-1 overflow-hidden">
+                                        <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
+                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
+                            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $h($slimCard); ?>">
+                                <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', $tileSvg); ?></span>
+                                <span class="min-w-0 flex-1 overflow-hidden">
+                                    <span class="block truncate text-[11px] font-bold leading-tight">Results</span>
+                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">My scores</span>
+                                </span>
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </section>
             <?php if ($studentFeedbackApiUrl !== ''): ?>
