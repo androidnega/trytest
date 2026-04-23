@@ -27,6 +27,7 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var array{lead:string,body:string,quiz_id:int,context:string,surface?:string}|null $dashboardEncouragement */
 /** @var int $newQuizBadgeCount */
 /** @var string $quizUrlBase */
+/** @var string $studentFeedbackApiUrl */
 /** @var list<array<string,mixed>> $quizResultsRows */
 /** @var bool $studentDashboardFixedViewport When true, home dashboard fits one viewport with no page scroll. */
 /** @var string $dashboardFeaturedHtml Featured shell (Video | Words) — always present on home when logged in on home tab. */
@@ -67,6 +68,7 @@ $dashboardFixedViewport = !empty($studentDashboardFixedViewport ?? false);
 $dashboardFeaturedHtml = (string) ($dashboardFeaturedHtml ?? $dashboardYoutubeVideosHtml ?? '');
 $dashboardNudgesHtml = (string) ($dashboardNudgesHtml ?? '');
 $studentPortalPostUrl = isset($studentPortalPostUrl) ? (string) $studentPortalPostUrl : (string) ($dashboardUrl ?? '');
+$studentFeedbackApiUrl = isset($studentFeedbackApiUrl) ? (string) $studentFeedbackApiUrl : '';
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
@@ -355,6 +357,30 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     </a>
                 </div>
             </section>
+            <?php if ($studentFeedbackApiUrl !== ''): ?>
+                <section class="<?php echo $h($homeFlexLock ? 'min-h-0 shrink-0 overflow-y-auto' : 'mb-6'); ?> rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-zinc-800/50 dark:bg-[#1a1a1f]" aria-labelledby="trytest-feedback-title">
+                    <div class="flex items-start gap-2">
+                        <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full">
+                            <?php echo trytest_student_avatar_svg($userIndex, 36, $userId); ?>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h2 id="trytest-feedback-title" class="text-xs font-bold text-slate-900 dark:text-zinc-100">Rate Trytest</h2>
+                            <p class="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">1–5 stars, optional quiz reference, emojis welcome. Helps us improve.</p>
+                            <div id="trytestFeedbackStars" class="mt-2 flex flex-wrap gap-1" role="group" aria-label="Star rating">
+                                <?php for ($si = 1; $si <= 5; $si++): ?>
+                                    <button type="button" data-star="<?php echo $si; ?>" class="trytest-star-btn rounded-md border border-slate-200 px-2 py-1 text-sm text-amber-500 hover:bg-amber-50 dark:border-zinc-600 dark:hover:bg-zinc-800" aria-pressed="false">★</button>
+                                <?php endfor; ?>
+                            </div>
+                            <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackQuizRef">Reference (quiz name, #id, or topic)</label>
+                            <input id="trytestFeedbackQuizRef" type="text" maxlength="120" class="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" placeholder="e.g. Data Structures quiz #3">
+                            <label class="mt-2 block text-[10px] font-medium text-slate-600 dark:text-zinc-400" for="trytestFeedbackBody">Your comment</label>
+                            <textarea id="trytestFeedbackBody" rows="3" maxlength="2000" class="mt-0.5 w-full resize-y rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" placeholder="Tell us what works and what to add…"></textarea>
+                            <p id="trytestFeedbackMsg" class="mt-1 hidden text-[11px] font-medium"></p>
+                            <button type="button" id="trytestFeedbackSubmit" class="mt-2 w-full rounded-lg bg-[#2C6A7D] py-2 text-xs font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91]">Send feedback</button>
+                        </div>
+                    </div>
+                </section>
+            <?php endif; ?>
             <?php if ($homeFlexLock): ?>
             </div>
             <?php endif; ?>
@@ -503,5 +529,88 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         clearTimeout(tmo);
         try { sessionStorage.setItem(k, String(Date.now() + 600000)); } catch (e) {}
     }, { passive: true });
+})();
+(function () {
+    var api = <?php echo json_encode($studentFeedbackApiUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
+    if (!api) return;
+    var stars = 0;
+    var starWrap = document.getElementById('trytestFeedbackStars');
+    var bodyEl = document.getElementById('trytestFeedbackBody');
+    var refEl = document.getElementById('trytestFeedbackQuizRef');
+    var msg = document.getElementById('trytestFeedbackMsg');
+    var submit = document.getElementById('trytestFeedbackSubmit');
+    if (!starWrap || !bodyEl || !submit) return;
+    function paintStars() {
+        var btns = starWrap.querySelectorAll('.trytest-star-btn');
+        for (var i = 0; i < btns.length; i++) {
+            var n = i + 1;
+            var on = stars >= n;
+            btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+            btns[i].className =
+                'trytest-star-btn rounded-md border px-2 py-1 text-sm ' +
+                (on
+                    ? 'border-amber-400 bg-amber-50 text-amber-600 dark:border-amber-500 dark:bg-amber-950/50'
+                    : 'border-slate-200 text-amber-500 hover:bg-amber-50 dark:border-zinc-600 dark:hover:bg-zinc-800');
+        }
+    }
+    starWrap.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.getAttribute) return;
+        var s = parseInt(t.getAttribute('data-star') || '0', 10);
+        if (s >= 1 && s <= 5) {
+            stars = s;
+            paintStars();
+        }
+    });
+    paintStars();
+    submit.addEventListener('click', function () {
+        if (stars < 1) {
+            msg.textContent = 'Pick a star rating first.';
+            msg.classList.remove('hidden', 'text-emerald-700');
+            msg.classList.add('text-amber-700');
+            return;
+        }
+        var body = (bodyEl.value || '').trim();
+        if (!body) {
+            msg.textContent = 'Please write a short comment.';
+            msg.classList.remove('hidden', 'text-emerald-700');
+            msg.classList.add('text-amber-700');
+            return;
+        }
+        submit.disabled = true;
+        msg.classList.add('hidden');
+        fetch(api, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                stars: stars,
+                body: body,
+                quiz_ref: (refEl && refEl.value) ? refEl.value.trim() : '',
+            }),
+        })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (d) {
+                if (d && d.ok) {
+                    msg.textContent = 'Thanks — your feedback was sent.';
+                    msg.classList.remove('hidden', 'text-amber-700');
+                    msg.classList.add('text-emerald-700', 'dark:text-emerald-400');
+                    bodyEl.value = '';
+                    if (refEl) refEl.value = '';
+                } else {
+                    throw new Error('fail');
+                }
+            })
+            .catch(function () {
+                msg.textContent = 'Could not send. Check your connection and try again.';
+                msg.classList.remove('hidden', 'text-emerald-700');
+                msg.classList.add('text-amber-700');
+            })
+            .finally(function () {
+                submit.disabled = false;
+            });
+    });
 })();
 </script>

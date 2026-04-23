@@ -40,9 +40,14 @@ $isAdmin = !empty($_SESSION['is_admin']);
 $needsAdminSetup = trytest_admin_count($db) === 0;
 $quizCount = 0;
 $userCount = 0;
+$liveQuizPresence = 0;
+$presenceWsDashboard = '';
 if ($isAdmin) {
     $quizCount = (int) $db->query('SELECT COUNT(*) FROM quizzes')->fetchColumn();
     $userCount = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    require_once __DIR__ . '/includes/trytest_presence.php';
+    $liveQuizPresence = trytest_presence_live_student_count($db);
+    $presenceWsDashboard = trytest_presence_ws_url();
 }
 $avatarImport = 'https://api.dicebear.com/9.x/icons/svg?seed=import';
 $avatarAi = 'https://api.dicebear.com/9.x/icons/svg?seed=ai';
@@ -155,7 +160,7 @@ $h = static function (string $s): string {
                 </a>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 mt-5">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-5">
                 <div class="rounded-xl border border-slate-200 p-4">
                     <span class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                         <i class="fa-solid fa-rectangle-list text-sm"></i>
@@ -176,6 +181,14 @@ $h = static function (string $s): string {
                     </span>
                     <p class="text-xs uppercase tracking-wide text-slate-500">Session</p>
                     <p class="mt-1 text-sm font-semibold text-emerald-600">Admin logged in</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-4">
+                    <span class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                        <i class="fa-solid fa-signal text-sm"></i>
+                    </span>
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Live · in a quiz now</p>
+                    <p class="mt-1 text-2xl font-bold tabular-nums text-teal-800"><span id="trytestDashLiveQuizCount"><?php echo (int) $liveQuizPresence; ?></span> <span class="text-sm font-medium text-slate-500">students</span></p>
+                    <p class="mt-1 text-[11px] text-slate-500">Updates automatically while quizzes run.</p>
                 </div>
             </div>
 
@@ -218,6 +231,62 @@ $h = static function (string $s): string {
             </div>
         </div>
     </div>
+    <script>
+    window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
+    window.TRYTEST_PRESENCE_WS = <?php echo json_encode($presenceWsDashboard, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
+    </script>
+    <script>
+    (function () {
+        function prefix() {
+            var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
+            return b.replace(/\/+$/, '');
+        }
+        function absPath(path) {
+            var b = prefix();
+            path = String(path || '').replace(/^\//, '');
+            if (!b) return '/' + path;
+            return path === '' ? b : b + '/' + path;
+        }
+        var el = document.getElementById('trytestDashLiveQuizCount');
+        if (!el) return;
+        function setCount(n) {
+            el.textContent = String(n);
+        }
+        var wsUrl = typeof window.TRYTEST_PRESENCE_WS === 'string' ? window.TRYTEST_PRESENCE_WS.trim() : '';
+        if (wsUrl) {
+            try {
+                var ws = new WebSocket(wsUrl);
+                ws.addEventListener('open', function () {
+                    ws.send(JSON.stringify({ type: 'admin' }));
+                });
+                ws.addEventListener('message', function (ev) {
+                    try {
+                        var d = JSON.parse(ev.data);
+                        if (d && typeof d.n === 'number') setCount(d.n);
+                    } catch (e) {}
+                });
+            } catch (e2) {
+                openSse();
+            }
+        } else {
+            openSse();
+        }
+        function openSse() {
+            try {
+                var es = new EventSource(absPath('admin_presence_sse.php'));
+                es.onmessage = function (ev) {
+                    try {
+                        var d = JSON.parse(ev.data);
+                        if (d && typeof d.n === 'number') setCount(d.n);
+                    } catch (e) {}
+                };
+                es.onerror = function () {
+                    es.close();
+                };
+            } catch (e3) {}
+        }
+    })();
+    </script>
 </body>
 <?php endif; ?>
 </html>

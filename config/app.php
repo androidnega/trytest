@@ -16,6 +16,12 @@ declare(strict_types=1);
 return [
     'base_path' => 'auto',
     /**
+     * Optional WebSocket URL for live quiz presence (Node: realtime/presence-server.mjs).
+     * Example: wss://trytest.manuelcode.info/ws-presence (behind reverse proxy).
+     * Leave empty to use database pings + Server-Sent Events on admin pages only.
+     */
+    'presence_ws_url' => '',
+    /**
      * Optional full public origin (no trailing slash), e.g. https://trytest.manuelcode.info
      * When set on production, redirects use an absolute URL (some hosts mishandle path-only Location).
      * Leave empty to use path-only redirects (default). Ignored on localhost / LAN / *.local.

@@ -432,6 +432,28 @@ if (!$hasQuizShareCode) {
 }
 $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_quizzes_share_code ON quizzes(share_code) WHERE share_code != \'\'');
 
+$db->exec('
+CREATE TABLE IF NOT EXISTS quiz_presence_ping (
+    user_id INTEGER NOT NULL,
+    quiz_id INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL,
+    PRIMARY KEY (user_id, quiz_id)
+);
+');
+$db->exec('CREATE INDEX IF NOT EXISTS idx_quiz_presence_last_seen ON quiz_presence_ping(last_seen)');
+
+$db->exec('
+CREATE TABLE IF NOT EXISTS student_system_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    stars INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    quiz_ref TEXT NOT NULL DEFAULT \'\',
+    created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
+$db->exec('CREATE INDEX IF NOT EXISTS idx_student_feedback_created ON student_system_feedback(created_at DESC)');
+
 require_once dirname(__DIR__) . '/includes/quiz_share.php';
 foreach ($db->query('SELECT id FROM quizzes WHERE share_code IS NULL OR TRIM(share_code) = \'\'')->fetchAll() as $row) {
     $rid = (int) ($row['id'] ?? 0);

@@ -566,6 +566,7 @@ if ($isUserLoggedIn) {
     }
     /** POST targets a real .php file so requests are not rewritten via /dashboard/ (directory POST → GET). */
     $studentPortalPostUrl = trytest_url('student_portal.php');
+    $studentFeedbackApiUrl = trytest_url('api_student_feedback');
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <?php if (!empty($studentPasswordOnlyView)): ?>

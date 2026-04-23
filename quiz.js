@@ -15,6 +15,8 @@
     const examWelcomeImage = String(cfg.examWelcomeImage || '');
     const examOutroImage = String(cfg.examOutroImage || examWelcomeImage);
     const quizAuthorName = String(cfg.quizAuthorName || '');
+    const presenceWsUrl = String(cfg.presenceWsUrl || '').trim();
+    const ytSubscribeBrowserUrl = String(cfg.ytSubscribeBrowserUrl || '').trim();
 
     function trytestWebPrefix() {
         var b = typeof window.TRYTEST_WEB_BASE === 'string' ? window.TRYTEST_WEB_BASE : '';
@@ -126,6 +128,56 @@
         } catch (e) {}
     }
 
+    function stopPresenceTracking() {
+        if (presencePingTimer !== null) {
+            clearInterval(presencePingTimer);
+            presencePingTimer = null;
+        }
+        if (presenceWs) {
+            try {
+                presenceWs.close();
+            } catch (e) {}
+            presenceWs = null;
+        }
+        if (quizId && userId) {
+            try {
+                var blob = new Blob([JSON.stringify({ action: 'leave', quiz_id: quizId })], { type: 'application/json' });
+                navigator.sendBeacon(absTrytestPath('api_quiz_presence_ping.php'), blob);
+            } catch (e2) {}
+        }
+    }
+
+    function startPresenceTracking() {
+        if (!quizId || !userId) {
+            return;
+        }
+        if (presenceWsUrl) {
+            try {
+                presenceWs = new WebSocket(presenceWsUrl);
+                presenceWs.addEventListener('open', function () {
+                    if (presenceWs && presenceWs.readyState === 1) {
+                        presenceWs.send(JSON.stringify({ type: 'quiz', quizId: quizId }));
+                    }
+                });
+            } catch (e) {}
+        }
+        function pingHttp() {
+            fetch(absTrytestPath('api_quiz_presence_ping.php'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'ping', quiz_id: quizId }),
+            }).catch(function () {});
+        }
+        if (!presenceWsUrl) {
+            pingHttp();
+            if (presencePingTimer !== null) {
+                clearInterval(presencePingTimer);
+            }
+            presencePingTimer = setInterval(pingHttp, 22000);
+        }
+    }
+
     const questionBox = document.getElementById('questionBox');
     const quizCard = document.getElementById('quizCard');
     const progressLabel = document.getElementById('progressLabel');
@@ -156,6 +208,11 @@
     let pendingAttemptLog = null;
     /** @type {object[]} */
     let examReviewItems = [];
+
+    /** @type {ReturnType<typeof setInterval> | null} */
+    let presencePingTimer = null;
+    /** @type {WebSocket | null} */
+    let presenceWs = null;
 
     /** Each quiz item is graded out of this many marks (MCQ, theory, SQL, etc.). */
     const MARKS_PER_QUESTION = 10;
@@ -620,12 +677,11 @@
         if (quizIntroFinished) {
             return;
         }
-        var contBtn = document.getElementById('quizIntroContinue');
-        if (contBtn && contBtn.disabled) {
-            return;
-        }
         quizIntroFinished = true;
         clearQuizIntroInterval();
+        try {
+            sessionStorage.setItem('trytest_quiz_intro_done_' + String(quizId), '1');
+        } catch (eIntro) {}
         hideQuizIntroOverlay();
         start();
     }
@@ -680,40 +736,15 @@
                 : '') +
             '</div></div></div>' +
             '<div class="mx-auto mt-6 w-full max-w-md text-center">' +
-            '<p id="quizIntroWait" class="mb-3 min-h-[1.25rem] text-xs font-medium tabular-nums text-slate-500 sm:text-sm dark:text-zinc-400"></p>' +
-            '<button type="button" id="quizIntroContinue" disabled class="w-full cursor-not-allowed rounded-2xl border border-slate-300 bg-slate-100 py-3 text-sm font-bold text-slate-400 sm:py-3.5 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-500">' +
+            '<button type="button" id="quizIntroContinue" class="w-full cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] sm:py-3.5 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">' +
             'Continue' +
             '</button></div>';
 
-        var waitEl = document.getElementById('quizIntroWait');
         var contBtn = document.getElementById('quizIntroContinue');
-        var remain = quizIntroSeconds;
-
-        function refreshWait() {
-            if (waitEl) {
-                waitEl.textContent = remain > 0 ? 'You can continue in ' + remain + 's' : '';
-            }
-        }
-        refreshWait();
-
-        quizIntroIntervalId = setInterval(function () {
-            remain -= 1;
-            if (remain <= 0) {
-                clearQuizIntroInterval();
-                refreshWait();
-                if (contBtn) {
-                    contBtn.disabled = false;
-                    contBtn.className =
-                        'w-full cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] sm:py-3.5 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white';
-                }
-                return;
-            }
-            refreshWait();
-        }, 1000);
 
         if (contBtn) {
             contBtn.addEventListener('click', function () {
-                if (quizIntroFinished || contBtn.disabled) {
+                if (quizIntroFinished) {
                     return;
                 }
                 beginQuizFromIntro();
@@ -776,7 +807,7 @@
             if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return '';
             var qs = 'rel=0&autoplay=1&playsinline=1';
             if (forQuizAd) {
-                qs += '&mute=1&enablejsapi=1';
+                qs += '&mute=0&enablejsapi=1';
                 try {
                     if (typeof window !== 'undefined' && window.location && window.location.origin) {
                         qs += '&origin=' + encodeURIComponent(window.location.origin);
@@ -867,38 +898,50 @@
         var wait = Math.max(1, Math.floor(quizAdWatchSeconds));
         pauseTimer();
         setStatus('Watch required', 'ok');
+        var subHtml =
+            ytSubscribeBrowserUrl !== ''
+                ? '<p class="text-xs text-slate-600 dark:text-zinc-400">Prefer to support the channel? <button type="button" id="adSubscribeBtn" class="font-bold text-red-600 underline decoration-red-300">Open YouTube &amp; subscribe</button> instead, then return here — your answers stay saved.</p>' +
+                  '<p id="adSubscribeHint" class="hidden text-xs font-medium text-emerald-700 dark:text-emerald-400">When you are back on this tab, tap continue below.</p>' +
+                  '<button type="button" id="adContinueSubscribe" class="hidden w-full rounded-xl border border-emerald-700 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50" disabled>I am back — continue quiz</button>'
+                : '';
         questionBox.innerHTML =
             '<div class="touch-manipulation space-y-3">' +
             '<p class="text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Video break</p>' +
-            '<h2 class="text-lg font-bold text-slate-900 dark:text-zinc-100">Watch this video to continue</h2>' +
+            '<h2 class="text-lg font-bold text-slate-900 dark:text-zinc-100">Short video break</h2>' +
             '<p class="text-sm text-slate-600 dark:text-zinc-400">You reached question ' +
             currentIndex +
-            '. Continue unlocks in <span id="adCountdown" class="font-bold text-slate-900 dark:text-zinc-100">' +
+            '. The clip tries to play with sound (YouTube counts it like a normal view). Continue unlocks in <span id="adCountdown" class="font-bold text-slate-900 dark:text-zinc-100">' +
             wait +
-            's</span>.</p>' +
+            's</span>, or use subscribe instead.</p>' +
+            subHtml +
             '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-zinc-700">' +
             '<div class="aspect-video w-full"><iframe id="quizAdIframe" class="h-full w-full" src="' +
             escapeAttr(embed) +
             '" title="Quiz ad video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>' +
-            '<button type="button" id="quizAdUnmuteBtn" aria-pressed="false" class="w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700">Tap for sound</button>' +
-            '<button type="button" id="adContinueBtn" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white dark:bg-zinc-700">Continue in ' +
+            '<button type="button" id="quizAdUnmuteBtn" aria-pressed="true" class="w-full cursor-pointer rounded-xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-500 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600">Tap to mute</button>' +
+            '<button type="button" id="adContinueWatch" disabled class="w-full rounded-2xl bg-slate-300 p-3 text-sm font-bold text-white dark:text-zinc-700">Continue in ' +
             wait +
             's</button>' +
             '</div>';
         var countdownEl = document.getElementById('adCountdown');
         var adIframe = document.getElementById('quizAdIframe');
         var unmuteBtn = document.getElementById('quizAdUnmuteBtn');
+        var btnWatch = document.getElementById('adContinueWatch');
+        var btnSub = document.getElementById('adContinueSubscribe');
+        var subBtn = document.getElementById('adSubscribeBtn');
+        var subHint = document.getElementById('adSubscribeHint');
         if (adIframe) {
             adIframe.addEventListener(
                 'load',
                 function () {
                     sendYoutubePlayerListening(adIframe);
+                    applyQuizAdIframeSound(adIframe, true);
                 },
                 { once: true }
             );
         }
         if (unmuteBtn && adIframe) {
-            var adMuted = true;
+            var adMuted = false;
             var clsMuted =
                 'w-full cursor-pointer rounded-xl border border-slate-500 bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:border-zinc-500 dark:bg-zinc-800 dark:hover:bg-zinc-700';
             var clsUnmuted =
@@ -920,33 +963,80 @@
                 applyQuizAdIframeSound(adIframe, !adMuted);
                 syncAdSoundButtonUi();
             }
+            syncAdSoundButtonUi();
             unmuteBtn.addEventListener('click', function () {
                 toggleAdSound();
             });
         }
-        var btn = document.getElementById('adContinueBtn');
-        var t = wait;
-        var unlockTimer = setInterval(function () {
-            t--;
-            if (countdownEl) countdownEl.textContent = String(Math.max(0, t)) + 's';
-            if (!btn) return;
-            if (t > 0) {
-                btn.textContent = 'Continue in ' + t + 's';
+        var subscribeChosen = false;
+        var unlockTimer = null;
+        function finishAd() {
+            if (unlockTimer) {
+                clearInterval(unlockTimer);
+                unlockTimer = null;
+            }
+            document.removeEventListener('visibilitychange', onVis);
+            markAdBreakSeen(breakIndex);
+            resumeTimer();
+            done();
+        }
+        function onVis() {
+            if (!subscribeChosen || !btnSub) {
                 return;
             }
-            clearInterval(unlockTimer);
-            btn.disabled = false;
-            btn.className =
-                'w-full rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white';
-            btn.textContent = 'Continue quiz';
-        }, 1000);
-        if (btn) {
-            btn.addEventListener('click', function () {
-                if (btn.disabled) return;
-                clearInterval(unlockTimer);
-                markAdBreakSeen(breakIndex);
-                resumeTimer();
-                done();
+            if (document.visibilityState === 'visible') {
+                btnSub.disabled = false;
+            }
+        }
+        document.addEventListener('visibilitychange', onVis);
+        if (subBtn && ytSubscribeBrowserUrl !== '') {
+            subBtn.addEventListener('click', function () {
+                subscribeChosen = true;
+                try {
+                    window.open(ytSubscribeBrowserUrl, '_blank', 'noopener,noreferrer');
+                } catch (e) {}
+                if (btnSub) {
+                    btnSub.classList.remove('hidden');
+                }
+                if (subHint) {
+                    subHint.classList.remove('hidden');
+                }
+                setTimeout(function () {
+                    if (btnSub) {
+                        btnSub.disabled = false;
+                    }
+                }, 8000);
+            });
+        }
+        if (btnSub) {
+            btnSub.addEventListener('click', function () {
+                if (btnSub.disabled) {
+                    return;
+                }
+                finishAd();
+            });
+        }
+        var t = wait;
+        if (btnWatch) {
+            unlockTimer = setInterval(function () {
+                t--;
+                if (countdownEl) countdownEl.textContent = String(Math.max(0, t)) + 's';
+                if (t > 0) {
+                    btnWatch.textContent = 'Continue in ' + t + 's';
+                    return;
+                }
+                if (unlockTimer) {
+                    clearInterval(unlockTimer);
+                    unlockTimer = null;
+                }
+                btnWatch.disabled = false;
+                btnWatch.className =
+                    'w-full rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white';
+                btnWatch.textContent = 'Continue quiz';
+            }, 1000);
+            btnWatch.addEventListener('click', function () {
+                if (btnWatch.disabled) return;
+                finishAd();
             });
         }
     }
@@ -1971,6 +2061,7 @@
         if (quizFinished) return;
         flushPendingQuestionAttempt();
         quizFinished = true;
+        stopPresenceTracking();
         stopDurationSyncPolling();
         clearQuizResumeStorage();
         if (timerHandle) {
@@ -2101,6 +2192,7 @@
                     progressLabel.textContent = 'Resuming where you left off…';
                     setStatus('In Progress', 'ok');
                     startDurationSyncPolling();
+                    startPresenceTracking();
                     showQuestionAtCurrentIndex();
                     return;
                 }
@@ -2113,6 +2205,7 @@
                 adBreaksSeen = [];
                 setScoreDisplay();
                 startDurationSyncPolling();
+                startPresenceTracking();
                 showQuestionAtCurrentIndex();
             })
             .catch(function () {
@@ -2149,9 +2242,25 @@
     });
     window.addEventListener('beforeunload', function () {
         saveQuizResume();
+        stopPresenceTracking();
     });
 
-    if (showQuizIntro) {
+    var skipIntro = false;
+    try {
+        if (sessionStorage.getItem('trytest_quiz_intro_done_' + String(quizId)) === '1') {
+            skipIntro = true;
+        }
+    } catch (eSkip) {}
+    if (!skipIntro) {
+        try {
+            var rawResumeIntro = localStorage.getItem(resumeStorageKey());
+            var parsedIntro = parseResumePayload(rawResumeIntro);
+            if (parsedIntro && parseInt(String(parsedIntro.currentIndex), 10) > 0) {
+                skipIntro = true;
+            }
+        } catch (eSkip2) {}
+    }
+    if (showQuizIntro && !skipIntro) {
         renderQuizIntro();
     } else {
         hideQuizIntroOverlay();

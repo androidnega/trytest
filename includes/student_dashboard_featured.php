@@ -145,7 +145,7 @@ function trytest_student_dashboard_featured_html(array $ytSettings, bool $compac
     if ($kind === 'video' && $videoOk) {
         $url = trytest_youtube_dashboard_resolve_session_video_url($valid);
         if ($url !== '') {
-            $card = trytest_youtube_dashboard_video_card_html($url, $compactLayout);
+            $card = trytest_youtube_dashboard_video_card_html($url, $compactLayout, $ytSettings);
             if ($card !== '') {
                 $inner = $card;
                 $badge = 'Video';

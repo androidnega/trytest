@@ -5,6 +5,9 @@ Thumbs.db
 /data/*.sqlite
 /data/uploads/
 
+# Node (optional realtime server)
+**/node_modules/
+
 # Editor
 .idea/
 .vscode/

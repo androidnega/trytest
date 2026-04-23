@@ -70,8 +70,14 @@ $quizAuthorName = 'Emmanuel K Kwofie';
 $quizIntroSeconds = 10;
 
 require_once __DIR__ . '/includes/youtube_subscribe.php';
+require_once __DIR__ . '/includes/trytest_presence.php';
 $ytSettings = trytest_youtube_settings();
 $quizAdConfig = trytest_youtube_quiz_ad_config($ytSettings);
+$ytSubscribeBrowserUrl = '';
+$ytChId = trim((string) ($ytSettings['channel_id'] ?? ''));
+if ($ytChId !== '') {
+    $ytSubscribeBrowserUrl = trytest_youtube_channel_browser_url($ytChId);
+}
 
 $startsRaw = isset($quizRow['quiz_starts_at']) ? trim((string) $quizRow['quiz_starts_at']) : '';
 $endsRaw = isset($quizRow['quiz_ends_at']) ? trim((string) $quizRow['quiz_ends_at']) : '';
@@ -436,7 +442,9 @@ window.QUIZ_CONFIG = {
     examWelcomeQuote: <?php echo json_encode($examWelcomeQuote, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
     examWelcomeImage: <?php echo json_encode($examWelcomeImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
     examOutroImage: <?php echo json_encode($examOutroImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
-    quizAuthorName: <?php echo json_encode($quizAuthorName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>
+    quizAuthorName: <?php echo json_encode($quizAuthorName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
+    presenceWsUrl: <?php echo json_encode(trytest_presence_ws_url(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    ytSubscribeBrowserUrl: <?php echo json_encode($ytSubscribeBrowserUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
