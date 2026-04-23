@@ -407,7 +407,13 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 </div>
             </section>
             <?php if ($studentFeedbackApiUrl !== ''): ?>
-                <section class="<?php echo $h($homeFlexLock ? 'min-h-0 shrink-0 overflow-y-auto' : 'mb-6'); ?> rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-zinc-800/50 dark:bg-[#1a1a1f]" aria-labelledby="trytest-feedback-title">
+                <style>
+                    .trytest-feedback-card .trytest-feedback-star.trytest-feedback-star--lit .trytest-feedback-star-icon path {
+                        fill: currentColor;
+                        stroke: none;
+                    }
+                </style>
+                <section class="trytest-feedback-card <?php echo $h($homeFlexLock ? 'min-h-0 shrink-0 overflow-y-auto' : 'mb-6'); ?> rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-zinc-800/50 dark:bg-[#1a1a1f]" aria-labelledby="trytest-feedback-title">
                     <div class="flex items-start gap-2">
                         <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full">
                             <?php echo trytest_student_avatar_svg($userIndex, 36, $userId); ?>
@@ -415,10 +421,22 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         <div class="min-w-0 flex-1">
                             <h2 id="trytest-feedback-title" class="text-xs font-bold text-slate-900 dark:text-zinc-100">Rate Trytest</h2>
                             <p class="mt-1 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Tap a star to send your rating.</p>
-                            <div id="trytestFeedbackStars" class="mt-2 flex flex-wrap items-center gap-0.5" role="group" aria-label="Star rating">
-                                <?php for ($si = 1; $si <= 5; $si++): ?>
-                                    <button type="button" class="trytest-feedback-star rounded-md px-0.5 py-0.5 text-2xl leading-none text-amber-400 transition hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6A7D] dark:text-amber-400 dark:focus-visible:ring-[#7eb8b8]" data-star="<?php echo $si; ?>" aria-label="<?php echo $si; ?> out of 5 stars">★</button>
-                                <?php endfor; ?>
+                            <div id="trytestFeedbackStars" class="mt-2.5 inline-flex max-w-full items-center gap-0.5 rounded-2xl border border-slate-200/90 bg-slate-50/90 p-1 shadow-inner dark:border-zinc-700/90 dark:bg-zinc-900/60" role="group" aria-label="Star rating">
+                                <?php
+                                $starSvg = static function (int $si): void {
+                                    $label = $si . ' out of 5 stars';
+                                    ?>
+                                    <button type="button" class="trytest-feedback-star group flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-300 transition-colors hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6A7D] dark:text-zinc-500 dark:hover:bg-zinc-800/80 dark:focus-visible:ring-[#7eb8b8]" data-star="<?php echo $si; ?>" aria-label="<?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <svg class="trytest-feedback-star-icon h-[1.35rem] w-[1.35rem] transition-[transform,fill,stroke] duration-150 group-hover:scale-105" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" d="M11.625 2.275c.131-.267.556-.267.687 0l2.204 4.457 4.93.717c.304.044.427.417.195.627l-3.566 3.477.842 4.905c.052.305-.267.539-.535.395l-4.408-2.317-4.408 2.317c-.268.144-.587-.09-.535-.395l.842-4.905-3.566-3.477c-.232-.21-.109-.583.195-.627l4.93-.717 2.204-4.457z"/>
+                                        </svg>
+                                    </button>
+                                    <?php
+                                };
+                                for ($si = 1; $si <= 5; $si++) {
+                                    $starSvg($si);
+                                }
+                                ?>
                             </div>
                             <p id="trytestFeedbackMsg" class="mt-1 hidden text-[11px] font-medium"></p>
                         </div>
@@ -575,11 +593,37 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     var msg = document.getElementById('trytestFeedbackMsg');
     if (!root || !msg) return;
     var stars = root.querySelectorAll('.trytest-feedback-star');
+    function paintPreview(idx) {
+        stars.forEach(function (b) {
+            var sn = parseInt(b.getAttribute('data-star') || '0', 10);
+            var on = idx > 0 && sn <= idx;
+            b.classList.toggle('trytest-feedback-star--lit', on);
+            b.classList.toggle('text-amber-400', on);
+            b.classList.toggle('dark:text-amber-400', on);
+            b.classList.toggle('text-slate-300', !on);
+            b.classList.toggle('dark:text-zinc-500', !on);
+        });
+    }
+    root.addEventListener('mouseleave', function () {
+        paintPreview(0);
+    });
+    root.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (t && t.classList && t.classList.contains('trytest-feedback-star')) {
+            paintPreview(parseInt(t.getAttribute('data-star') || '0', 10));
+        }
+    });
+    root.addEventListener('focusout', function (e) {
+        if (!root.contains(e.relatedTarget)) {
+            paintPreview(0);
+        }
+    });
     function setBusy(on) {
         root.setAttribute('aria-busy', on ? 'true' : 'false');
         stars.forEach(function (b) {
             b.disabled = on;
-            b.classList.toggle('opacity-40', on);
+            b.classList.toggle('opacity-50', on);
+            b.classList.toggle('pointer-events-none', on);
         });
     }
     function postRating(n) {
@@ -599,6 +643,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     msg.textContent = 'Thanks — your rating was saved.';
                     msg.classList.remove('hidden', 'text-amber-700');
                     msg.classList.add('text-emerald-700', 'dark:text-emerald-400');
+                    paintPreview(0);
                 } else {
                     throw new Error('fail');
                 }
@@ -613,6 +658,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             });
     }
     stars.forEach(function (btn) {
+        btn.addEventListener('mouseenter', function () {
+            var n = parseInt(btn.getAttribute('data-star') || '0', 10);
+            if (n >= 1 && n <= 5) {
+                paintPreview(n);
+            }
+        });
         btn.addEventListener('click', function () {
             var n = parseInt(btn.getAttribute('data-star') || '0', 10);
             if (n >= 1 && n <= 5) {
