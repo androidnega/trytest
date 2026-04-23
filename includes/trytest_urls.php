@@ -537,5 +537,7 @@ function trytest_link_preview_meta(array $opts = []): void
 <?php
 }
 
-trytest_redirect_leaked_server_path_prefix();
-trytest_reject_trytest_prefix_when_at_root();
+if (!defined('TRYTEST_SKIP_INIT_REDIRECTS') || TRYTEST_SKIP_INIT_REDIRECTS !== true) {
+    trytest_redirect_leaked_server_path_prefix();
+    trytest_reject_trytest_prefix_when_at_root();
+}
