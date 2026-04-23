@@ -22,6 +22,9 @@
     # Diagnostics: put the key in the path if the host strips ?k= (some proxies / edge caches).
     RewriteRule ^trytest_diag/([A-Za-z0-9_]+)/?$ trytest_diagnostics.php?k=$1 [L,QSA]
 
+    # OPcache / APCu reset (same k as diagnostics)
+    RewriteRule ^trytest_opcache/([A-Za-z0-9_]+)/?$ trytest_opcache_reset.php?k=$1 [L,QSA]
+
     # Real files and directories (assets, existing .php files, sqlite, etc.)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
