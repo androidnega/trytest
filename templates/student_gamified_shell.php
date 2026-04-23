@@ -19,10 +19,8 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var list<array<string,mixed>> $levelLeaderboardRows */
 /** @var string $quizzesPageUrl */
 /** @var list<array<string,mixed>> $departmentOptions */
-/** @var list<array{value:string,label:string}> $levelOptions */
 /** @var bool $needsDepartmentSetup */
 /** @var string $departmentUpdateError */
-/** @var string $levelUpdateError */
 /** @var array<string,mixed>|null $doneBlock */
 /** @var string $quizDoneYoutubeHtml */
 /** @var array<string,mixed>|null $doneComparison */
@@ -46,32 +44,12 @@ $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
 $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
-$levelUpdateError = trim((string) ($levelUpdateError ?? ''));
-$levelOptions = isset($levelOptions) && is_array($levelOptions) ? $levelOptions : [];
-$levelOrphanForMenu = null;
-$__ul = trim((string) $userLevel);
-if ($__ul !== '') {
-    $__hasLevelOpt = false;
-    foreach ($levelOptions as $lox) {
-        if (trytest_level_canon((string) ($lox['value'] ?? '')) === trytest_level_canon($__ul)) {
-            $__hasLevelOpt = true;
-            break;
-        }
-    }
-    if (!$__hasLevelOpt) {
-        $levelOrphanForMenu = $__ul;
-    }
-}
 $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $newQuizBadgeCount = max(0, (int) ($newQuizBadgeCount ?? 0));
-$downloadsNavBadge = '';
 $downloadsMenuBadge = '';
 if ($downloadsBadgeCount > 0) {
     $dn = $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount;
-    $downloadsNavBadge = '<span class="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E50914] px-1 text-[9px] font-extrabold leading-none text-white" aria-label="'
-        . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
-        . '">' . $h($dn) . '</span>';
     $downloadsMenuBadge = '<span class="ml-2 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E50914] px-1 text-[10px] font-extrabold leading-none text-white" aria-label="'
         . $h((string) $downloadsBadgeCount . ' new or not yet downloaded')
         . '">' . $h($dn) . '</span>';
@@ -100,8 +78,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden bg-white text-slate-900 md:max-w-lg dark:bg-[#0f1014] dark:text-zinc-100'
     : 'min-h-screen bg-white pb-24 text-slate-900 md:pb-8 dark:bg-[#0f1014] dark:text-zinc-100'; ?>">
     <header class="<?php echo $dashboardFixedViewport
-        ? 'shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-white/[0.06] dark:bg-[#141418]/92'
-        : 'sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-white/[0.06] dark:bg-[#141418]/92'; ?>">
+        ? 'shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-[#0f1014]'
+        : 'sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-[#0f1014]'; ?>">
         <?php if ($dashboardFixedViewport): ?>
         <div class="flex min-w-0 items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
@@ -172,37 +150,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             </div>
         </div>
         <?php endif; ?>
-        <?php if ($levelUpdateError !== ''): ?>
-            <div class="<?php echo $dashboardFixedViewport ? 'mx-auto w-full max-w-md px-3 md:max-w-lg' : 'mx-auto max-w-5xl px-3'; ?>">
-                <p class="rounded-lg bg-red-50 px-2 py-1.5 text-center text-[11px] font-medium text-red-800 dark:bg-red-950/40 dark:text-red-200"><?php echo $h($levelUpdateError); ?></p>
-            </div>
-        <?php endif; ?>
-        <div class="<?php echo $dashboardFixedViewport
-            ? 'mx-auto flex w-full max-w-md flex-nowrap items-center justify-start gap-4 overflow-x-auto px-3 pb-2 pt-1 text-sm font-semibold [-ms-overflow-style:none] [scrollbar-width:none] md:max-w-lg [&::-webkit-scrollbar]:hidden'
-            : 'mx-auto flex max-w-5xl flex-nowrap items-center justify-center gap-5 overflow-x-auto px-3 pb-2 pt-1 text-sm font-semibold [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'; ?>">
-            <?php if ($levelOptions !== [] || $levelOrphanForMenu !== null): ?>
-                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="flex shrink-0 items-center gap-1">
-                    <input type="hidden" name="action" value="update_student_level">
-                    <label class="sr-only" for="trytestDashboardNavLevel">Level</label>
-                    <select id="trytestDashboardNavLevel" name="level" title="Your level" class="min-w-[5.5rem] max-w-[10rem] shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white py-1.5 pl-2 pr-8 text-xs font-semibold text-slate-800 shadow-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" required onchange="var f=this.form;(f.requestSubmit)?f.requestSubmit():f.submit();">
-                        <?php if ($levelOrphanForMenu !== null && $levelOrphanForMenu !== ''): ?>
-                            <option value="<?php echo $h($levelOrphanForMenu); ?>" selected><?php echo $h($levelOrphanForMenu); ?></option>
-                        <?php endif; ?>
-                        <?php foreach ($levelOptions as $lox): ?>
-                            <?php $lv = (string) ($lox['value'] ?? ''); ?>
-                            <option value="<?php echo $h($lv); ?>" <?php echo $levelOrphanForMenu === null && trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lox['label'] ?? '')); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-            <?php endif; ?>
-            <a href="<?php echo $h($dashboardUrl); ?>" class="shrink-0 whitespace-nowrap <?php echo $homeNavOn ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Home</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="shrink-0 whitespace-nowrap <?php echo $tabRank ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Leaderboard</a>
-            <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="shrink-0 whitespace-nowrap <?php echo $tabResults ? 'text-[#E50914] dark:text-[#f87171]' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300'; ?>">Results</a>
-            <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                <a href="<?php echo $h($quizzesPageUrl); ?>" class="shrink-0 whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Quizzes</a>
-            <?php endif; ?>
-            <a href="<?php echo $h($downloadsPageUrl); ?>" class="relative shrink-0 whitespace-nowrap text-slate-500 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300">Files<?php echo $downloadsNavBadge; ?></a>
-        </div>
     </header>
 
     <main class="<?php echo $dashboardFixedViewport
@@ -494,8 +441,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     </main>
 
     <nav class="<?php echo $dashboardFixedViewport
-        ? 'shrink-0 border-t border-slate-200 bg-white md:hidden dark:border-white/[0.06] dark:bg-[#141418]/97 dark:backdrop-blur'
-        : 'fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden dark:border-white/[0.06] dark:bg-[#141418]/97 dark:backdrop-blur'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+        ? 'shrink-0 border-t border-slate-200 bg-white md:hidden dark:border-zinc-800 dark:bg-[#0f1014] dark:backdrop-blur'
+        : 'fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden dark:border-zinc-800 dark:bg-[#0f1014] dark:backdrop-blur'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
         <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-lg' : 'mx-auto flex max-w-5xl'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $h($navClass($homeNavOn)); ?>">
                 <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D] dark:text-[#7eb8b8]" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>

@@ -50,7 +50,6 @@ function trytest_generate_student_password(): string
 
 $error = '';
 $departmentUpdateError = '';
-$levelUpdateError = '';
 $message = '';
 $generatedPassword = '';
 $enteredIndex = '';
@@ -135,41 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'update_student_level' && !empty($_SESSION['user_id'])) {
-        $uid = (int) $_SESSION['user_id'];
-        $lvlRaw = (string) ($_POST['level'] ?? '');
-        $levelOpts = trytest_level_dropdown_options($db);
-        $curLvl = trim((string) ($_SESSION['user_level'] ?? ''));
-        if ($curLvl !== '') {
-            $cc = trytest_level_canon($curLvl);
-            $hasCur = false;
-            foreach ($levelOpts as $o) {
-                if (trytest_level_canon((string) ($o['value'] ?? '')) === $cc) {
-                    $hasCur = true;
-                    break;
-                }
-            }
-            if (!$hasCur) {
-                $levelOpts[] = ['value' => $curLvl, 'label' => $curLvl];
-            }
-        }
-        if ($levelOpts === [] && $curLvl !== '') {
-            $levelOpts = [['value' => $curLvl, 'label' => $curLvl]];
-        }
-        if ($levelOpts === []) {
-            trytest_redirect(trytest_url('dashboard'));
-        }
-        $resolvedLvl = trytest_resolve_level_for_save($lvlRaw, $levelOpts);
-        if ($resolvedLvl === null) {
-            $levelUpdateError = 'Choose your level from the list, then save.';
-        } else {
-            try {
-                $db->prepare('UPDATE users SET level = ? WHERE id = ?')->execute([$resolvedLvl, $uid]);
-                $_SESSION['user_level'] = $resolvedLvl;
-                trytest_redirect(trytest_url('dashboard'));
-            } catch (Throwable $e) {
-                $levelUpdateError = 'Could not save your level now. Please try again shortly.';
-            }
-        }
+        // Level is assigned by admins only; ignore forged POSTs.
+        trytest_redirect(trytest_url('dashboard'));
     }
 
     if ($action === 'check_index') {
