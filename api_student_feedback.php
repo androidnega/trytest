@@ -39,7 +39,13 @@ if ($stars < 1 || $stars > 5) {
 
 $userId = (int) ($_SESSION['user_id'] ?? 0);
 $ins = $db->prepare(
-    'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref) VALUES (?, ?, ?, ?)'
+    'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref, created_at)
+     VALUES (?, ?, ?, ?, datetime(\'now\'))
+     ON CONFLICT(user_id) DO UPDATE SET
+        stars = excluded.stars,
+        body = excluded.body,
+        quiz_ref = excluded.quiz_ref,
+        created_at = datetime(\'now\')'
 );
 $ins->execute([$userId, $stars, '', '']);
 

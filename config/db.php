@@ -385,6 +385,22 @@ CREATE TABLE IF NOT EXISTS student_system_feedback (
 );
 ');
 $db->exec('CREATE INDEX IF NOT EXISTS idx_student_feedback_created ON student_system_feedback(created_at DESC)');
+try {
+    $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_student_feedback_user_id ON student_system_feedback(user_id)');
+} catch (Throwable $e) {
+    // Legacy DBs may contain multiple rows per student. Keep only the latest row, then enforce uniqueness.
+    try {
+        $db->exec(
+            'DELETE FROM student_system_feedback
+             WHERE id NOT IN (
+                 SELECT MAX(id) FROM student_system_feedback GROUP BY user_id
+             )'
+        );
+        $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_student_feedback_user_id ON student_system_feedback(user_id)');
+    } catch (Throwable $e2) {
+        // Do not block app boot.
+    }
+}
 
 $db->exec('
 CREATE TABLE IF NOT EXISTS trytest_boot_flags (
