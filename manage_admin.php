@@ -245,6 +245,7 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
             var u = absPath('admin_presence_sse.php');
             try {
                 var es = new EventSource(u);
+                var esClosed = false;
                 es.onmessage = function (ev) {
                     try {
                         var d = JSON.parse(ev.data);
@@ -252,7 +253,14 @@ $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
                     } catch (e) {}
                 };
                 es.onerror = function () {
-                    es.close();
+                    // Close immediately so the browser does not retry EventSource forever
+                    // (403 / dropped connections otherwise spam the server and look like endless loads).
+                    if (esClosed) return;
+                    esClosed = true;
+                    try {
+                        es.close();
+                    } catch (e4) {}
+                    if (srcEl) srcEl.textContent = 'Live count paused — refresh to reconnect';
                 };
             } catch (e3) {}
         }

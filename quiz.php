@@ -121,6 +121,14 @@ if ($schedulePhase === 'before') {
     (function () {
         var target = <?php echo $openTs ? (int) $openTs * 1000 : 'null'; ?>;
         var el = document.getElementById('openCountdown');
+        // Align with server time at page render. Using only Date.now() vs PHP's open time
+        // caused an infinite reload when the device clock was ahead of the server: left <= 0
+        // every tick → location.reload() while the server still served "before" schedule.
+        var pageServerMs = <?php echo (int) round(microtime(true) * 1000); ?>;
+        var bootClientMs = Date.now();
+        function alignedNowMs() {
+            return pageServerMs + (Date.now() - bootClientMs);
+        }
         function pad(n) { return String(n).padStart(2, '0'); }
         function fmt(ms) {
             if (ms <= 0) return 'Starting…';
@@ -131,14 +139,21 @@ if ($schedulePhase === 'before') {
             var sec = s % 60;
             return (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
         }
+        var timerId = null;
         function tick() {
             if (!el || !target) { if (el) el.textContent = ''; return; }
-            var left = target - Date.now();
+            var left = target - alignedNowMs();
             el.textContent = left > 0 ? ('Opens in ' + fmt(left)) : 'Starting…';
-            if (left <= 0) location.reload();
+            if (left <= 0) {
+                if (timerId !== null) {
+                    clearInterval(timerId);
+                    timerId = null;
+                }
+                location.reload();
+            }
         }
         tick();
-        setInterval(tick, 1000);
+        timerId = setInterval(tick, 1000);
     })();
     </script>
     <script>
