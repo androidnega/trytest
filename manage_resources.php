@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/departments.php';
+require_once __DIR__ . '/includes/levels.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -23,34 +24,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'upload_pdf') {
         $title = trim((string) ($_POST['title'] ?? ''));
         $department = trim((string) ($_POST['department'] ?? ''));
-        $level = trim((string) ($_POST['level'] ?? ''));
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
+        $levelOpts = trytest_level_dropdown_options($db);
+        $level = '';
+        if ($levelRaw !== '') {
+            $resolvedLv = trytest_resolve_level_for_save($levelRaw, $levelOpts);
+            if ($resolvedLv === null) {
+                $error = 'Choose a level from the list or leave “All levels”.';
+            } else {
+                $level = $resolvedLv;
+            }
+        }
         if ($title === '') {
             $error = 'Title is required.';
-        } elseif (!isset($_FILES['pdf']) || !is_array($_FILES['pdf']) || (int) ($_FILES['pdf']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            $error = 'Please choose a PDF file to upload.';
-        } else {
-            $tmp = (string) ($_FILES['pdf']['tmp_name'] ?? '');
-            $orig = (string) ($_FILES['pdf']['name'] ?? 'document.pdf');
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $tmp !== '' && is_uploaded_file($tmp) ? (string) $finfo->file($tmp) : '';
-            if ($mime !== 'application/pdf') {
-                $error = 'Only PDF files are allowed.';
+        }
+        if ($error === '') {
+            if (!isset($_FILES['pdf']) || !is_array($_FILES['pdf']) || (int) ($_FILES['pdf']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                $error = 'Please choose a PDF file to upload.';
             } else {
-                $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
-                if ($ext !== 'pdf') {
-                    $ext = 'pdf';
-                }
-                $stored = bin2hex(random_bytes(16)) . '.' . $ext;
-                $dest = $uploadDir . '/' . $stored;
-                if (!move_uploaded_file($tmp, $dest)) {
-                    $error = 'Could not save file on the server.';
+                $tmp = (string) ($_FILES['pdf']['tmp_name'] ?? '');
+                $orig = (string) ($_FILES['pdf']['name'] ?? 'document.pdf');
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $tmp !== '' && is_uploaded_file($tmp) ? (string) $finfo->file($tmp) : '';
+                if ($mime !== 'application/pdf') {
+                    $error = 'Only PDF files are allowed.';
                 } else {
-                    @chmod($dest, 0644);
-                    $db->prepare(
-                        'INSERT INTO student_documents (title, department, level, stored_name, original_name)
-                         VALUES (?, ?, ?, ?, ?)'
-                    )->execute([$title, $department, $level, $stored, $orig]);
-                    $message = 'PDF uploaded.';
+                    $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+                    if ($ext !== 'pdf') {
+                        $ext = 'pdf';
+                    }
+                    $stored = bin2hex(random_bytes(16)) . '.' . $ext;
+                    $dest = $uploadDir . '/' . $stored;
+                    if (!move_uploaded_file($tmp, $dest)) {
+                        $error = 'Could not save file on the server.';
+                    } else {
+                        @chmod($dest, 0644);
+                        $db->prepare(
+                            'INSERT INTO student_documents (title, department, level, stored_name, original_name)
+                             VALUES (?, ?, ?, ?, ?)'
+                        )->execute([$title, $department, $level, $stored, $orig]);
+                        $message = 'PDF uploaded.';
+                    }
                 }
             }
         }
@@ -80,6 +94,7 @@ $rows = $db->query(
 )->fetchAll();
 
 $deptOptions = trytest_department_dropdown_options($db);
+$levelOptions = trytest_level_dropdown_options($db);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -121,10 +136,13 @@ $deptOptions = trytest_department_dropdown_options($db);
                     </select>
                     <select class="w-full border rounded-lg px-3 py-2" name="level">
                         <option value="">All levels</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
-                        <option value="300">300</option>
-                        <option value="400">400</option>
+                        <?php foreach ($levelOptions as $lo): ?>
+                            <?php $lv = trim((string) ($lo['value'] ?? '')); ?>
+                            <?php if ($lv === '') {
+                                continue;
+                            } ?>
+                            <option value="<?php echo htmlspecialchars($lv, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($lv, ENT_QUOTES, 'UTF-8'); ?> only</option>
+                        <?php endforeach; ?>
                     </select>
                     <input class="w-full text-sm" type="file" name="pdf" accept="application/pdf" required>
                     <button class="w-full rounded-lg bg-slate-900 text-white py-2 font-medium" type="submit"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload</button>

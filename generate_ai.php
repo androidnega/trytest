@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/levels.php';
 
 $error = '';
 $prompt = '';
@@ -47,14 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $topic = trim((string) ($_POST['topic'] ?? ''));
         $topicsRaw = trim((string) ($_POST['topics'] ?? ''));
         $course = trim((string) ($_POST['course'] ?? ''));
-        $level = trim((string) ($_POST['level'] ?? ''));
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
         $count = trim((string) ($_POST['count'] ?? ''));
+        $levelOpts = trytest_level_dropdown_options($db);
+        $level = $levelRaw !== '' ? (trytest_resolve_level_for_save($levelRaw, $levelOpts) ?? '') : '';
+        if ($levelRaw !== '' && $level === '') {
+            $error = 'Choose a level from the list or leave it blank.';
+        }
 
         $topics = trytest_parse_topics($topicsRaw !== '' ? $topicsRaw : $topic);
         $countInt = ctype_digit($count) ? (int) $count : 0;
-        if (count($topics) < 1 || $countInt < 1) {
+        if ($error === '' && (count($topics) < 1 || $countInt < 1)) {
             $error = 'At least one topic and a valid question count are required.';
-        } else {
+        }
+        if ($error === '') {
             $topicList = implode(', ', $topics);
             $courseLine = $course !== '' ? "Course: {$course}\n" : '';
             $levelLine = $level !== '' ? "Level: {$level}\n" : '';
@@ -83,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $isAdmin = !empty($_SESSION['is_admin']);
+$levelOptions = $isAdmin ? trytest_level_dropdown_options($db) : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -137,7 +145,13 @@ $isAdmin = !empty($_SESSION['is_admin']);
                         </div>
                         <div class="grid gap-3 sm:grid-cols-2">
                             <input name="course" value="<?php echo htmlspecialchars($course, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Course code (optional)" class="w-full p-3 border border-slate-300 rounded-lg">
-                            <input name="level" value="<?php echo htmlspecialchars($level, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Level (e.g 200)" class="w-full p-3 border border-slate-300 rounded-lg">
+                            <select name="level" class="w-full p-3 border border-slate-300 rounded-lg bg-white">
+                                <option value="">Level (optional)</option>
+                                <?php foreach ($levelOptions as $lo): ?>
+                                    <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                    <option value="<?php echo htmlspecialchars($lv, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $level !== '' && trytest_level_canon($level) === trytest_level_canon($lv) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) ($lo['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <input name="count" value="<?php echo htmlspecialchars($count, ENT_QUOTES, 'UTF-8'); ?>" type="number" min="1" placeholder="Number of questions" class="w-full p-3 border border-slate-300 rounded-lg" required>
                         <button class="bg-emerald-600 text-white p-3 rounded-lg w-full font-medium" type="submit">Generate Prompt</button>

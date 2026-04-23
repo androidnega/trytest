@@ -14,6 +14,7 @@ require_once __DIR__ . '/includes/student_dashboard_featured.php';
 require_once __DIR__ . '/includes/student_theme.php';
 
 $departmentOptions = trytest_department_dropdown_options($db);
+$levelOptions = trytest_level_dropdown_options($db);
 
 $incomingShareQuiz = isset($_GET['quiz']) ? (int) $_GET['quiz'] : 0;
 if ($incomingShareQuiz < 1 && isset($_GET['quiz_id'])) {
@@ -49,6 +50,7 @@ function trytest_generate_student_password(): string
 
 $error = '';
 $departmentUpdateError = '';
+$levelUpdateError = '';
 $message = '';
 $generatedPassword = '';
 $enteredIndex = '';
@@ -132,6 +134,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'update_student_level' && !empty($_SESSION['user_id'])) {
+        $uid = (int) $_SESSION['user_id'];
+        $lvlRaw = (string) ($_POST['level'] ?? '');
+        $levelOpts = trytest_level_dropdown_options($db);
+        $curLvl = trim((string) ($_SESSION['user_level'] ?? ''));
+        if ($curLvl !== '') {
+            $cc = trytest_level_canon($curLvl);
+            $hasCur = false;
+            foreach ($levelOpts as $o) {
+                if (trytest_level_canon((string) ($o['value'] ?? '')) === $cc) {
+                    $hasCur = true;
+                    break;
+                }
+            }
+            if (!$hasCur) {
+                $levelOpts[] = ['value' => $curLvl, 'label' => $curLvl];
+            }
+        }
+        if ($levelOpts === [] && $curLvl !== '') {
+            $levelOpts = [['value' => $curLvl, 'label' => $curLvl]];
+        }
+        if ($levelOpts === []) {
+            trytest_redirect(trytest_url('dashboard'));
+        }
+        $resolvedLvl = trytest_resolve_level_for_save($lvlRaw, $levelOpts);
+        if ($resolvedLvl === null) {
+            $levelUpdateError = 'Choose your level from the list, then save.';
+        } else {
+            try {
+                $db->prepare('UPDATE users SET level = ? WHERE id = ?')->execute([$resolvedLvl, $uid]);
+                $_SESSION['user_level'] = $resolvedLvl;
+                trytest_redirect(trytest_url('dashboard'));
+            } catch (Throwable $e) {
+                $levelUpdateError = 'Could not save your level now. Please try again shortly.';
+            }
+        }
+    }
+
     if ($action === 'check_index') {
         $indexNumber = strtoupper(trim((string) ($_POST['index_number'] ?? '')));
         if ($indexNumber === '') {
@@ -201,14 +241,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'register_new') {
         $indexNumber = strtoupper(trim((string) ($_POST['index_number'] ?? '')));
-        $level = trim((string) ($_POST['level'] ?? ''));
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
         $department = trim((string) ($_POST['department'] ?? ''));
         $nicknameRaw = (string) ($_POST['nickname'] ?? '');
         $enteredIndex = $indexNumber;
         $loginMode = 'new';
         $nicknameNorm = trytest_student_normalize_nickname($nicknameRaw);
-        if ($indexNumber === '' || $level === '') {
-            $error = 'Index number and level are required.';
+        $resolvedLevel = trytest_resolve_level_for_save($levelRaw, $levelOptions);
+        if ($indexNumber === '' || $resolvedLevel === null) {
+            $error = 'Index number and a level from the list are required.';
         } elseif ($nicknameNorm === null) {
             $error = 'Choose a nickname (2–40 characters: letters, numbers, spaces, dot, underscore, or hyphen).';
         } else {
@@ -227,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $passwordHash = password_hash($plainPassword, PASSWORD_DEFAULT);
                     try {
                         $db->prepare('INSERT INTO users (index_number, level, password_hash, department, nickname) VALUES (?, ?, ?, ?, ?)')
-                            ->execute([$indexNumber, $level, $passwordHash, $departmentToSave, $nicknameNorm]);
+                            ->execute([$indexNumber, $resolvedLevel, $passwordHash, $departmentToSave, $nicknameNorm]);
                         $message = 'Your Trytest password is 4 digits. Use it next time you sign in.';
                         $generatedPassword = $plainPassword;
                         $loginMode = 'index';
@@ -731,10 +772,9 @@ else: ?>
                                     <span class="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
                                     <select class="w-full min-w-0 appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" name="level" required>
                                         <option value="">Level</option>
-                                        <option value="100">100</option>
-                                        <option value="200">200</option>
-                                        <option value="300">300</option>
-                                        <option value="400">400</option>
+                                        <?php foreach ($levelOptions as $lox): ?>
+                                            <option value="<?php echo htmlspecialchars((string) ($lox['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($lox['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php endforeach; ?>
                                     </select>
                                     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><i class="fa-solid fa-chevron-down text-xs"></i></span>
                                 </div>

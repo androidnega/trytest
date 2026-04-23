@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/quiz_share.php';
+require_once __DIR__ . '/levels.php';
 
 /**
  * Visible name: nickname when set, otherwise a short label from index number (legacy).
@@ -117,7 +118,7 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
     $dd = trim($docDepartment);
     $dl = trim($docLevel);
 
-    if ($dl !== '' && strcasecmp($ul, $dl) !== 0) {
+    if ($dl !== '' && trytest_level_canon($dl) !== trytest_level_canon($ul)) {
         return false;
     }
 
@@ -129,19 +130,11 @@ function trytest_student_document_eligible(string $userDepartment, string $userL
 }
 
 /**
- * Best-effort numeric level for matching (e.g. "Level 100", "Lv100" → "100").
+ * @deprecated Use trytest_level_canon() from includes/levels.php.
  */
 function trytest_student_level_canon(string $level): string
 {
-    $t = trim($level);
-    if ($t === '') {
-        return '';
-    }
-    if (preg_match('/(\d{1,4})\b/', $t, $m) === 1) {
-        return (string) (int) $m[1];
-    }
-
-    return strtolower($t);
+    return trytest_level_canon($level);
 }
 
 /**
@@ -190,14 +183,23 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
     if ($userDepartment === '') {
         return [];
     }
+    $uCanon = trytest_level_canon($userLevel);
+    if ($uCanon === '') {
+        return [];
+    }
 
     $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
-        WHERE c.level = ?
-          AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+        WHERE LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
         ORDER BY c.code ASC';
     $courseStmt = $db->prepare($courseSql);
-    $courseStmt->execute([$userLevel, $userDepartment]);
-    $courses = $courseStmt->fetchAll();
+    $courseStmt->execute([$userDepartment]);
+    $courses = [];
+    foreach ($courseStmt->fetchAll() as $crow) {
+        if (trytest_level_canon((string) ($crow['level'] ?? '')) !== $uCanon) {
+            continue;
+        }
+        $courses[] = $crow;
+    }
 
     $attemptedQuizIds = [];
     if ($userId > 0) {
@@ -620,35 +622,54 @@ function trytest_student_dashboard_tile_svg(string $kind, int $size = 40): strin
 function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel, string $userDepartment): bool
 {
     $quizId = max(0, $quizId);
-    $userLevel = trim($userLevel);
     $userDepartment = trim($userDepartment);
-    if ($quizId < 1 || $userLevel === '' || $userDepartment === '') {
+    $uCanon = trytest_level_canon($userLevel);
+    if ($quizId < 1 || $uCanon === '' || $userDepartment === '') {
         return false;
     }
 
-    $sql = 'SELECT q.level FROM quizzes q WHERE q.id = ?
-        AND (
-            EXISTS (
-                SELECT 1 FROM courses c
-                WHERE c.id = q.course_id AND c.level = ?
-                AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
-            )
-            OR EXISTS (
-                SELECT 1 FROM quiz_courses qc
-                INNER JOIN courses c ON c.id = qc.course_id
-                WHERE qc.quiz_id = q.id AND c.level = ?
-                AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
-            )
-        )
-        LIMIT 1';
-    $st = $db->prepare($sql);
-    $st->execute([$quizId, $userLevel, $userDepartment, $userLevel, $userDepartment]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$row) {
+    $qz = $db->prepare('SELECT level FROM quizzes WHERE id = ?');
+    $qz->execute([$quizId]);
+    $quizRow = $qz->fetch(PDO::FETCH_ASSOC);
+    if (!$quizRow) {
+        return false;
+    }
+    $quizLevelCol = isset($quizRow['level']) ? (string) $quizRow['level'] : '';
+
+    $pairs = [];
+    $p1 = $db->prepare(
+        'SELECT c.level AS cl, c.department AS cd FROM quizzes q INNER JOIN courses c ON c.id = q.course_id WHERE q.id = ?'
+    );
+    $p1->execute([$quizId]);
+    while ($r = $p1->fetch(PDO::FETCH_ASSOC)) {
+        $pairs[] = $r;
+    }
+    $p2 = $db->prepare(
+        'SELECT c.level AS cl, c.department AS cd FROM quiz_courses qc INNER JOIN courses c ON c.id = qc.course_id WHERE qc.quiz_id = ?'
+    );
+    $p2->execute([$quizId]);
+    while ($r = $p2->fetch(PDO::FETCH_ASSOC)) {
+        $pairs[] = $r;
+    }
+
+    $allowed = false;
+    foreach ($pairs as $r) {
+        $cl = trytest_level_canon((string) ($r['cl'] ?? ''));
+        $cd = trim((string) ($r['cd'] ?? ''));
+        if ($cl === '' || $cl !== $uCanon) {
+            continue;
+        }
+        if (strcasecmp($userDepartment, $cd) !== 0) {
+            continue;
+        }
+        $allowed = true;
+        break;
+    }
+    if (!$allowed) {
         return false;
     }
 
-    return trytest_quiz_level_visible_to_student(isset($row['level']) ? (string) $row['level'] : null, $userLevel);
+    return trytest_quiz_level_visible_to_student($quizLevelCol !== '' ? $quizLevelCol : null, $userLevel);
 }
 
 /**
@@ -905,17 +926,22 @@ function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel,
     $out = [];
     $userLevel = trim($userLevel);
     $userDepartment = trim($userDepartment);
-    if ($userLevel === '' || $userDepartment === '') {
+    $uCanon = trytest_level_canon($userLevel);
+    if ($uCanon === '' || $userDepartment === '') {
         return $out;
     }
-    $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c WHERE c.level = ?';
-    $courseParams = [$userLevel];
-    $courseSql .= ' AND LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))';
-    $courseParams[] = $userDepartment;
-    $courseSql .= ' ORDER BY c.code ASC';
+    $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
+        WHERE LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+        ORDER BY c.code ASC';
     $courseStmt = $db->prepare($courseSql);
-    $courseStmt->execute($courseParams);
-    $courses = $courseStmt->fetchAll(PDO::FETCH_ASSOC);
+    $courseStmt->execute([$userDepartment]);
+    $courses = [];
+    foreach ($courseStmt->fetchAll(PDO::FETCH_ASSOC) as $crow) {
+        if (trytest_level_canon((string) ($crow['level'] ?? '')) !== $uCanon) {
+            continue;
+        }
+        $courses[] = $crow;
+    }
 
     foreach ($courses as $course) {
         $cid = (int) ($course['id'] ?? 0);

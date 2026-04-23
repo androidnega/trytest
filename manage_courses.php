@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/departments.php';
+require_once __DIR__ . '/includes/levels.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -18,10 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'create_course') {
         $code = strtoupper(trim((string) ($_POST['code'] ?? '')));
         $title = trim((string) ($_POST['title'] ?? ''));
-        $level = trim((string) ($_POST['level'] ?? ''));
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
         $department = trim((string) ($_POST['department'] ?? ''));
-        if ($code === '' || $title === '' || $level === '') {
-            $error = 'Course code, title, and level are required.';
+        $levelOpts = trytest_level_dropdown_options($db);
+        $level = trytest_resolve_level_for_save($levelRaw, $levelOpts);
+        if ($code === '' || $title === '') {
+            $error = 'Course code and title are required.';
+        } elseif ($level === null) {
+            $error = 'Choose a level from the list.';
         } else {
             $db->prepare('INSERT INTO courses (code, title, level, department) VALUES (?, ?, ?, ?)')->execute([$code, $title, $level, $department]);
             $message = 'Course created.';
@@ -41,10 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $courseId = (int) ($_POST['course_id'] ?? 0);
         $code = strtoupper(trim((string) ($_POST['code'] ?? '')));
         $title = trim((string) ($_POST['title'] ?? ''));
-        $level = trim((string) ($_POST['level'] ?? ''));
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
         $department = trim((string) ($_POST['department'] ?? ''));
-        if ($courseId < 1 || $code === '' || $title === '' || $level === '') {
-            $error = 'Course code, title, and level are required for updates.';
+        $levelOpts = trytest_level_dropdown_options($db);
+        $level = trytest_resolve_level_for_save($levelRaw, $levelOpts);
+        if ($courseId < 1 || $code === '' || $title === '') {
+            $error = 'Course code and title are required for updates.';
+        } elseif ($level === null) {
+            $error = 'Choose a level from the list.';
         } else {
             $db->prepare(
                 'UPDATE courses SET code = ?, title = ?, level = ?, department = ? WHERE id = ?'
@@ -83,6 +92,7 @@ $courses = $db->query(
 )->fetchAll();
 
 $deptPresets = trytest_department_dropdown_options($db);
+$levelPresets = trytest_level_dropdown_options($db);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -111,7 +121,12 @@ $deptPresets = trytest_department_dropdown_options($db);
                     <input type="hidden" name="action" value="create_course">
                     <div class="grid gap-2 sm:grid-cols-2">
                         <input class="w-full border rounded-lg px-3 py-2" name="code" placeholder="Course code (ITS201)" required>
-                        <input class="w-full border rounded-lg px-3 py-2" name="level" placeholder="Level (e.g 200)" required>
+                        <select class="w-full border rounded-lg px-3 py-2" name="level" required>
+                            <option value="">Level</option>
+                            <?php foreach ($levelPresets as $lo): ?>
+                                <option value="<?php echo htmlspecialchars((string) ($lo['value'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($lo['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <input class="w-full border rounded-lg px-3 py-2" name="title" placeholder="Course title" required>
                     <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets" placeholder="Department / program (optional)" maxlength="120" autocomplete="off">
@@ -120,7 +135,7 @@ $deptPresets = trytest_department_dropdown_options($db);
                             <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"></option>
                         <?php endforeach; ?>
                     </datalist>
-                    <p class="text-xs text-slate-500">Manage the shared list under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>">Departments &amp; programs</a>.</p>
+                    <p class="text-xs text-slate-500">Manage presets under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>">Departments</a> and <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_levels'), ENT_QUOTES, 'UTF-8'); ?>">Levels</a>.</p>
                     <button class="w-full bg-slate-900 text-white rounded-lg py-2 font-medium">Add Course</button>
                 </form>
             </section>
@@ -154,7 +169,24 @@ $deptPresets = trytest_department_dropdown_options($db);
                         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                             <input class="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50" name="code" value="<?php echo htmlspecialchars((string) $course['code'], ENT_QUOTES, 'UTF-8'); ?>" required readonly>
                             <input class="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50" name="title" value="<?php echo htmlspecialchars((string) $course['title'], ENT_QUOTES, 'UTF-8'); ?>" required readonly>
-                            <input class="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50" name="level" value="<?php echo htmlspecialchars((string) $course['level'], ENT_QUOTES, 'UTF-8'); ?>" required readonly>
+                            <select class="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50 course-level-select" name="level" required disabled>
+                                <?php
+                                $curCourseLevel = trim((string) ($course['level'] ?? ''));
+                                $hasPresetForCourse = false;
+                                foreach ($levelPresets as $lo) {
+                                    if (trytest_level_canon((string) ($lo['value'] ?? '')) === trytest_level_canon($curCourseLevel)) {
+                                        $hasPresetForCourse = true;
+                                        break;
+                                    }
+                                }
+                                if (!$hasPresetForCourse && $curCourseLevel !== ''): ?>
+                                    <option value="<?php echo htmlspecialchars($curCourseLevel, ENT_QUOTES, 'UTF-8'); ?>" selected><?php echo htmlspecialchars($curCourseLevel, ENT_QUOTES, 'UTF-8'); ?> (legacy)</option>
+                                <?php endif; ?>
+                                <?php foreach ($levelPresets as $lo): ?>
+                                    <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                    <option value="<?php echo htmlspecialchars($lv, ENT_QUOTES, 'UTF-8'); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($curCourseLevel) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) ($lo['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                             <input class="w-full border rounded-lg px-3 py-2 text-sm bg-slate-50" name="department" value="<?php echo htmlspecialchars((string) ($course['department'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Department / program" readonly>
                         </div>
                         <div class="flex items-center justify-between gap-3">
@@ -181,17 +213,21 @@ $deptPresets = trytest_department_dropdown_options($db);
                 const editBtn = form.querySelector('.course-edit-btn');
                 const saveBtn = form.querySelector('.course-save-btn');
                 const cancelBtn = form.querySelector('.course-cancel-btn');
-                const fields = form.querySelectorAll('input[name="code"], input[name="title"], input[name="level"], input[name="department"]');
+                const fields = form.querySelectorAll('input[name="code"], input[name="title"], select[name="level"], input[name="department"]');
 
                 if (!editBtn || !saveBtn || !cancelBtn || !fields.length) return;
 
                 fields.forEach(function (field) {
-                    field.dataset.initialValue = field.value;
+                    field.dataset.initialValue = field.tagName === 'SELECT' ? String(field.value) : field.value;
                 });
 
                 function setEditing(editing) {
                     fields.forEach(function (field) {
-                        field.readOnly = !editing;
+                        if (field.tagName === 'SELECT') {
+                            field.disabled = !editing;
+                        } else {
+                            field.readOnly = !editing;
+                        }
                         field.classList.toggle('bg-slate-50', !editing);
                         field.classList.toggle('bg-white', editing);
                     });

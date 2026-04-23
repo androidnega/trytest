@@ -425,6 +425,23 @@ CREATE TABLE IF NOT EXISTS departments (
 );
 ');
 
+$db->exec('
+CREATE TABLE IF NOT EXISTS levels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    value TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
+
+foreach ([['100', 100], ['200', 200], ['300', 300], ['400', 400]] as $lvSeed) {
+    try {
+        $db->prepare('INSERT OR IGNORE INTO levels (value, sort_order) VALUES (?, ?)')->execute($lvSeed);
+    } catch (Throwable $e) {
+        // ignore
+    }
+}
+
 $quizColsShare = $db->query('PRAGMA table_info(quizzes)')->fetchAll();
 $hasQuizShareCode = false;
 foreach ($quizColsShare as $column) {
