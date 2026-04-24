@@ -1275,9 +1275,12 @@
         return m ? m.length : 0;
     }
 
-    /** Layout for long phrases like "Both A and B" — top-align, wrap, stable line height. */
+    /**
+     * MCQ row: fixed letter column + fluid text (grid keeps badge and first line on one horizontal rhythm;
+     * items-center vertically centers the chip with the answer block for a sleek row).
+     */
     const MCQ_OPTION_BTN_CLASS =
-        'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 break-words whitespace-normal shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
+        'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
 
     /** Badge = on-screen position (first row A, …). Distinct color per letter A–D. */
     function mcqLetterBadgeClassForPositionalLetter(letter) {
@@ -1285,7 +1288,7 @@
             .toUpperCase()
             .slice(0, 1);
         const base =
-            'trytest-mcq-letter mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tabular-nums tracking-wide ring-1 ring-inset';
+            'trytest-mcq-letter inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tabular-nums tracking-wide ring-1 ring-inset';
         const byLetter = {
             A: 'bg-sky-100 text-sky-900 ring-sky-300/80 dark:bg-sky-950/60 dark:text-sky-100 dark:ring-sky-700/55',
             B: 'bg-emerald-100 text-emerald-900 ring-emerald-300/80 dark:bg-emerald-950/60 dark:text-emerald-100 dark:ring-emerald-700/55',
@@ -1349,7 +1352,7 @@
             mcqLetterBadgeClassForPositionalLetter(lab) +
             '" aria-hidden="true">' +
             escapeHtml(lab) +
-            '</span><span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
+            '</span><span class="min-w-0 justify-self-stretch text-left leading-snug break-words whitespace-normal">' +
             escapeHtml(String(text)) +
             '</span>'
         );
@@ -1365,8 +1368,8 @@
             mcqLetterBadgeClassForPositionalLetter(lab) +
             '" aria-hidden="true">' +
             escapeHtml(lab) +
-            '</span><span class="flex min-w-0 flex-1 items-start gap-2">' +
-            '<span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
+            '</span><span class="flex min-w-0 items-start gap-2.5">' +
+            '<span class="min-w-0 flex-1 text-left leading-snug break-words whitespace-normal">' +
             escapeHtml(displayMcqOptionSurfaceText(selectedText)) +
             '</span>' +
             suffixHtml +
@@ -1542,11 +1545,21 @@
             mcqBankToPosMap && typeof mcqBankToPosMap === 'object'
                 ? rewriteBothAndPhrasesForShuffle(stemRaw, mcqBankToPosMap)
                 : stemRaw;
-        const title =
-            '<h2 class="mb-3 text-left text-base font-bold leading-snug text-slate-900 sm:mb-4 sm:text-lg dark:text-zinc-100">' +
+        const stemBlock =
+            '<div class="trytest-mcq-stem min-w-0 flex-1 lg:max-w-[52%] lg:pr-2">' +
+            '<h2 class="mb-0 text-left text-base font-bold leading-snug text-slate-900 sm:text-lg lg:pt-0.5 dark:text-zinc-100">' +
             escapeHtml(stemShown) +
-            '</h2>';
-        questionBox.innerHTML = title + optsHtml;
+            '</h2>' +
+            '</div>';
+        const choicesBlock =
+            '<div class="trytest-mcq-choices w-full min-w-0 lg:max-w-[min(28rem,46%)] lg:flex-shrink-0">' +
+            optsHtml +
+            '</div>';
+        questionBox.innerHTML =
+            '<div class="trytest-mcq-layout flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">' +
+            stemBlock +
+            choicesBlock +
+            '</div>';
         bindMcqHandlers(q);
         saveQuizResume();
     }
@@ -1772,22 +1785,22 @@
 
         if (ok) {
             btn.className =
-                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal success-pop shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 shadow-sm success-pop sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             setMcqOptionFeedbackInnerHtml(
                 btn,
                 selected,
-                '<span class="inline-flex shrink-0 self-start pt-0.5 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+                '<span class="mt-0.5 shrink-0 text-base leading-none text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
             );
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
             btn.className =
-                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-red-300 bg-red-50 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
+                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-red-300 bg-red-50 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
             setMcqOptionFeedbackInnerHtml(
                 btn,
                 selected,
-                '<span class="inline-flex shrink-0 self-start pt-0.5 opacity-90" aria-hidden="true">✗</span>'
+                '<span class="mt-0.5 shrink-0 text-base leading-none opacity-90" aria-hidden="true">✗</span>'
             );
             if (navigator.vibrate) {
                 navigator.vibrate(200);
@@ -1817,11 +1830,11 @@
                 return;
             }
             b.className =
-                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             setMcqOptionFeedbackInnerHtml(
                 b,
                 val,
-                '<span class="inline-flex shrink-0 self-start pt-0.5 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+                '<span class="mt-0.5 shrink-0 text-base leading-none text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
             );
         });
     }
