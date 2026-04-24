@@ -1681,6 +1681,60 @@
         return false;
     }
 
+    /**
+     * Single MCQ answer row to reveal after a wrong pick (never more than one highlight).
+     * Ignores comma-separated “any of these” grading paths for display — uses first matching option text.
+     */
+    function getMcqCanonicalCorrectOptionText(correct, q) {
+        if (!q) {
+            return String(correct || '').trim();
+        }
+        const ca = String(correct || '').trim();
+        if (!ca) {
+            return '';
+        }
+        const setWant = parseMcqCorrectLetterSet(ca);
+        if (setWant) {
+            const multi = findCompoundMcqOptionTextByLetterSet(q, setWant);
+            if (multi) {
+                return String(multi).trim();
+            }
+        }
+        if (/^[ABCD]$/i.test(ca)) {
+            return String(resolveLetterMcqCorrect(ca, q)).trim();
+        }
+        if (String(ca).indexOf(',') !== -1) {
+            const parts = String(ca)
+                .split(',')
+                .map(function (s) {
+                    return String(s || '').trim();
+                })
+                .filter(Boolean);
+            const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
+            for (let p = 0; p < parts.length; p++) {
+                const part = parts[p];
+                const np = normalize(part);
+                for (let i = 0; i < keys.length; i++) {
+                    const t = q[keys[i]];
+                    if (t == null || String(t).trim() === '') continue;
+                    const ts = String(t).trim();
+                    if (normalize(ts) === np) {
+                        return ts;
+                    }
+                }
+                if (mcqRenderOrder) {
+                    for (let j = 0; j < mcqRenderOrder.length; j++) {
+                        const ts2 = String(mcqRenderOrder[j].text || '').trim();
+                        if (normalize(ts2) === np) {
+                            return ts2;
+                        }
+                    }
+                }
+            }
+        }
+        return ca;
+    }
+
     function isFillTheoryCorrect(userParts, correct, stem) {
         const n = userParts.length;
         const blanks = blankCountInStem(stem);
@@ -1824,11 +1878,21 @@
     }
 
     function highlightCorrectMcq(correct, q) {
+        const canon = getMcqCanonicalCorrectOptionText(correct, q);
+        if (!canon) {
+            return;
+        }
+        const nc = normalize(canon);
+        var done = false;
         document.querySelectorAll('.option').forEach(function (b) {
-            const val = b.getAttribute('data-option') || '';
-            if (!isMcqSelectionCorrect(val, correct, q)) {
+            if (done) {
                 return;
             }
+            const val = String(b.getAttribute('data-option') || '').trim();
+            if (normalize(val) !== nc) {
+                return;
+            }
+            done = true;
             b.className =
                 'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             setMcqOptionFeedbackInnerHtml(
