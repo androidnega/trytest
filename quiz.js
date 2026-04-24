@@ -209,6 +209,17 @@
     /** @type {object[]} */
     let examReviewItems = [];
 
+    /**
+     * After shuffle, each row: bank letter = DB column (option_a→A), text = stored option string.
+     * Used so single-letter correct_answer means on-screen position (first row=A), not DB column.
+     */
+    /** @type {{ bank: string, text: string }[]|null} */
+    let mcqRenderOrder = null;
+
+    /** Bank→on-screen letter map for the current MCQ draw (also used to rewrite the stem). */
+    /** @type {Record<string, string>|null} */
+    let mcqBankToPosMap = null;
+
     /** @type {ReturnType<typeof setInterval> | null} */
     let presencePingTimer = null;
     /** @type {WebSocket | null} */
@@ -1200,11 +1211,18 @@
         if (play === 'mcq') {
             const ca = String(q.correct_answer || '');
             const setWant = parseMcqCorrectLetterSet(ca);
+            let out = '';
             if (setWant) {
                 const multi = findCompoundMcqOptionTextByLetterSet(q, setWant);
-                if (multi) return multi;
+                if (multi) {
+                    out = multi;
+                }
             }
-            return String(resolveLetterMcqCorrect(ca, q));
+            if (out === '') {
+                out = String(resolveLetterMcqCorrect(ca, q));
+            }
+            const bmap = mcqBankToPosMap || buildBankToPositionalLetterMapFromOrder(mcqRenderOrder);
+            return rewriteBothAndPhrasesForShuffle(out, bmap || {});
         }
         if (play === 'fill') {
             const stem = String(q.question || '');
@@ -1261,9 +1279,56 @@
     const MCQ_OPTION_BTN_CLASS =
         'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 break-words whitespace-normal shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
 
-    /** Letter badge (A–D) tied to option_a…option_d so stems can say “A and B” after shuffle. */
+    /** Badge = on-screen position (first row A, …). Option text can rewrite “Both A and B” (bank) → positional. */
     const MCQ_LETTER_BADGE_CLASS =
         'trytest-mcq-letter mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-lg bg-zinc-200/90 text-[11px] font-bold uppercase tabular-nums tracking-wide text-zinc-700 dark:bg-zinc-600 dark:text-zinc-100';
+
+    /** Map bank column letter (A=option_a) → on-screen letter for this shuffle. */
+    function buildBankToPositionalLetterMapFromOrder(shuffledRows) {
+        const map = {};
+        if (!shuffledRows || !shuffledRows.length) {
+            return map;
+        }
+        for (let i = 0; i < shuffledRows.length; i++) {
+            const bank = String(shuffledRows[i].bank || '')
+                .toUpperCase()
+                .slice(0, 1);
+            if (/^[ABCD]$/.test(bank)) {
+                map[bank] = String.fromCharCode(65 + i);
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Rewrite “Both A and B” / “both a, b” using bank letters to match on-screen letters after shuffle.
+     */
+    function rewriteBothAndPhrasesForShuffle(text, bankToPos) {
+        const s = String(text || '');
+        if (!s || !bankToPos || typeof bankToPos !== 'object') {
+            return s;
+        }
+        function repl(m, _bw, x, y) {
+            const bx = String(x).toUpperCase();
+            const by = String(y).toUpperCase();
+            const px = bankToPos[bx];
+            const py = bankToPos[by];
+            if (!px || !py) {
+                return m;
+            }
+            const bothWord = /^Both\b/.test(String(m)) ? 'Both' : 'both';
+            return bothWord + ' ' + px + ' and ' + py;
+        }
+        let out = s.replace(/\b(both)\s+([A-Da-d])\s+and\s+([A-Da-d])\b/gi, repl);
+        out = out.replace(/\b(both)\s+([A-Da-d])\s*,\s*([A-Da-d])\b/gi, repl);
+        return out;
+    }
+
+    /** Surface label for feedback (matches what the learner saw). */
+    function displayMcqOptionSurfaceText(originalStoredText) {
+        const bmap = mcqBankToPosMap || buildBankToPositionalLetterMapFromOrder(mcqRenderOrder);
+        return rewriteBothAndPhrasesForShuffle(String(originalStoredText || ''), bmap || {});
+    }
 
     function mcqOptionInitialInnerHtml(letter, text) {
         const lab = String(letter || '').toUpperCase().slice(0, 1);
@@ -1290,44 +1355,53 @@
             escapeHtml(lab) +
             '</span><span class="flex min-w-0 flex-1 items-start gap-2">' +
             '<span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
-            escapeHtml(String(selectedText)) +
+            escapeHtml(displayMcqOptionSurfaceText(selectedText)) +
             '</span>' +
             suffixHtml +
             '</span>';
     }
 
     function renderMcqOptions(q) {
+        mcqRenderOrder = null;
+        mcqBankToPosMap = null;
         const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
         const entries = [];
         keys.forEach(function (k, idx) {
             const text = q[k];
             if (text != null && String(text).trim() !== '') {
                 entries.push({
-                    letter: String.fromCharCode(65 + idx),
+                    bank: String.fromCharCode(65 + idx),
                     text: String(text).trim(),
                 });
             }
         });
         shuffleInPlace(entries);
+        mcqRenderOrder = entries.map(function (e) {
+            return { bank: e.bank, text: e.text };
+        });
+        const bankToPos = buildBankToPositionalLetterMapFromOrder(entries);
         const parts = [];
-        entries.forEach(function (entry) {
-            const letter = entry.letter;
-            const text = entry.text;
-            const labelHint = 'Choice ' + letter + ': ' + text.slice(0, 240);
+        entries.forEach(function (entry, screenIndex) {
+            const positional = String.fromCharCode(65 + screenIndex);
+            const displayText = rewriteBothAndPhrasesForShuffle(entry.text, bankToPos);
+            const labelHint = 'Choice ' + positional + ': ' + displayText.slice(0, 240);
             parts.push(
                 '<button type="button" class="' +
                     MCQ_OPTION_BTN_CLASS +
                     '" data-option="' +
-                    escapeAttr(text) +
+                    escapeAttr(entry.text) +
                     '" data-mcq-letter="' +
-                    escapeAttr(letter) +
+                    escapeAttr(positional) +
+                    '" data-mcq-bank="' +
+                    escapeAttr(entry.bank) +
                     '" aria-label="' +
                     escapeAttr(labelHint) +
                     '">' +
-                    mcqOptionInitialInnerHtml(letter, text) +
+                    mcqOptionInitialInnerHtml(positional, displayText) +
                     '</button>'
             );
         });
+        mcqBankToPosMap = bankToPos;
         return '<div class="space-y-3" id="optionsWrap">' + parts.join('') + '</div>';
     }
 
@@ -1427,6 +1501,8 @@
 
     function showLoadedQuestion(q) {
         locked = false;
+        mcqRenderOrder = null;
+        mcqBankToPosMap = null;
         setProgress();
         maybeStartQuizTimer();
         if (quizCard) {
@@ -1448,11 +1524,17 @@
             return;
         }
 
+        const optsHtml = renderMcqOptions(q);
+        const stemRaw = String(q.question || '');
+        const stemShown =
+            mcqBankToPosMap && typeof mcqBankToPosMap === 'object'
+                ? rewriteBothAndPhrasesForShuffle(stemRaw, mcqBankToPosMap)
+                : stemRaw;
         const title =
             '<h2 class="mb-3 text-left text-base font-bold leading-snug text-slate-900 sm:mb-4 sm:text-lg dark:text-zinc-100">' +
-            escapeHtml(String(q.question)) +
+            escapeHtml(stemShown) +
             '</h2>';
-        questionBox.innerHTML = title + renderMcqOptions(q);
+        questionBox.innerHTML = title + optsHtml;
         bindMcqHandlers(q);
         saveQuizResume();
     }
@@ -1517,7 +1599,10 @@
         return false;
     }
 
-    /** When correct_answer is a single letter A–D, compare against the actual option text. */
+    /**
+     * When correct_answer is a single letter A–D: on this screen, that is the Nth choice (A=first row).
+     * Falls back to DB column (option_a=A) only if shuffle snapshot is missing.
+     */
     function resolveLetterMcqCorrect(correct, q) {
         if (!q) {
             return String(correct || '');
@@ -1525,6 +1610,13 @@
         const c = String(correct || '').trim();
         if (!/^[ABCD]$/i.test(c)) {
             return c;
+        }
+        const idx = c.toUpperCase().charCodeAt(0) - 65;
+        if (mcqRenderOrder && mcqRenderOrder.length > idx && mcqRenderOrder[idx]) {
+            const row = mcqRenderOrder[idx];
+            if (row.text != null && String(row.text).trim() !== '') {
+                return String(row.text).trim();
+            }
         }
         const map = { A: 'option_a', B: 'option_b', C: 'option_c', D: 'option_d' };
         const col = map[c.toUpperCase()];
