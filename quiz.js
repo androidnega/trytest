@@ -1279,9 +1279,21 @@
     const MCQ_OPTION_BTN_CLASS =
         'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 break-words whitespace-normal shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
 
-    /** Badge = on-screen position (first row A, …). Option text can rewrite “Both A and B” (bank) → positional. */
-    const MCQ_LETTER_BADGE_CLASS =
-        'trytest-mcq-letter mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-lg bg-zinc-200/90 text-[11px] font-bold uppercase tabular-nums tracking-wide text-zinc-700 dark:bg-zinc-600 dark:text-zinc-100';
+    /** Badge = on-screen position (first row A, …). Distinct color per letter A–D. */
+    function mcqLetterBadgeClassForPositionalLetter(letter) {
+        const L = String(letter || '')
+            .toUpperCase()
+            .slice(0, 1);
+        const base =
+            'trytest-mcq-letter mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tabular-nums tracking-wide ring-1 ring-inset';
+        const byLetter = {
+            A: 'bg-sky-100 text-sky-900 ring-sky-300/80 dark:bg-sky-950/60 dark:text-sky-100 dark:ring-sky-700/55',
+            B: 'bg-emerald-100 text-emerald-900 ring-emerald-300/80 dark:bg-emerald-950/60 dark:text-emerald-100 dark:ring-emerald-700/55',
+            C: 'bg-violet-100 text-violet-900 ring-violet-300/80 dark:bg-violet-950/60 dark:text-violet-100 dark:ring-violet-700/55',
+            D: 'bg-amber-100 text-amber-950 ring-amber-300/80 dark:bg-amber-950/60 dark:text-amber-100 dark:ring-amber-700/55',
+        };
+        return base + ' ' + (byLetter[L] || 'bg-zinc-200/90 text-zinc-800 ring-zinc-300/80 dark:bg-zinc-600 dark:text-zinc-100 dark:ring-zinc-500/55');
+    }
 
     /** Map bank column letter (A=option_a) → on-screen letter for this shuffle. */
     function buildBankToPositionalLetterMapFromOrder(shuffledRows) {
@@ -1334,7 +1346,7 @@
         const lab = String(letter || '').toUpperCase().slice(0, 1);
         return (
             '<span class="' +
-            MCQ_LETTER_BADGE_CLASS +
+            mcqLetterBadgeClassForPositionalLetter(lab) +
             '" aria-hidden="true">' +
             escapeHtml(lab) +
             '</span><span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
@@ -1350,7 +1362,7 @@
             .slice(0, 1);
         btn.innerHTML =
             '<span class="' +
-            MCQ_LETTER_BADGE_CLASS +
+            mcqLetterBadgeClassForPositionalLetter(lab) +
             '" aria-hidden="true">' +
             escapeHtml(lab) +
             '</span><span class="flex min-w-0 flex-1 items-start gap-2">' +
