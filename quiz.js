@@ -1261,26 +1261,70 @@
     const MCQ_OPTION_BTN_CLASS =
         'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 break-words whitespace-normal shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
 
+    /** Letter badge (A–D) tied to option_a…option_d so stems can say “A and B” after shuffle. */
+    const MCQ_LETTER_BADGE_CLASS =
+        'trytest-mcq-letter mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-lg bg-zinc-200/90 text-[11px] font-bold uppercase tabular-nums tracking-wide text-zinc-700 dark:bg-zinc-600 dark:text-zinc-100';
+
+    function mcqOptionInitialInnerHtml(letter, text) {
+        const lab = String(letter || '').toUpperCase().slice(0, 1);
+        return (
+            '<span class="' +
+            MCQ_LETTER_BADGE_CLASS +
+            '" aria-hidden="true">' +
+            escapeHtml(lab) +
+            '</span><span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
+            escapeHtml(String(text)) +
+            '</span>'
+        );
+    }
+
+    /** After answer feedback, keep the A–D badge beside the option text (do not use textContent alone). */
+    function setMcqOptionFeedbackInnerHtml(btn, selectedText, suffixHtml) {
+        const lab = String(btn.getAttribute('data-mcq-letter') || '')
+            .toUpperCase()
+            .slice(0, 1);
+        btn.innerHTML =
+            '<span class="' +
+            MCQ_LETTER_BADGE_CLASS +
+            '" aria-hidden="true">' +
+            escapeHtml(lab) +
+            '</span><span class="flex min-w-0 flex-1 items-start gap-2">' +
+            '<span class="min-w-0 flex-1 leading-snug break-words whitespace-normal">' +
+            escapeHtml(String(selectedText)) +
+            '</span>' +
+            suffixHtml +
+            '</span>';
+    }
+
     function renderMcqOptions(q) {
         const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
         const entries = [];
-        keys.forEach(function (k) {
+        keys.forEach(function (k, idx) {
             const text = q[k];
             if (text != null && String(text).trim() !== '') {
-                entries.push(String(text));
+                entries.push({
+                    letter: String.fromCharCode(65 + idx),
+                    text: String(text).trim(),
+                });
             }
         });
         shuffleInPlace(entries);
         const parts = [];
-        entries.forEach(function (text) {
-            const safe = escapeHtml(String(text));
+        entries.forEach(function (entry) {
+            const letter = entry.letter;
+            const text = entry.text;
+            const labelHint = 'Choice ' + letter + ': ' + text.slice(0, 240);
             parts.push(
                 '<button type="button" class="' +
                     MCQ_OPTION_BTN_CLASS +
                     '" data-option="' +
-                    escapeAttr(String(text)) +
+                    escapeAttr(text) +
+                    '" data-mcq-letter="' +
+                    escapeAttr(letter) +
+                    '" aria-label="' +
+                    escapeAttr(labelHint) +
                     '">' +
-                    safe +
+                    mcqOptionInitialInnerHtml(letter, text) +
                     '</button>'
             );
         });
@@ -1623,18 +1667,24 @@
         const ok = isMcqSelectionCorrect(selected, correct, q);
 
         if (ok) {
-            btn.textContent = selected;
             btn.className =
                 'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal success-pop shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
-            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
+            setMcqOptionFeedbackInnerHtml(
+                btn,
+                selected,
+                '<span class="inline-flex shrink-0 self-start pt-0.5 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+            );
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
             triggerCardCorrectFeedback();
         } else {
-            btn.textContent = selected;
             btn.className =
                 'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-red-300 bg-red-50 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
-            btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 opacity-90" aria-hidden="true">✗</span>');
+            setMcqOptionFeedbackInnerHtml(
+                btn,
+                selected,
+                '<span class="inline-flex shrink-0 self-start pt-0.5 opacity-90" aria-hidden="true">✗</span>'
+            );
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
@@ -1662,10 +1712,13 @@
             if (!isMcqSelectionCorrect(val, correct, q)) {
                 return;
             }
-            b.textContent = val;
             b.className =
                 'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
-            b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
+            setMcqOptionFeedbackInnerHtml(
+                b,
+                val,
+                '<span class="inline-flex shrink-0 self-start pt-0.5 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+            );
         });
     }
 
