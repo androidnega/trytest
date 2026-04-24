@@ -1107,10 +1107,104 @@
         return loadQuestionById(n);
     }
 
+    /**
+     * Multi-select style key in correct_answer: "AB", "A,B", "A and B", "both b and c", etc.
+     * Returns sorted unique letters as a string (e.g. "BC") or null for single / non-letter keys.
+     */
+    function parseMcqCorrectLetterSet(correct) {
+        const raw = String(correct || '').trim();
+        if (!raw) return null;
+        const compact = raw.replace(/\s+/g, '').toUpperCase();
+        if (/^[ABCD]{2,4}$/.test(compact)) {
+            const set = {};
+            for (let i = 0; i < compact.length; i++) {
+                set[compact[i]] = true;
+            }
+            return Object.keys(set).sort().join('');
+        }
+        const normalized = raw
+            .replace(/\s+and\s+/gi, ',')
+            .replace(/\s*&\s*/g, ',')
+            .replace(/\s*\+\s*/g, ',')
+            .replace(/\s*,\s*/g, ',')
+            .replace(/\s+both\s+/gi, ',');
+        const parts = normalized
+            .split(/[,\/;|]+/)
+            .map(function (p) {
+                return p.trim();
+            })
+            .filter(Boolean);
+        const lettersFromParts = [];
+        for (let i = 0; i < parts.length; i++) {
+            const p = parts[i].toUpperCase();
+            if (/^[ABCD]$/.test(p)) {
+                lettersFromParts.push(p);
+            }
+        }
+        if (lettersFromParts.length >= 2) {
+            const set = {};
+            for (let j = 0; j < lettersFromParts.length; j++) {
+                set[lettersFromParts[j]] = true;
+            }
+            return Object.keys(set).sort().join('');
+        }
+        const m = raw.toUpperCase().match(/\b([A-D])\b/g);
+        if (m && m.length >= 2) {
+            const set = {};
+            for (let k = 0; k < m.length; k++) {
+                set[m[k]] = true;
+            }
+            if (Object.keys(set).length >= 2) {
+                return Object.keys(set).sort().join('');
+            }
+        }
+        return null;
+    }
+
+    /** Letters A–D mentioned as standalone words (for "Both A and B" style options). */
+    function extractLetterSetFromMcqOptionText(opt) {
+        const m = String(opt || '')
+            .toUpperCase()
+            .match(/\b([A-D])\b/g);
+        if (!m || m.length < 2) return null;
+        const set = {};
+        for (let i = 0; i < m.length; i++) {
+            set[m[i]] = true;
+        }
+        const keys = Object.keys(set);
+        if (keys.length < 2) return null;
+        return keys.sort().join('');
+    }
+
+    /**
+     * Option text for this quiz row whose wording encodes the same letter set (compound answers).
+     */
+    function findCompoundMcqOptionTextByLetterSet(q, letterSetStr) {
+        if (!letterSetStr || !q) return '';
+        const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
+        const hits = [];
+        for (let i = 0; i < keys.length; i++) {
+            const v = q[keys[i]];
+            if (v == null || String(v).trim() === '') continue;
+            const ts = String(v).trim();
+            const setOpt = extractLetterSetFromMcqOptionText(ts);
+            if (setOpt === letterSetStr) {
+                hits.push(ts);
+            }
+        }
+        return hits.length ? hits[0] : '';
+    }
+
     function formatCorrectAnswerForReview(q) {
         const play = String(q.play_type || detectPlayType(q)).toLowerCase();
         if (play === 'mcq') {
-            return String(resolveLetterMcqCorrect(q.correct_answer, q));
+            const ca = String(q.correct_answer || '');
+            const setWant = parseMcqCorrectLetterSet(ca);
+            if (setWant) {
+                const multi = findCompoundMcqOptionTextByLetterSet(q, setWant);
+                if (multi) return multi;
+            }
+            return String(resolveLetterMcqCorrect(ca, q));
         }
         if (play === 'fill') {
             const stem = String(q.question || '');
@@ -1163,6 +1257,10 @@
         return m ? m.length : 0;
     }
 
+    /** Layout for long phrases like "Both A and B" — top-align, wrap, stable line height. */
+    const MCQ_OPTION_BTN_CLASS =
+        'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 break-words whitespace-normal shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
+
     function renderMcqOptions(q) {
         const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
         const entries = [];
@@ -1177,7 +1275,9 @@
         entries.forEach(function (text) {
             const safe = escapeHtml(String(text));
             parts.push(
-                '<button type="button" class="option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-left text-[15px] font-medium text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" data-option="' +
+                '<button type="button" class="' +
+                    MCQ_OPTION_BTN_CLASS +
+                    '" data-option="' +
                     escapeAttr(String(text)) +
                     '">' +
                     safe +
@@ -1395,9 +1495,29 @@
     }
 
     function isMcqSelectionCorrect(selected, correct, q) {
-        return (
-            isCorrectAnswer(selected, correct) || isCorrectAnswer(selected, resolveLetterMcqCorrect(correct, q))
-        );
+        if (!q) {
+            return isCorrectAnswer(selected, correct);
+        }
+        if (isCorrectAnswer(selected, correct)) {
+            return true;
+        }
+        if (isCorrectAnswer(selected, resolveLetterMcqCorrect(correct, q))) {
+            return true;
+        }
+        const setWant = parseMcqCorrectLetterSet(correct);
+        if (setWant) {
+            const keys = ['option_a', 'option_b', 'option_c', 'option_d'];
+            for (let i = 0; i < keys.length; i++) {
+                const t = q[keys[i]];
+                if (t == null || String(t).trim() === '') continue;
+                const ts = String(t).trim();
+                const setOpt = extractLetterSetFromMcqOptionText(ts);
+                if (setOpt === setWant && isCorrectAnswer(selected, ts)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     function isFillTheoryCorrect(userParts, correct, stem) {
@@ -1505,7 +1625,7 @@
         if (ok) {
             btn.textContent = selected;
             btn.className =
-                'option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-400 bg-zinc-100 p-3.5 text-left text-[15px] font-semibold text-zinc-900 success-pop shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal success-pop shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
@@ -1513,7 +1633,7 @@
         } else {
             btn.textContent = selected;
             btn.className =
-                'option flex min-h-[52px] w-full items-center rounded-2xl border border-red-300 bg-red-50 p-3.5 text-left text-[15px] font-semibold text-red-950 shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
+                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-red-300 bg-red-50 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
             btn.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 opacity-90" aria-hidden="true">✗</span>');
             if (navigator.vibrate) {
                 navigator.vibrate(200);
@@ -1544,7 +1664,7 @@
             }
             b.textContent = val;
             b.className =
-                'option flex min-h-[52px] w-full items-center rounded-2xl border border-zinc-400 bg-zinc-100 p-3.5 text-left text-[15px] font-semibold text-zinc-900 shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+                'option flex min-h-[52px] w-full items-start justify-start gap-2 rounded-2xl border border-zinc-400 bg-zinc-100 px-3.5 py-3 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 break-words whitespace-normal shadow-sm sm:min-h-0 sm:rounded-xl sm:p-4 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
             b.insertAdjacentHTML('beforeend', ' <span class="inline-block shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>');
         });
     }
