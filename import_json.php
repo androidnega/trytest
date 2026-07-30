@@ -6,12 +6,14 @@ session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/theory_rubric.php';
+require_once __DIR__ . '/includes/question_json_formats.php';
 
 $error = '';
 $message = '';
 $jsonText = '';
 $jsonTextContinue = '';
 $selectedQuizId = '';
+$importFormat = 'any';
 
 /**
  * Turn one decoded JSON value (object or list) into a flat list of question rows.
@@ -129,6 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quizId = ctype_digit($selectedQuizId) ? (int) $selectedQuizId : 0;
         $jsonText = trim((string) ($_POST['json'] ?? ''));
         $jsonTextContinue = trim((string) ($_POST['json_continue'] ?? ''));
+        $importFormatRaw = trim((string) ($_POST['import_format'] ?? 'any'));
+        $importFormat = $importFormatRaw === 'any'
+            ? 'any'
+            : trytest_normalize_question_format_type($importFormatRaw);
 
         if ($quizId < 1 || $jsonText === '') {
             $error = 'Select a quiz and paste JSON.';
@@ -153,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $imported = 0;
                     $skippedDuplicates = 0;
+                    $skippedWrongType = 0;
                     $seenQuestions = [];
                     $db->beginTransaction();
                     try {
@@ -193,7 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $typeRaw = strtolower(trim((string) ($item['type'] ?? '')));
                             $type = $typeRaw;
-                            if (!in_array($type, ['mcq', 'fill', 'theory'], true)) {
+                            if (in_array($type, ['true_false', 'truefalse', 'boolean', 'tf', 't_f'], true)) {
+                                $type = 'true_false';
+                            } elseif (in_array($type, ['fill', 'fill_in', 'fillin', 'blank'], true)) {
+                                $type = 'fill';
+                            } elseif ($type === 'mcq') {
+                                $type = 'mcq';
+                            } elseif (!in_array($type, ['mcq', 'fill', 'theory', 'true_false'], true)) {
                                 if (strpos($question, '____') !== false) {
                                     $type = 'fill';
                                 } elseif (
@@ -210,9 +223,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
+                            if ($importFormat !== 'any') {
+                                if ($type !== $importFormat) {
+                                    // Soft coerce when AI forgot the type field but shape matches.
+                                    if ($importFormat === 'true_false' && $type !== 'true_false') {
+                                        $ansNorm = strtolower($answerField);
+                                        if (in_array($ansNorm, ['true', 'false', 't', 'f', 'yes', 'no'], true)) {
+                                            $type = 'true_false';
+                                        } else {
+                                            $skippedWrongType++;
+                                            continue;
+                                        }
+                                    } elseif ($importFormat === 'fill' && $type !== 'fill') {
+                                        if (strpos($question, '____') !== false && $answerField !== '') {
+                                            $type = 'fill';
+                                        } else {
+                                            $skippedWrongType++;
+                                            continue;
+                                        }
+                                    } elseif ($importFormat === 'mcq' && $type !== 'mcq') {
+                                        if (is_array($options) && count($options) >= 4) {
+                                            $type = 'mcq';
+                                        } else {
+                                            $skippedWrongType++;
+                                            continue;
+                                        }
+                                    } else {
+                                        $skippedWrongType++;
+                                        continue;
+                                    }
+                                }
+                            }
+
                             $qKey = mb_strtolower($question);
                             if (isset($seenQuestions[$qKey])) {
                                 $skippedDuplicates++;
+                                continue;
+                            }
+
+                            if ($type === 'true_false') {
+                                $ansNorm = strtolower($answerField);
+                                if (in_array($ansNorm, ['t', 'yes', '1'], true)) {
+                                    $answerField = 'True';
+                                } elseif (in_array($ansNorm, ['f', 'no', '0'], true)) {
+                                    $answerField = 'False';
+                                } elseif ($ansNorm === 'true') {
+                                    $answerField = 'True';
+                                } elseif ($ansNorm === 'false') {
+                                    $answerField = 'False';
+                                }
+                                if (!in_array($answerField, ['True', 'False'], true)) {
+                                    continue;
+                                }
+                                $seenQuestions[$qKey] = true;
+                                $stmt->execute([$quizId, 'mcq', $question, 'True', 'False', '', '', $answerField, null, null, 'approved']);
+                                $imported++;
                                 continue;
                             }
 
@@ -282,11 +347,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if ($skippedDuplicates > 0) {
                                 $message .= ' ' . $skippedDuplicates . ' duplicates skipped while merging parts.';
                             }
+                            if ($skippedWrongType > 0) {
+                                $message .= ' ' . $skippedWrongType . ' skipped (wrong question type for your filter).';
+                            }
                         } else {
                             if ($db->inTransaction()) {
                                 $db->rollBack();
                             }
                             $message = 'No valid question records found in JSON. Existing questions were left unchanged.';
+                            if ($skippedWrongType > 0) {
+                                $message .= ' (' . $skippedWrongType . ' had a different type than selected.)';
+                            }
                         }
                     } catch (Throwable $e) {
                         if ($db->inTransaction()) {
@@ -302,6 +373,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $isAdmin = !empty($_SESSION['is_admin']);
 $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAll();
+$h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+$activeFormatPreview = $importFormat === 'any' ? 'mcq' : $importFormat;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -310,7 +383,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
     <?php trytest_link_preview_meta(['title' => 'Trytest — Import JSON', 'description' => 'Trytest admin: import exam JSON.']); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Trytest — Import JSON</title>
-    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars(trytest_url('favicon.svg'), ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="icon" type="image/svg+xml" href="<?php echo $h(trytest_url('favicon.svg')); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -322,19 +395,21 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Import JSON Questions</h1>
-                <p class="text-sm text-slate-500 mt-1">Merge partial AI outputs in one step. Importing <strong>replaces all existing questions</strong> for the quiz you select (same quiz + new JSON overwrites the set).</p>
-                <p class="text-xs text-slate-600 mt-2 max-w-3xl">Supported shapes: a JSON <strong>array</strong> of items; <code class="rounded bg-slate-100 px-1">{&quot;questions&quot;:[...]}</code>; or bucketed objects <code class="rounded bg-slate-100 px-1">mcq_questions</code>, <code class="rounded bg-slate-100 px-1">fill_in_questions</code>, <code class="rounded bg-slate-100 px-1">theory_questions</code>, and optional <code class="rounded bg-slate-100 px-1">fill_questions</code> (merged in order). Use <code class="rounded bg-slate-100 px-1">type</code>: <code class="rounded bg-slate-100 px-1">mcq</code> (four <code class="rounded bg-slate-100 px-1">options</code> + <code class="rounded bg-slate-100 px-1">answer</code>), <code class="rounded bg-slate-100 px-1">fill</code>, or <code class="rounded bg-slate-100 px-1">theory</code> (keywords / accept / answer).</p>
+                <p class="text-sm text-slate-500 mt-1">Copy a JSON format for AI, choose the question type, then paste the response. Importing <strong>replaces all existing questions</strong> for the selected quiz.</p>
             </div>
-            <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to dashboard</a>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <a href="<?php echo $h(trytest_url('dashboard/generate_ai')); ?>" class="text-indigo-600">AI prompt builder</a>
+                <a href="<?php echo $h(trytest_home_url()); ?>" class="text-indigo-600">Back to dashboard</a>
+            </div>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
 
             <?php if ($error !== ''): ?>
-                <div class="rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo $h($error); ?></div>
             <?php endif; ?>
             <?php if ($message !== ''): ?>
-                <div class="rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo $h($message); ?></div>
             <?php endif; ?>
 
             <?php if (!$isAdmin): ?>
@@ -346,18 +421,49 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                     <button class="w-full rounded-lg bg-slate-900 text-white py-2 font-medium" type="submit">Login</button>
                 </form>
             <?php else: ?>
+                <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 sm:p-4 space-y-3">
+                    <div class="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-900">Copy JSON format for AI</p>
+                            <p class="text-xs text-slate-600 mt-0.5">Choose the kind of questions you want, copy the sample, and paste it into ChatGPT/Gemini with your topic.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach (trytest_question_format_types() as $ft): ?>
+                                <button type="button" class="import-format-tab rounded-lg border px-3 py-1.5 text-xs font-semibold <?php echo $activeFormatPreview === $ft ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 bg-white text-slate-700'; ?>" data-format="<?php echo $h($ft); ?>"><?php echo $h(trytest_question_format_label($ft)); ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="copyImportFormatBtn" class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Copy JSON format</button>
+                        <span id="copyImportFormatStatus" class="self-center text-xs text-emerald-700"></span>
+                    </div>
+                    <textarea readonly id="importFormatBox" class="w-full h-44 p-3 border border-slate-300 rounded-lg font-mono text-xs bg-white"><?php echo $h(trytest_question_json_format_example($activeFormatPreview)); ?></textarea>
+                </div>
+
                 <form method="post" class="space-y-4">
                     <input type="hidden" name="action" value="import_json">
-                    <div class="rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3">
-                        <label class="block text-sm font-medium text-slate-700">Select quiz</label>
-                        <select class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" name="quiz_id" required>
-                            <option value="">Choose quiz for this import</option>
-                            <?php foreach ($quizzes as $quiz): ?>
-                                <option value="<?php echo (int) $quiz['id']; ?>" <?php echo ($selectedQuizId === (string) $quiz['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars((string) $quiz['title'], ENT_QUOTES, 'UTF-8'); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3">
+                            <label class="block text-sm font-medium text-slate-700">Select quiz</label>
+                            <select class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" name="quiz_id" required>
+                                <option value="">Choose quiz for this import</option>
+                                <?php foreach ($quizzes as $quiz): ?>
+                                    <option value="<?php echo (int) $quiz['id']; ?>" <?php echo ($selectedQuizId === (string) $quiz['id']) ? 'selected' : ''; ?>>
+                                        <?php echo $h((string) $quiz['title']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3">
+                            <label class="block text-sm font-medium text-slate-700">Question type for this import</label>
+                            <select class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" name="import_format" id="importFormatSelect">
+                                <option value="any" <?php echo $importFormat === 'any' ? 'selected' : ''; ?>>Any / mixed (auto-detect)</option>
+                                <?php foreach (trytest_question_format_types() as $ft): ?>
+                                    <option value="<?php echo $h($ft); ?>" <?php echo $importFormat === $ft ? 'selected' : ''; ?>><?php echo $h(trytest_question_format_label($ft)); ?> only</option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="text-xs text-slate-500">Pick one type so only that kind is imported (recommended).</p>
+                        </div>
                     </div>
 
                     <div class="grid gap-4 lg:grid-cols-2">
@@ -367,7 +473,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                                 <button type="button" id="copyJsonBtn" class="rounded-lg bg-slate-800 px-3 py-2 text-xs text-white">Copy part 1</button>
                             </div>
                             <p class="text-xs text-slate-500">Paste the first response from AI.</p>
-                            <textarea id="jsonInput" name="json" rows="12" class="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm" placeholder='Paste first AI JSON response here...' required><?php echo htmlspecialchars($jsonText, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <textarea id="jsonInput" name="json" rows="12" class="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm" placeholder='Paste first AI JSON response here...' required><?php echo $h($jsonText); ?></textarea>
                         </div>
 
                         <div class="rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3">
@@ -376,7 +482,7 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
                                 <button type="button" id="appendJsonBtn" class="rounded-lg bg-[#2C6A7D] px-3 py-2 text-xs text-white">Append part 2 into part 1</button>
                             </div>
                             <p class="text-xs text-slate-500">Paste remaining questions if AI stopped early.</p>
-                            <textarea id="jsonInputContinue" name="json_continue" rows="12" class="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm" placeholder='Paste continuation JSON here (e.g remaining questions)...'><?php echo htmlspecialchars($jsonTextContinue, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <textarea id="jsonInputContinue" name="json_continue" rows="12" class="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm" placeholder='Paste continuation JSON here (e.g remaining questions)...'><?php echo $h($jsonTextContinue); ?></textarea>
                             <p class="text-xs text-slate-500">Part 1 and Part 2 are merged; duplicate question text within the paste is skipped once. The quiz&rsquo;s prior questions are removed when at least one new row is imported.</p>
                         </div>
                     </div>
@@ -391,6 +497,58 @@ $quizzes = $db->query('SELECT id, title FROM quizzes ORDER BY id DESC')->fetchAl
     <?php if ($isAdmin): ?>
     <script>
         (function () {
+            var formats = <?php echo json_encode([
+                'mcq' => trytest_question_json_format_example('mcq'),
+                'fill' => trytest_question_json_format_example('fill'),
+                'true_false' => trytest_question_json_format_example('true_false'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+            var formatBox = document.getElementById('importFormatBox');
+            var formatSelect = document.getElementById('importFormatSelect');
+            var copyFormatBtn = document.getElementById('copyImportFormatBtn');
+            var copyFormatStatus = document.getElementById('copyImportFormatStatus');
+            var tabs = document.querySelectorAll('.import-format-tab');
+
+            function setPreview(ft) {
+                if (!formats[ft]) ft = 'mcq';
+                if (formatBox) formatBox.value = formats[ft];
+                tabs.forEach(function (btn) {
+                    var on = btn.getAttribute('data-format') === ft;
+                    btn.classList.toggle('border-indigo-600', on);
+                    btn.classList.toggle('bg-indigo-600', on);
+                    btn.classList.toggle('text-white', on);
+                    btn.classList.toggle('border-slate-300', !on);
+                    btn.classList.toggle('bg-white', !on);
+                    btn.classList.toggle('text-slate-700', !on);
+                });
+                if (formatSelect && formatSelect.value !== 'any') {
+                    formatSelect.value = ft;
+                }
+            }
+
+            tabs.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var ft = btn.getAttribute('data-format') || 'mcq';
+                    setPreview(ft);
+                    if (formatSelect) formatSelect.value = ft;
+                });
+            });
+            formatSelect?.addEventListener('change', function () {
+                var v = formatSelect.value;
+                if (v !== 'any' && formats[v]) setPreview(v);
+            });
+            copyFormatBtn?.addEventListener('click', function () {
+                var text = formatBox?.value || '';
+                if (!text) return;
+                navigator.clipboard.writeText(text).then(function () {
+                    if (copyFormatStatus) copyFormatStatus.textContent = 'Format copied — paste into AI with your topic';
+                    copyFormatBtn.textContent = 'Copied';
+                    setTimeout(function () {
+                        copyFormatBtn.textContent = 'Copy JSON format';
+                        if (copyFormatStatus) copyFormatStatus.textContent = '';
+                    }, 1600);
+                });
+            });
+
             var btn = document.getElementById('copyJsonBtn');
             var box = document.getElementById('jsonInput');
             var continueBox = document.getElementById('jsonInputContinue');
