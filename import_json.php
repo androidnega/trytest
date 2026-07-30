@@ -7,6 +7,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/theory_rubric.php';
 require_once __DIR__ . '/includes/question_json_formats.php';
+require_once __DIR__ . '/includes/mcq_answer.php';
 
 $error = '';
 $message = '';
@@ -290,6 +291,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $optC = trim((string) ($options[2] ?? ''));
                                 $optD = trim((string) ($options[3] ?? ''));
                                 if ($optA === '' || $optB === '' || $optC === '' || $optD === '') {
+                                    continue;
+                                }
+                                $answerField = trytest_mcq_resolve_correct_to_option_text(
+                                    $answerField,
+                                    $optA,
+                                    $optB,
+                                    $optC,
+                                    $optD
+                                );
+                                $optsNorm = [
+                                    mb_strtolower($optA),
+                                    mb_strtolower($optB),
+                                    mb_strtolower($optC),
+                                    mb_strtolower($optD),
+                                ];
+                                if (!in_array(mb_strtolower($answerField), $optsNorm, true)) {
                                     continue;
                                 }
                                 $seenQuestions[$qKey] = true;

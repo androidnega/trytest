@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/question_play_type.php';
+require_once __DIR__ . '/includes/mcq_answer.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -101,6 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$chk->fetch()) {
                 $error = 'Question not found in this quiz set.';
             } else {
+                if (($questionType === '' || $questionType === 'mcq') && $a !== '' && $b !== '') {
+                    $correct = trytest_mcq_resolve_correct_to_option_text($correct, $a, $b, $c, $d);
+                }
                 $db->prepare(
                     'UPDATE questions
                      SET question = ?, question_type = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, sql_practice = NULL

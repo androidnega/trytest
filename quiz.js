@@ -210,8 +210,8 @@
     let examReviewItems = [];
 
     /**
-     * After shuffle, each row: bank letter = DB column (option_a→A), text = stored option string.
-     * Used so single-letter correct_answer means on-screen position (first row=A), not DB column.
+     * After shuffle, each row keeps bank = DB column (option_a→A) and text = stored option string.
+     * On-screen A–D badges are positional only; correct_answer letters always mean bank columns.
      */
     /** @type {{ bank: string, text: string }[]|null} */
     let mcqRenderOrder = null;
@@ -1625,32 +1625,39 @@
     }
 
     /**
-     * When correct_answer is a single letter A–D: on this screen, that is the Nth choice (A=first row).
-     * Falls back to DB column (option_a=A) only if shuffle snapshot is missing.
+     * When correct_answer is a single letter A–D, map it to the DB bank option text
+     * (option_a = A … option_d = D). Never treat the letter as on-screen row position after shuffle.
      */
     function resolveLetterMcqCorrect(correct, q) {
         if (!q) {
             return String(correct || '');
         }
-        const c = String(correct || '').trim();
-        if (!/^[ABCD]$/i.test(c)) {
+        let c = String(correct || '').trim();
+        // Allow "A", "A.", "A)", "(A)", "a :" etc.
+        const letterMatch = c.match(/^\(?\s*([ABCD])\s*[\.\)\:\-]?\s*$/i);
+        if (!letterMatch) {
             return c;
         }
-        const idx = c.toUpperCase().charCodeAt(0) - 65;
-        if (mcqRenderOrder && mcqRenderOrder.length > idx && mcqRenderOrder[idx]) {
-            const row = mcqRenderOrder[idx];
-            if (row.text != null && String(row.text).trim() !== '') {
-                return String(row.text).trim();
+        c = letterMatch[1].toUpperCase();
+        if (mcqRenderOrder && mcqRenderOrder.length) {
+            for (let i = 0; i < mcqRenderOrder.length; i++) {
+                const row = mcqRenderOrder[i];
+                if (row && String(row.bank || '').toUpperCase() === c) {
+                    if (row.text != null && String(row.text).trim() !== '') {
+                        return String(row.text).trim();
+                    }
+                    break;
+                }
             }
         }
         const map = { A: 'option_a', B: 'option_b', C: 'option_c', D: 'option_d' };
-        const col = map[c.toUpperCase()];
+        const col = map[c];
         if (!col) {
-            return c;
+            return String(correct || '').trim();
         }
         const v = q[col];
         if (v == null || String(v).trim() === '') {
-            return c;
+            return String(correct || '').trim();
         }
         return String(v).trim();
     }
@@ -1700,7 +1707,7 @@
                 return String(multi).trim();
             }
         }
-        if (/^[ABCD]$/i.test(ca)) {
+        if (/^[ABCD]$/i.test(ca) || /^\(?\s*[ABCD]\s*[\.\)\:\-]?\s*$/i.test(ca)) {
             return String(resolveLetterMcqCorrect(ca, q)).trim();
         }
         if (String(ca).indexOf(',') !== -1) {
