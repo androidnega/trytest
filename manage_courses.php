@@ -23,11 +23,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $department = trim((string) ($_POST['department'] ?? ''));
         $levelOpts = trytest_level_dropdown_options($db);
         $level = trytest_resolve_level_for_save($levelRaw, $levelOpts);
-        if ($code === '' || $title === '') {
+        $deptOpts = trytest_department_dropdown_options($db);
+        if ($deptOpts !== [] && $department !== '') {
+            $resolvedDept = trytest_resolve_department_for_save($department, $deptOpts);
+            if ($resolvedDept === null) {
+                $error = 'Choose a department from the list, or Any program.';
+            } else {
+                $department = $resolvedDept;
+            }
+        }
+        if ($error === '' && ($code === '' || $title === '')) {
             $error = 'Course code and title are required.';
-        } elseif ($level === null) {
+        } elseif ($error === '' && $level === null) {
             $error = 'Choose a level from the list.';
-        } else {
+        } elseif ($error === '') {
             $db->prepare('INSERT INTO courses (code, title, level, department) VALUES (?, ?, ?, ?)')->execute([$code, $title, $level, $department]);
             $message = 'Course created.';
         }
@@ -35,8 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_course_department') {
         $courseId = (int) ($_POST['course_id'] ?? 0);
         $department = trim((string) ($_POST['department'] ?? ''));
+        $deptOpts = trytest_department_dropdown_options($db);
         if ($courseId < 1) {
             $error = 'Select a valid course to update.';
+        } elseif ($deptOpts !== [] && $department !== '') {
+            $resolvedDept = trytest_resolve_department_for_save($department, $deptOpts);
+            if ($resolvedDept === null) {
+                $error = 'Choose a department from the list, or Any program.';
+            } else {
+                $db->prepare('UPDATE courses SET department = ? WHERE id = ?')->execute([$resolvedDept, $courseId]);
+                $message = 'Course department updated.';
+            }
         } else {
             $db->prepare('UPDATE courses SET department = ? WHERE id = ?')->execute([$department, $courseId]);
             $message = 'Course department updated.';
@@ -50,11 +68,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $department = trim((string) ($_POST['department'] ?? ''));
         $levelOpts = trytest_level_dropdown_options($db);
         $level = trytest_resolve_level_for_save($levelRaw, $levelOpts);
-        if ($courseId < 1 || $code === '' || $title === '') {
+        $deptOpts = trytest_department_dropdown_options($db);
+        if ($deptOpts !== [] && $department !== '') {
+            $resolvedDept = trytest_resolve_department_for_save($department, $deptOpts);
+            if ($resolvedDept === null) {
+                $error = 'Choose a department from the list, or Any program.';
+            } else {
+                $department = $resolvedDept;
+            }
+        }
+        if ($error === '' && ($courseId < 1 || $code === '' || $title === '')) {
             $error = 'Course code and title are required for updates.';
-        } elseif ($level === null) {
+        } elseif ($error === '' && $level === null) {
             $error = 'Choose a level from the list.';
-        } else {
+        } elseif ($error === '') {
             $db->prepare(
                 'UPDATE courses SET code = ?, title = ?, level = ?, department = ? WHERE id = ?'
             )->execute([$code, $title, $level, $department, $courseId]);
@@ -129,13 +156,22 @@ $levelPresets = trytest_level_dropdown_options($db);
                         </select>
                     </div>
                     <input class="w-full border rounded-lg px-3 py-2" name="title" placeholder="Course title" required>
+                    <?php if ($deptPresets !== []): ?>
+                    <select class="w-full border rounded-lg px-3 py-2" name="department">
+                        <option value="">Any program (all departments)</option>
+                        <?php foreach ($deptPresets as $dp): ?>
+                            <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($dp['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php else: ?>
                     <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets" placeholder="Department / program (optional)" maxlength="120" autocomplete="off">
                     <datalist id="trytest_dept_presets">
                         <?php foreach ($deptPresets as $dp): ?>
                             <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"></option>
                         <?php endforeach; ?>
                     </datalist>
-                    <p class="text-xs text-slate-500">Manage presets under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>">Departments</a> and <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_levels'), ENT_QUOTES, 'UTF-8'); ?>">Levels</a>.</p>
+                    <?php endif; ?>
+                    <p class="text-xs text-slate-500">Program must match what students pick at sign-up (or leave blank for every program at this level). Manage presets under <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_departments'), ENT_QUOTES, 'UTF-8'); ?>">Departments</a> and <a class="font-medium text-indigo-600 hover:underline" href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_levels'), ENT_QUOTES, 'UTF-8'); ?>">Levels</a>.</p>
                     <button class="w-full bg-slate-900 text-white rounded-lg py-2 font-medium">Add Course</button>
                 </form>
             </section>
@@ -149,12 +185,21 @@ $levelPresets = trytest_level_dropdown_options($db);
                             <option value="<?php echo (int) $course['id']; ?>"><?php echo htmlspecialchars((string) $course['code'] . ' — ' . $course['title'], ENT_QUOTES, 'UTF-8'); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets2" placeholder="Department / program (blank to clear)" maxlength="120" autocomplete="off">
+                    <?php if ($deptPresets !== []): ?>
+                    <select class="w-full border rounded-lg px-3 py-2" name="department">
+                        <option value="">Any program (all departments)</option>
+                        <?php foreach ($deptPresets as $dp): ?>
+                            <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($dp['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php else: ?>
+                    <input class="w-full border rounded-lg px-3 py-2" name="department" list="trytest_dept_presets2" placeholder="Department / program (blank = any)" maxlength="120" autocomplete="off">
                     <datalist id="trytest_dept_presets2">
                         <?php foreach ($deptPresets as $dp): ?>
                             <option value="<?php echo htmlspecialchars($dp['value'], ENT_QUOTES, 'UTF-8'); ?>"></option>
                         <?php endforeach; ?>
                     </datalist>
+                    <?php endif; ?>
                     <button class="w-full bg-[#2C6A7D] text-white rounded-lg py-2 font-medium">Update Department</button>
                 </form>
             </section>

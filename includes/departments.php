@@ -82,3 +82,18 @@ function trytest_resolve_department_for_save(string $raw, array $departmentOptio
 
     return null;
 }
+
+/**
+ * Whether a course/document department target matches the student's program.
+ * Empty course department = visible to all programs (same rule as PDFs).
+ */
+function trytest_department_matches(?string $targetDepartment, string $userDepartment): bool
+{
+    $target = trim((string) $targetDepartment);
+    $user = trim($userDepartment);
+    if ($target === '') {
+        return true;
+    }
+
+    return $user !== '' && strcasecmp($target, $user) === 0;
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/quiz_share.php';
 require_once __DIR__ . '/levels.php';
+require_once __DIR__ . '/departments.php';
 
 /**
  * Visible name: nickname when set, otherwise a short label from index number (legacy).
@@ -189,13 +190,17 @@ function trytest_student_load_courses_with_quizzes(PDO $db, int $userId, string 
     }
 
     $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
-        WHERE LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+        WHERE TRIM(COALESCE(c.department, \'\')) = \'\'
+           OR LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
         ORDER BY c.code ASC';
     $courseStmt = $db->prepare($courseSql);
     $courseStmt->execute([$userDepartment]);
     $courses = [];
     foreach ($courseStmt->fetchAll() as $crow) {
         if (trytest_level_canon((string) ($crow['level'] ?? '')) !== $uCanon) {
+            continue;
+        }
+        if (!trytest_department_matches((string) ($crow['department'] ?? ''), $userDepartment)) {
             continue;
         }
         $courses[] = $crow;
@@ -555,7 +560,7 @@ function trytest_quiz_review_json_normalize(?array $rows, int $totalQuestions): 
 }
 
 /**
- * Remove this student’s saved score and attempt history for a quiz (try again).
+ * Remove this student's saved score and attempt history for a quiz (try again).
  */
 function trytest_student_wipe_quiz_results(PDO $db, int $userId, int $quizId): void
 {
@@ -564,6 +569,44 @@ function trytest_student_wipe_quiz_results(PDO $db, int $userId, int $quizId): v
     }
     $db->prepare('DELETE FROM score_attempts WHERE quiz_id = ? AND user_id = ?')->execute([$quizId, $userId]);
     $db->prepare('DELETE FROM scores WHERE quiz_id = ? AND user_id = ?')->execute([$quizId, $userId]);
+}
+
+/**
+ * Delete a student account and all related rows so they can register again with the same index.
+ */
+function trytest_admin_purge_student_account(PDO $db, int $userId): bool
+{
+    if ($userId < 1) {
+        return false;
+    }
+    $db->beginTransaction();
+    try {
+        $db->prepare('DELETE FROM score_attempts WHERE user_id = ?')->execute([$userId]);
+        $db->prepare('DELETE FROM scores WHERE user_id = ?')->execute([$userId]);
+        try {
+            $db->prepare('DELETE FROM student_document_downloads WHERE user_id = ?')->execute([$userId]);
+        } catch (Throwable $e) {
+            // table may not exist on very old installs
+        }
+        try {
+            $db->prepare('DELETE FROM student_system_feedback WHERE user_id = ?')->execute([$userId]);
+        } catch (Throwable $e) {
+        }
+        try {
+            $db->prepare('DELETE FROM quiz_presence_ping WHERE user_id = ?')->execute([$userId]);
+        } catch (Throwable $e) {
+        }
+        $db->prepare('DELETE FROM users WHERE id = ?')->execute([$userId]);
+        $db->commit();
+
+        return true;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        return false;
+    }
 }
 
 /**
@@ -659,7 +702,7 @@ function trytest_student_can_access_quiz(PDO $db, int $quizId, string $userLevel
         if ($cl === '' || $cl !== $uCanon) {
             continue;
         }
-        if (strcasecmp($userDepartment, $cd) !== 0) {
+        if (!trytest_department_matches($cd, $userDepartment)) {
             continue;
         }
         $allowed = true;
@@ -931,13 +974,17 @@ function trytest_student_dashboard_quiz_schedule_map(PDO $db, string $userLevel,
         return $out;
     }
     $courseSql = 'SELECT c.id, c.code, c.title, c.level, c.department FROM courses c
-        WHERE LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
+        WHERE TRIM(COALESCE(c.department, \'\')) = \'\'
+           OR LOWER(TRIM(COALESCE(c.department, \'\'))) = LOWER(TRIM(?))
         ORDER BY c.code ASC';
     $courseStmt = $db->prepare($courseSql);
     $courseStmt->execute([$userDepartment]);
     $courses = [];
     foreach ($courseStmt->fetchAll(PDO::FETCH_ASSOC) as $crow) {
         if (trytest_level_canon((string) ($crow['level'] ?? '')) !== $uCanon) {
+            continue;
+        }
+        if (!trytest_department_matches((string) ($crow['department'] ?? ''), $userDepartment)) {
             continue;
         }
         $courses[] = $crow;

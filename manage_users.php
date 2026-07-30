@@ -4,20 +4,58 @@ declare(strict_types=1);
 
 session_start();
 require __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/departments.php';
+require_once __DIR__ . '/includes/levels.php';
+require_once __DIR__ . '/includes/student_helpers.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
 }
 
 $message = '';
+$error = '';
+$departmentOptions = trytest_department_dropdown_options($db);
+$levelOptions = trytest_level_dropdown_options($db);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    if ($action === 'delete_user') {
+    if ($action === 'delete_user' || $action === 'reset_for_reonboard') {
         $id = (int) ($_POST['id'] ?? 0);
         if ($id > 0) {
-            $db->prepare('DELETE FROM scores WHERE user_id = ?')->execute([$id]);
-            $db->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
-            $message = 'User deleted.';
+            if (trytest_admin_purge_student_account($db, $id)) {
+                $message = $action === 'reset_for_reonboard'
+                    ? 'Student cleared. They can sign in with their index and register again.'
+                    : 'User deleted.';
+            } else {
+                $error = 'Could not remove this student. Try again.';
+            }
+        }
+    }
+    if ($action === 'update_student') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
+        $deptRaw = trim((string) ($_POST['department'] ?? ''));
+        if ($id < 1) {
+            $error = 'Invalid student.';
+        } else {
+            $resolvedLevel = trytest_resolve_level_for_save($levelRaw, $levelOptions);
+            if ($resolvedLevel === null) {
+                $error = 'Choose a valid level from the list.';
+            } else {
+                $resolvedDept = trytest_resolve_department_for_save($deptRaw, $departmentOptions);
+                if ($departmentOptions !== [] && $resolvedDept === null) {
+                    $error = 'Choose a program from the list (must match course departments).';
+                } else {
+                    $deptToSave = (string) $resolvedDept;
+                    try {
+                        $db->prepare('UPDATE users SET level = ?, department = ? WHERE id = ?')
+                            ->execute([$resolvedLevel, $deptToSave, $id]);
+                        $message = 'Student level and program updated.';
+                    } catch (Throwable $e) {
+                        $error = 'Could not update student.';
+                    }
+                }
+            }
         }
     }
 }
@@ -137,6 +175,9 @@ foreach ($users as $user) {
         <?php if ($message !== ''): ?>
             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><?php echo $h($message); ?></div>
         <?php endif; ?>
+        <?php if ($error !== ''): ?>
+            <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"><?php echo $h($error); ?></div>
+        <?php endif; ?>
 
         <section class="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <?php if ($rowsPayload === []): ?>
@@ -211,12 +252,46 @@ foreach ($users as $user) {
             </div>
             <div class="max-h-[min(70vh,28rem)] overflow-y-auto px-4 py-3">
                 <dl id="userModalDl" class="grid grid-cols-1 gap-3 text-sm"></dl>
+                <form method="post" id="userModalEditForm" class="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                    <input type="hidden" name="action" value="update_student">
+                    <input type="hidden" name="id" id="userModalEditId" value="">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Fix program / level</p>
+                    <p class="text-[11px] leading-snug text-slate-600">Must match the course department and level for quizzes to appear.</p>
+                    <label class="block text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-slate-600">Level</span>
+                        <select name="level" id="userModalEditLevel" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <?php foreach ($levelOptions as $lo): ?>
+                                <option value="<?php echo $h((string) ($lo['value'] ?? '')); ?>"><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <?php if ($departmentOptions !== []): ?>
+                    <label class="block text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-slate-600">Program / department</span>
+                        <select name="department" id="userModalEditDepartment" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                            <option value="">Select…</option>
+                            <?php foreach ($departmentOptions as $depOpt): ?>
+                                <option value="<?php echo $h((string) ($depOpt['value'] ?? '')); ?>"><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <?php else: ?>
+                    <input type="hidden" name="department" id="userModalEditDepartment" value="">
+                    <?php endif; ?>
+                    <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-3 py-2 text-sm font-semibold text-white hover:bg-[#24586a]">Save level &amp; program</button>
+                </form>
             </div>
-            <div class="border-t border-slate-100 bg-slate-50 px-4 py-3">
-                <form method="post" id="userModalDeleteForm" class="flex flex-wrap items-center justify-between gap-2">
+            <div class="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+                <form method="post" id="userModalResetForm" class="flex flex-wrap items-center justify-between gap-2">
+                    <input type="hidden" name="action" value="reset_for_reonboard">
+                    <input type="hidden" name="id" id="userModalResetId" value="">
+                    <p class="text-xs text-slate-500">Reset removes the account and all scores so they can register again with the same index.</p>
+                    <button type="submit" class="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-50">Reset for re-onboarding</button>
+                </form>
+                <form method="post" id="userModalDeleteForm" class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2">
                     <input type="hidden" name="action" value="delete_user">
                     <input type="hidden" name="id" id="userModalDeleteId" value="">
-                    <p class="text-xs text-slate-500">Deleting removes all scores for this student.</p>
+                    <p class="text-xs text-slate-500">Delete permanently (same as reset).</p>
                     <button type="submit" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Delete user</button>
                 </form>
             </div>
@@ -232,6 +307,10 @@ foreach ($users as $user) {
     var subEl = document.getElementById('userModalSub');
     var dlEl = document.getElementById('userModalDl');
     var deleteId = document.getElementById('userModalDeleteId');
+    var resetId = document.getElementById('userModalResetId');
+    var editId = document.getElementById('userModalEditId');
+    var editLevel = document.getElementById('userModalEditLevel');
+    var editDepartment = document.getElementById('userModalEditDepartment');
     var searchInput = document.getElementById('studentSearch');
     var studentTbody = document.getElementById('studentTbody');
     var searchMeta = document.getElementById('studentSearchMeta');
@@ -286,6 +365,44 @@ foreach ($users as $user) {
         }).join('');
 
         deleteId.value = String(u.id);
+        if (resetId) resetId.value = String(u.id);
+        if (editId) editId.value = String(u.id);
+        if (editLevel && u.level) {
+            var lv = String(u.level);
+            var found = false;
+            for (var i = 0; i < editLevel.options.length; i++) {
+                if (editLevel.options[i].value === lv) {
+                    editLevel.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                var opt = document.createElement('option');
+                opt.value = lv;
+                opt.textContent = lv + ' (current)';
+                opt.selected = true;
+                editLevel.appendChild(opt);
+            }
+        }
+        if (editDepartment && editDepartment.tagName === 'SELECT') {
+            var dp = String(u.department || '');
+            var deptFound = false;
+            for (var j = 0; j < editDepartment.options.length; j++) {
+                if (editDepartment.options[j].value === dp) {
+                    editDepartment.selectedIndex = j;
+                    deptFound = true;
+                    break;
+                }
+            }
+            if (!deptFound && dp !== '') {
+                var dopt = document.createElement('option');
+                dopt.value = dp;
+                dopt.textContent = dp + ' (current)';
+                dopt.selected = true;
+                editDepartment.appendChild(dopt);
+            }
+        }
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         modal.setAttribute('aria-hidden', 'false');
@@ -353,8 +470,14 @@ foreach ($users as $user) {
     });
 
     document.getElementById('userModalDeleteForm').addEventListener('submit', function (e) {
-        if (!confirm('Delete this user and all their scores?')) e.preventDefault();
+        if (!confirm('Delete this user and all their data permanently?')) e.preventDefault();
     });
+    var resetForm = document.getElementById('userModalResetForm');
+    if (resetForm) {
+        resetForm.addEventListener('submit', function (e) {
+            if (!confirm('Clear this student completely so they can register again with the same index?')) e.preventDefault();
+        });
+    }
 })();
     </script>
 </body>
