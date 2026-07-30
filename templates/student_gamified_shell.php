@@ -77,35 +77,36 @@ $studentFeedbackAlreadySubmitted = !empty($studentFeedbackAlreadySubmitted ?? fa
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
+    $base = 'flex flex-1 flex-col items-center gap-1 ' . $py . ' ';
 
     return $on
-        ? 'flex flex-1 flex-col items-center gap-1 ' . $py . ' text-[#E50914] dark:text-[#f87171]'
-        : 'flex flex-1 flex-col items-center gap-1 ' . $py . ' text-slate-500 hover:text-slate-700 dark:text-zinc-500/90 dark:hover:text-zinc-300';
+        ? $base . 'tt-dash-nav-on font-semibold'
+        : $base . 'font-medium';
 };
 ?>
-<div class="trytest-student-shell <?php echo $dashboardFixedViewport
-    ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden bg-white text-slate-900 md:max-w-lg dark:bg-[#0f1014] dark:text-zinc-100'
-    : 'min-h-screen bg-white pb-24 text-slate-900 md:pb-8 dark:bg-[#0f1014] dark:text-zinc-100'; ?>">
-    <header class="<?php echo $dashboardFixedViewport
-        ? 'shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-[#0f1014]'
-        : 'sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-[#0f1014]'; ?>">
+<div class="trytest-student-shell tt-dash <?php echo $dashboardFixedViewport
+    ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-lg dark:text-zinc-100'
+    : 'min-h-screen pb-24 text-slate-900 md:pb-8 dark:text-zinc-100'; ?>">
+    <header class="tt-dash-header <?php echo $dashboardFixedViewport
+        ? 'shrink-0 px-4 py-3'
+        : 'sticky top-0 z-30 px-3 py-2.5 sm:px-4 sm:py-3'; ?>">
         <?php if ($dashboardFixedViewport): ?>
         <div class="flex min-w-0 items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-                <p class="text-[11px] font-extrabold uppercase tracking-wider text-[#E50914]">Trytest</p>
-                <p class="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-zinc-100"><?php echo $h($userDisplayName); ?></p>
-                <p class="truncate text-[10px] text-slate-500 dark:text-zinc-400">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
+                <p class="tt-dash-brand">Trytest</p>
+                <p class="tt-dash-hello truncate"><?php echo $h($userDisplayName); ?></p>
+                <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts</p>
             </div>
             <div class="flex shrink-0 items-center gap-2">
-                <button type="button" id="dashboardRefreshBtn" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-slate-700 shadow-sm ring-1 ring-slate-200/80 hover:bg-gray-200/90 active:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-600 dark:hover:bg-zinc-700" aria-label="Refresh dashboard">
+                <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full" aria-label="Refresh dashboard">
                     <i class="fa-solid fa-rotate-right text-[15px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
                 </button>
                 <?php trytest_student_theme_toggle_button(); ?>
-                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full">
+                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#dbeafe] ring-1 ring-blue-200/80 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full">
                     <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
                 </div>
                 <div class="relative shrink-0">
-                    <button type="button" id="profileMenuBtn" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-700 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
+                    <button type="button" id="profileMenuBtn" class="tt-dash-icon-btn flex h-10 w-10 items-center justify-center rounded-full text-lg leading-none" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
                     <div id="profileMenu" class="hidden absolute right-0 z-40 mt-2 max-h-[min(16rem,45svh)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" role="menu">
                         <p class="px-3 text-xs font-semibold text-slate-900 dark:text-zinc-100">Profile</p>
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500 dark:text-zinc-400"><?php echo $h($userIndex); ?></p>
@@ -146,23 +147,24 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             </div>
         </div>
         <?php else: ?>
-        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2">
             <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#E2E8F0] ring-1 ring-slate-300 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full sm:h-10 sm:w-10">
+                <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#dbeafe] ring-1 ring-blue-200/80 dark:bg-zinc-800 dark:ring-zinc-600 [&>svg]:h-full [&>svg]:w-full sm:h-10 sm:w-10">
                     <?php echo trytest_student_avatar_svg($userIndex, 44, $userId); ?>
                 </div>
                 <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-zinc-100"><?php echo $h($userDisplayName); ?></p>
-                    <p class="truncate text-[10px] text-slate-500 sm:text-[11px] dark:text-zinc-400">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
+                    <p class="tt-dash-brand">Trytest</p>
+                    <p class="truncate text-sm font-bold leading-tight tracking-tight"><?php echo $h($userDisplayName); ?></p>
+                    <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
                 </div>
             </div>
             <div class="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
-                <button type="button" id="dashboardRefreshBtn" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-slate-700 shadow-sm ring-1 ring-slate-200/80 hover:bg-gray-200/90 active:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-600 dark:hover:bg-zinc-700" aria-label="Refresh dashboard">
+                <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full" aria-label="Refresh dashboard">
                     <i class="fa-solid fa-rotate-right text-[15px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
                 </button>
                 <?php trytest_student_theme_toggle_button(); ?>
                 <div class="relative shrink-0">
-                    <button type="button" id="profileMenuBtn" class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-700 hover:bg-slate-200 sm:h-10 sm:w-10 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
+                    <button type="button" id="profileMenuBtn" class="tt-dash-icon-btn flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none sm:h-10 sm:w-10" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">⋯</button>
                     <div id="profileMenu" class="hidden absolute right-0 mt-2 max-h-[min(16rem,45svh)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" role="menu">
                         <p class="px-3 text-xs font-semibold text-slate-900 dark:text-zinc-100">Profile</p>
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500 dark:text-zinc-400"><?php echo $h($userIndex); ?></p>
@@ -206,8 +208,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     </header>
 
     <main class="<?php echo $dashboardFixedViewport
-        ? 'mx-auto flex min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden p-4 dark:bg-[#0f1014]'
-        : 'mx-auto w-full max-w-5xl px-4 pb-24 pt-4 md:pb-8 dark:bg-[#0f1014]'; ?>">
+        ? 'mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden p-4'
+        : 'mx-auto w-full max-w-5xl px-4 pb-24 pt-4 md:pb-8'; ?>">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40" role="region" aria-labelledby="dept-setup-title">
                 <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950 dark:text-amber-100">
@@ -305,19 +307,18 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             $homeFlexLock = $dashboardFixedViewport;
             $tileRounded = 'rounded-xl';
             $tileSvg = 22;
-            $iconBox = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f4faf9] ring-1 ring-[#84B8B8]/40 dark:bg-[#252528] dark:ring-white/[0.06]';
-            $tileRow2 = 'grid w-full min-w-0 grid-cols-2 gap-1.5 sm:gap-2';
-            $tileH = 'h-14 min-h-[3.5rem]';
+            $iconBox = 'tt-dash-tile-icon flex h-9 w-9 shrink-0 items-center justify-center';
+            $tileRow2 = 'grid w-full min-w-0 grid-cols-2 gap-2';
+            $tileH = 'min-h-[3.75rem]';
             $slimCard =
-                'relative flex min-h-0 min-w-0 flex-row items-center gap-1.5 overflow-hidden ' . $tileH . ' '
-                . $tileRounded
-                . ' border border-slate-200 bg-white py-1.5 pl-1.5 pr-1 text-left text-slate-900 transition hover:bg-slate-50/90 active:bg-slate-50 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100 dark:hover:bg-[#222228] dark:active:bg-[#26262e]';
+                'tt-dash-tile relative flex min-h-0 min-w-0 flex-row items-center gap-2.5 overflow-hidden ' . $tileH . ' '
+                . 'text-left transition active:scale-[0.99]';
             $cheerSectionClass = $homeFlexLock
-                ? 'shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100'
-                : 'mb-4 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 dark:border-zinc-800/45 dark:bg-[#1a1a1f] dark:text-zinc-100';
+                ? 'tt-dash-cheer shrink-0 text-slate-900 dark:text-zinc-100'
+                : 'tt-dash-cheer mb-4 text-slate-900 dark:text-zinc-100';
             $cheerBodyClass = $homeFlexLock
-                ? 'mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95'
-                : 'mt-0.5 text-[11px] leading-snug text-slate-800 dark:text-zinc-300/95';
+                ? 'mt-0.5 line-clamp-2 text-[11px] leading-snug'
+                : 'mt-0.5 text-[11px] leading-snug';
             $quickSectionClass = $homeFlexLock ? 'min-w-0 shrink-0 overflow-hidden' : 'mb-6';
             $dashboardFeaturedKind = trim((string) ($dashboardFeaturedKind ?? 'words'));
             $homeQuickVideoLayout = trim((string) ($dashboardFeaturedHtml ?? '')) !== '' && $dashboardFeaturedKind === 'video';
@@ -325,23 +326,23 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
             <style>
                 @keyframes trytest-quiz-icon-breathe {
                     0%, 100% { transform: scale(1); }
-                    50% { transform: scale(1.18); }
+                    50% { transform: scale(1.12); }
                 }
-                .trytest-quiz-home-icon--pulse { animation: trytest-quiz-icon-breathe 2.2s ease-in-out infinite; }
+                .trytest-quiz-home-icon--pulse { animation: trytest-quiz-icon-breathe 2.4s ease-in-out infinite; }
             </style>
             <?php if ($homeFlexLock): ?>
-            <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+            <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
             <?php endif; ?>
             <?php if ($enc !== null): ?>
-                <section id="trytest-dash-cheer" class="<?php echo $h($cheerSectionClass); ?>" style="border-left: 4px solid <?php echo $h($encSurface); ?>;" aria-labelledby="dash-cheer-title">
-                    <h2 id="dash-cheer-title" class="text-xs font-bold leading-tight"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
+                <section id="trytest-dash-cheer" class="<?php echo $h($cheerSectionClass); ?>" aria-labelledby="dash-cheer-title">
+                    <h2 id="dash-cheer-title" class="font-bold leading-tight"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
                     <p class="<?php echo $h($cheerBodyClass); ?>"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
-                    <div class="mt-1.5 flex min-w-0 flex-wrap gap-1.5">
+                    <div class="mt-2 flex min-w-0 flex-wrap gap-1.5">
                         <?php if ($encQuizId > 0): ?>
-                            <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $encQuizId); ?>" class="inline-flex min-h-9 shrink-0 items-center rounded-lg bg-[#2C6A7D] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#24586a]">Open quiz</a>
+                            <a href="<?php echo $h(rtrim($quizUrlBase, '/') . '?quiz_id=' . $encQuizId); ?>" class="tt-dash-cta">Open quiz</a>
                         <?php endif; ?>
                         <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
-                            <a href="<?php echo $h($quizzesPageUrl); ?>" class="inline-flex min-h-9 shrink-0 items-center rounded-lg bg-[#1e293b] px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-slate-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">All quizzes</a>
+                            <a href="<?php echo $h($quizzesPageUrl); ?>" class="tt-dash-cta tt-dash-cta--ghost">All quizzes</a>
                         <?php endif; ?>
                     </div>
                 </section>
@@ -363,27 +364,27 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
                                 <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
                                 <span class="min-w-0 flex-1 overflow-hidden">
-                                    <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Level ranks</span>
+                                    <span class="tt-dash-tile-title block truncate leading-tight">Leaderboard</span>
+                                    <span class="tt-dash-tile-sub mt-0.5 block truncate">Level ranks</span>
                                 </span>
                             </a>
                             <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                                 <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
                                     <?php if ($newQuizBadgeCount > 0): ?>
-                                        <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                        <span class="tt-dash-badge absolute right-1.5 top-1.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
                                     <?php endif; ?>
                                     <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
                                     <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
-                                        <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
-                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
+                                        <span class="tt-dash-tile-title block truncate leading-tight">Quizzes</span>
+                                        <span class="tt-dash-tile-sub mt-0.5 block truncate"><span class="font-extrabold tabular-nums text-[#1d4ed8]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
                                     </span>
                                 </a>
                             <?php else: ?>
                                 <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
                                     <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
                                     <span class="min-w-0 flex-1 overflow-hidden">
-                                        <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
-                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
+                                        <span class="tt-dash-tile-title block truncate leading-tight text-slate-600">Quizzes</span>
+                                        <span class="tt-dash-tile-sub mt-0.5 block truncate">None yet</span>
                                     </span>
                                 </div>
                             <?php endif; ?>
@@ -393,18 +394,18 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
                                 <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', $tileSvg); ?></span>
                                 <span class="min-w-0 flex-1 overflow-hidden">
-                                    <span class="block truncate text-[11px] font-bold leading-tight">Leaderboard</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Level ranks</span>
+                                    <span class="tt-dash-tile-title block truncate leading-tight">Leaderboard</span>
+                                    <span class="tt-dash-tile-sub mt-0.5 block truncate">Level ranks</span>
                                 </span>
                             </a>
                             <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
                                 <?php if ($downloadsBadgeCount > 0): ?>
-                                    <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
+                                    <span class="tt-dash-badge absolute right-1.5 top-1.5 z-10 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-0.5 text-[8px] font-extrabold leading-none text-white"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount; ?></span>
                                 <?php endif; ?>
                                 <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', $tileSvg); ?></span>
                                 <span class="min-w-0 flex-1 overflow-hidden">
-                                    <span class="block truncate text-[11px] font-bold leading-tight">Files</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">Downloads</span>
+                                    <span class="tt-dash-tile-title block truncate leading-tight">Files</span>
+                                    <span class="tt-dash-tile-sub mt-0.5 block truncate">Downloads</span>
                                 </span>
                             </a>
                         </div>
@@ -412,28 +413,28 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                             <?php if ($totalQuizCards > 0 && $quizzesPageUrl !== ''): ?>
                                 <a href="<?php echo $h($quizzesPageUrl); ?>" class="<?php echo $h($slimCard); ?>">
                                     <?php if ($newQuizBadgeCount > 0): ?>
-                                        <span class="absolute right-0.5 top-0.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
+                                        <span class="tt-dash-badge absolute right-1.5 top-1.5 z-10 inline-flex h-4 max-w-[2.75rem] items-center justify-center rounded-full px-0.5 text-[7px] font-extrabold leading-none text-white"><?php echo $newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount; ?> new</span>
                                     <?php endif; ?>
                                     <span class="<?php echo $h($iconBox); ?> <?php echo $newQuizBadgeCount > 0 ? 'trytest-quiz-home-icon--pulse' : ''; ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
                                     <span class="min-w-0 flex-1 overflow-hidden pr-0.5">
-                                        <span class="block truncate text-[11px] font-bold leading-tight">Quizzes</span>
-                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400"><span class="font-extrabold tabular-nums text-[#2C6A7D] dark:text-[#8ebfbf]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
+                                        <span class="tt-dash-tile-title block truncate leading-tight">Quizzes</span>
+                                        <span class="tt-dash-tile-sub mt-0.5 block truncate"><span class="font-extrabold tabular-nums text-[#1d4ed8]"><?php echo (int) $totalQuizCards; ?></span> ready</span>
                                     </span>
                                 </a>
                             <?php else: ?>
                                 <div class="<?php echo $h($slimCard); ?> pointer-events-none opacity-80">
                                     <span class="<?php echo $h($iconBox); ?> opacity-70" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('quiz', $tileSvg); ?></span>
                                     <span class="min-w-0 flex-1 overflow-hidden">
-                                        <span class="block truncate text-[11px] font-semibold leading-tight text-slate-600 dark:text-zinc-400">Quizzes</span>
-                                        <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-500">None yet</span>
+                                        <span class="tt-dash-tile-title block truncate leading-tight text-slate-600">Quizzes</span>
+                                        <span class="tt-dash-tile-sub mt-0.5 block truncate">None yet</span>
                                     </span>
                                 </div>
                             <?php endif; ?>
                             <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $h($slimCard); ?>">
                                 <span class="<?php echo $h($iconBox); ?>" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', $tileSvg); ?></span>
                                 <span class="min-w-0 flex-1 overflow-hidden">
-                                    <span class="block truncate text-[11px] font-bold leading-tight">Results</span>
-                                    <span class="mt-0.5 block truncate text-[9px] text-slate-500 dark:text-zinc-400">My scores</span>
+                                    <span class="tt-dash-tile-title block truncate leading-tight">Results</span>
+                                    <span class="tt-dash-tile-sub mt-0.5 block truncate">My scores</span>
                                 </span>
                             </a>
                         </div>
@@ -555,26 +556,26 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         <?php endif; ?>
     </main>
 
-    <nav class="<?php echo $dashboardFixedViewport
-        ? 'shrink-0 border-t border-slate-200 bg-white md:hidden dark:border-zinc-800 dark:bg-[#0f1014] dark:backdrop-blur'
-        : 'fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden dark:border-zinc-800 dark:bg-[#0f1014] dark:backdrop-blur'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+    <nav class="tt-dash-nav <?php echo $dashboardFixedViewport
+        ? 'shrink-0 md:hidden'
+        : 'fixed bottom-0 left-0 right-0 z-50 md:hidden'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
         <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-lg' : 'mx-auto flex max-w-5xl'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $h($navClass($homeNavOn)); ?>">
-                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D] dark:text-[#7eb8b8]" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>
+                <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>
                 <span class="text-[9px] font-semibold leading-tight">Home</span>
             </a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($navClass($tabRank)); ?>">
-                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D] dark:text-[#7eb8b8]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', 22); ?></span>
+                <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('trophy', 22); ?></span>
                 <span class="text-[9px] font-semibold leading-tight">Rank</span>
             </a>
             <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $h($navClass($tabResults)); ?>">
-                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D] dark:text-[#7eb8b8]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', 22); ?></span>
+                <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('results', 22); ?></span>
                 <span class="text-[9px] font-semibold leading-tight">Results</span>
             </a>
             <a href="<?php echo $h($downloadsPageUrl); ?>" class="<?php echo $h($navClass(false)); ?> relative">
-                <span class="flex h-6 w-6 items-center justify-center text-[#2C6A7D] dark:text-[#7eb8b8]" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', 22); ?></span>
+                <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><?php echo trytest_student_dashboard_tile_svg('folder', 22); ?></span>
                 <?php if ($downloadsBadgeCount > 0): ?>
-                    <span class="absolute right-[18%] top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#E50914] px-0.5 text-[8px] font-extrabold leading-none text-white" aria-label="<?php echo (int) $downloadsBadgeCount; ?> pending"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) (int) $downloadsBadgeCount; ?></span>
+                    <span class="tt-dash-badge absolute right-[18%] top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-0.5 text-[8px] font-extrabold leading-none text-white" aria-label="<?php echo (int) $downloadsBadgeCount; ?> pending"><?php echo $downloadsBadgeCount > 9 ? '9+' : (string) (int) $downloadsBadgeCount; ?></span>
                 <?php endif; ?>
                 <span class="text-[9px] font-semibold leading-tight">Files</span>
             </a>

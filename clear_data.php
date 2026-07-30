@@ -5,6 +5,7 @@ declare(strict_types=1);
 session_start();
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/quiz_ids.php';
 
 $error = '';
 $message = '';
@@ -25,11 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db->beginTransaction();
             $db->exec('DELETE FROM scores');
+            try {
+                $db->exec('DELETE FROM score_attempts');
+            } catch (Throwable $e) {
+            }
             $db->exec('DELETE FROM questions');
             $db->exec('DELETE FROM quiz_courses');
             $db->exec('DELETE FROM quizzes');
             $db->commit();
-            $message = 'System data has been reset.';
+            trytest_admin_sync_quiz_id_sequence($db, 0);
+            $message = 'System data has been reset. Quiz IDs will start from 1 again.';
         } catch (Throwable $e) {
             if ($db->inTransaction()) {
                 $db->rollBack();

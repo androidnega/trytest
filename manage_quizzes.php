@@ -7,6 +7,7 @@ require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/quiz_share.php';
 require_once __DIR__ . '/includes/levels.php';
+require_once __DIR__ . '/includes/quiz_ids.php';
 
 if (empty($_SESSION['is_admin'])) {
     trytest_redirect(trytest_url('admin'));
@@ -133,18 +134,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id > 0) {
             $db->beginTransaction();
             try {
+                try {
+                    $db->prepare('DELETE FROM score_attempts WHERE quiz_id = ?')->execute([$id]);
+                } catch (Throwable $e) {
+                }
+                try {
+                    $db->prepare('DELETE FROM quiz_presence_ping WHERE quiz_id = ?')->execute([$id]);
+                } catch (Throwable $e) {
+                }
                 $db->prepare('DELETE FROM scores WHERE quiz_id = ?')->execute([$id]);
                 $db->prepare('DELETE FROM questions WHERE quiz_id = ?')->execute([$id]);
                 $db->prepare('DELETE FROM quiz_courses WHERE quiz_id = ?')->execute([$id]);
                 $db->prepare('DELETE FROM quizzes WHERE id = ?')->execute([$id]);
                 $db->commit();
-                $message = 'Quiz deleted.';
+                try {
+                    trytest_admin_repack_quiz_ids($db);
+                } catch (Throwable $e) {
+                    trytest_admin_sync_quiz_id_sequence($db);
+                }
+                $message = 'Quiz deleted. Quiz IDs were renumbered so the next quiz continues cleanly.';
             } catch (Throwable $e) {
                 if ($db->inTransaction()) {
                     $db->rollBack();
                 }
                 $error = 'Failed to delete quiz.';
             }
+        }
+    }
+    if ($action === 'repack_quiz_ids') {
+        try {
+            trytest_admin_repack_quiz_ids($db);
+            $message = 'Quiz IDs renumbered to 1…N.';
+        } catch (Throwable $e) {
+            $error = 'Could not renumber quiz IDs.';
         }
     }
 }
@@ -188,7 +210,13 @@ $levelPresets = trytest_level_dropdown_options($db);
         <div class="rounded-2xl border border-slate-200 bg-white p-5">
             <div class="flex items-center justify-between gap-3">
                 <h1 class="text-xl font-bold text-slate-900">Quizzes</h1>
-                <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
+                <div class="flex items-center gap-3">
+                    <form method="post" onsubmit="return confirm('Renumber all quiz IDs to 1, 2, 3…? Share links still work via share codes.');">
+                        <input type="hidden" name="action" value="repack_quiz_ids">
+                        <button type="submit" class="text-xs font-medium text-slate-600 underline-offset-2 hover:underline">Renumber IDs</button>
+                    </form>
+                    <a href="<?php echo htmlspecialchars(trytest_url('dashboard/manage_admin'), ENT_QUOTES, 'UTF-8'); ?>" class="text-sm text-indigo-600">Back to manager</a>
+                </div>
             </div>
             <?php if ($error !== ''): ?><div class="mt-3 rounded-lg bg-red-100 text-red-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
             <?php if ($message !== ''): ?><div class="mt-3 rounded-lg bg-emerald-100 text-emerald-700 px-3 py-2 text-sm"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>

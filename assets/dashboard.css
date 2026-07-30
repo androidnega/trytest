@@ -1,0 +1,186 @@
+/* Trytest student dashboard — calm mobile-first shell */
+:root {
+  --tt-dash-ink: #0f172a;
+  --tt-dash-muted: #64748b;
+  --tt-dash-line: rgba(148, 163, 184, 0.28);
+  --tt-dash-brand: #1d4ed8;
+  --tt-dash-brand-soft: #dbeafe;
+  --tt-dash-sky: #e8f2ff;
+  --tt-dash-surface: #ffffff;
+  --tt-dash-chip: #f1f5f9;
+  --tt-dash-ok: #0f766e;
+}
+
+.trytest-student-shell.tt-dash {
+  background:
+    radial-gradient(120% 70% at 50% -20%, #e8f2ff 0%, transparent 55%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fb 48%, #f8fafc 100%) !important;
+  color: var(--tt-dash-ink);
+}
+
+.tt-dash .tt-dash-header {
+  border-bottom-color: transparent !important;
+  background: rgba(247, 251, 255, 0.86) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.tt-dash .tt-dash-brand {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tt-dash-brand);
+}
+
+.tt-dash .tt-dash-hello {
+  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.tt-dash .tt-dash-meta {
+  margin-top: 0.15rem;
+  font-size: 0.6875rem;
+  color: var(--tt-dash-muted);
+}
+
+.tt-dash .tt-dash-icon-btn {
+  background: var(--tt-dash-surface) !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  ring: none;
+  border: 1px solid var(--tt-dash-line);
+}
+
+.tt-dash .tt-dash-cheer {
+  border: 0 !important;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #f0fdfa 100%) !important;
+  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.06);
+  border-radius: 1.15rem !important;
+  padding: 0.95rem 1rem !important;
+}
+
+.tt-dash .tt-dash-cheer h2 {
+  font-size: 0.95rem !important;
+  letter-spacing: -0.02em;
+}
+
+.tt-dash .tt-dash-cheer p {
+  color: #475569 !important;
+}
+
+.tt-dash .tt-dash-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.85rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--tt-dash-brand);
+  color: #fff !important;
+}
+
+.tt-dash .tt-dash-cta--ghost {
+  background: #fff;
+  color: var(--tt-dash-brand) !important;
+  border: 1px solid #bfdbfe;
+}
+
+.tt-dash .tt-dash-tile {
+  border: 1px solid var(--tt-dash-line) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  border-radius: 1rem !important;
+  min-height: 3.75rem !important;
+  height: auto !important;
+  padding: 0.7rem 0.75rem !important;
+}
+
+.tt-dash .tt-dash-tile:hover {
+  background: #fff !important;
+  border-color: #93c5fd !important;
+}
+
+.tt-dash .tt-dash-tile-icon {
+  background: var(--tt-dash-brand-soft) !important;
+  color: var(--tt-dash-brand);
+  border-radius: 0.75rem !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+.tt-dash .tt-dash-tile-icon svg path,
+.tt-dash .tt-dash-tile-icon svg circle {
+  stroke: var(--tt-dash-brand) !important;
+}
+
+.tt-dash .tt-dash-tile-title {
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+.tt-dash .tt-dash-tile-sub {
+  font-size: 0.625rem !important;
+  color: var(--tt-dash-muted) !important;
+}
+
+.tt-dash .tt-dash-badge {
+  background: var(--tt-dash-brand) !important;
+}
+
+.tt-dash .tt-dash-nav {
+  border-top: 1px solid var(--tt-dash-line) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.tt-dash .tt-dash-nav a {
+  color: #64748b !important;
+}
+
+.tt-dash .tt-dash-nav a.tt-dash-nav-on {
+  color: var(--tt-dash-brand) !important;
+}
+
+.tt-dash .tt-dash-nav a span[aria-hidden="true"],
+.tt-dash .tt-dash-nav a .tt-dash-nav-icon {
+  color: inherit !important;
+}
+
+.tt-dash .tt-dash-nav .tt-dash-nav-icon svg path,
+.tt-dash .tt-dash-nav .tt-dash-nav-icon svg circle {
+  stroke: currentColor !important;
+}
+
+.dark .trytest-student-shell.tt-dash {
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%) !important;
+  color: #e2e8f0;
+}
+
+.dark .tt-dash .tt-dash-header {
+  background: rgba(11, 18, 32, 0.9) !important;
+}
+
+.dark .tt-dash .tt-dash-cheer,
+.dark .tt-dash .tt-dash-tile {
+  background: rgba(30, 41, 59, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.dark .tt-dash .tt-dash-nav {
+  background: rgba(11, 18, 32, 0.94) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-dash .trytest-quiz-home-icon--pulse {
+    animation: none !important;
+  }
+}

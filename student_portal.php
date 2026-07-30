@@ -566,6 +566,7 @@ $hLogin = static function (string $s): string {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(trytest_url('assets/dashboard.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <style>
         body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; }
         <?php if (!empty($studentDashboardFixedViewport)): ?>

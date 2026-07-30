@@ -58,6 +58,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+    if ($action === 'bulk_assign_department') {
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
+        $deptRaw = trim((string) ($_POST['department'] ?? ''));
+        $resolvedLevel = trytest_resolve_level_for_save($levelRaw, $levelOptions);
+        $resolvedDept = trytest_resolve_department_for_save($deptRaw, $departmentOptions);
+        if ($resolvedLevel === null) {
+            $error = 'Choose a level for the bulk update.';
+        } elseif ($departmentOptions === [] || $resolvedDept === null) {
+            $error = 'Choose a department/program for the bulk update.';
+        } else {
+            $wantCanon = trytest_level_canon($resolvedLevel);
+            $updated = 0;
+            $stmt = $db->query('SELECT id, level FROM users');
+            $upd = $db->prepare('UPDATE users SET department = ? WHERE id = ?');
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                if (trytest_level_canon((string) ($row['level'] ?? '')) !== $wantCanon) {
+                    continue;
+                }
+                $upd->execute([$resolvedDept, (int) $row['id']]);
+                $updated++;
+            }
+            $message = 'Assigned ' . $updated . ' student' . ($updated === 1 ? '' : 's')
+                . ' at level ' . $resolvedLevel . ' to ' . $resolvedDept . '.';
+        }
+    }
 }
 
 $users = $db->query(
@@ -177,6 +202,37 @@ foreach ($users as $user) {
         <?php endif; ?>
         <?php if ($error !== ''): ?>
             <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"><?php echo $h($error); ?></div>
+        <?php endif; ?>
+
+        <?php if ($levelOptions !== [] && $departmentOptions !== []): ?>
+        <section class="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 class="text-sm font-semibold text-slate-900">Assign program by level</h2>
+            <p class="mt-1 text-xs text-slate-500">Set every student at a level to one department so quizzes match (e.g. all Level 200 → Computer Science).</p>
+            <form method="post" class="mt-3 grid gap-2 sm:grid-cols-3" onsubmit="return confirm('Update department for all students at this level?');">
+                <input type="hidden" name="action" value="bulk_assign_department">
+                <label class="block text-left">
+                    <span class="mb-1 block text-[11px] font-medium text-slate-600">Level</span>
+                    <select name="level" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                        <option value="">Select…</option>
+                        <?php foreach ($levelOptions as $lo): ?>
+                            <option value="<?php echo $h((string) ($lo['value'] ?? '')); ?>"><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label class="block text-left">
+                    <span class="mb-1 block text-[11px] font-medium text-slate-600">Department</span>
+                    <select name="department" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                        <option value="">Select…</option>
+                        <?php foreach ($departmentOptions as $depOpt): ?>
+                            <option value="<?php echo $h((string) ($depOpt['value'] ?? '')); ?>"><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-3 py-2 text-sm font-semibold text-white hover:bg-[#24586a]">Assign all</button>
+                </div>
+            </form>
+        </section>
         <?php endif; ?>
 
         <section class="overflow-hidden rounded-xl border border-slate-200 bg-white">
