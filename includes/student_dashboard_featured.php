@@ -8,9 +8,13 @@ require_once __DIR__ . '/youtube_subscribe.php';
 
 function trytest_student_dashboard_quote_image_url(): string
 {
-    $f = __DIR__ . '/../KofiEmma.jpg';
+    $webp = __DIR__ . '/../assets/quote-portrait.webp';
+    if (is_file($webp)) {
+        return trytest_url('assets/quote-portrait.webp');
+    }
+    $legacy = __DIR__ . '/../KofiEmma.jpg';
 
-    return is_file($f) ? trytest_url('KofiEmma.jpg') : '';
+    return is_file($legacy) ? trytest_url('KofiEmma.jpg') : '';
 }
 
 /**
@@ -43,25 +47,21 @@ function trytest_student_dashboard_featured_kind_resolve(bool $videoAvailable): 
 }
 
 /**
- * Same outer frame every time; right badge switches Video | Words. Inner area keeps stable min-height.
- *
- * @param 'Video'|'Words' $modeBadge
+ * Outer frame for dashboard hero (quote or video). No “Featured / Words” chrome.
  */
 function trytest_student_dashboard_featured_shell_html(bool $compactLayout, string $modeBadge, string $innerBodyHtml): string
 {
     $h = static function (string $s): string {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     };
+    unset($modeBadge); // badge labels removed from UI
     $sectionClass = $compactLayout
-        ? 'rounded-xl border border-slate-200 bg-white p-2.5 shadow-none dark:border-zinc-800/50 dark:bg-[#1c1c22]'
-        : 'mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-none sm:p-4 dark:border-zinc-800/50 dark:bg-[#1c1c22]';
+        ? 'rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-none dark:border-zinc-800/50 dark:bg-[#1c1c22]'
+        : 'mb-4 rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-none sm:p-4 dark:border-zinc-800/50 dark:bg-[#1c1c22]';
     $slotClass =
         'grid min-h-[13rem] grid-cols-1 gap-2 sm:min-h-[14rem]';
 
-    return '<section class="' . $h($sectionClass) . '" aria-label="Featured">'
-        . '<div class="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">'
-        . '<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Featured</h2>'
-        . '<span class="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-zinc-500">' . $h($modeBadge) . '</span></div>'
+    return '<section class="' . $h($sectionClass) . '" aria-label="Inspiration">'
         . '<div class="' . $h($slotClass) . '">'
         . $innerBodyHtml
         . '</div></section>';
@@ -88,10 +88,12 @@ function trytest_student_dashboard_featured_quote_article_html(bool $compactLayo
     $author = 'Emmanuel K Kwofie';
     $imgShell =
         'relative h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-md dark:border-zinc-700/45 dark:bg-[#222228]';
-    $imgInner = 'absolute inset-0 h-full w-full object-cover object-center';
+    $imgInner = 'absolute inset-0 h-full w-full object-cover object-top';
     $phInner = 'absolute inset-0 bg-slate-100 dark:bg-[#222228]';
+    $imgSm = __DIR__ . '/../assets/quote-portrait-320.webp';
+    $imgSrcset = is_file($imgSm) ? ' srcset="' . $h(trytest_url('assets/quote-portrait-320.webp')) . ' 320w, ' . $h($imgUrl) . ' 478w" sizes="(max-width: 640px) 34vw, 180px"' : '';
     $imgBlock = $imgUrl !== ''
-        ? '<div class="' . htmlspecialchars($imgShell, ENT_QUOTES, 'UTF-8') . '"><img src="' . $h($imgUrl) . '" alt="" class="' . htmlspecialchars($imgInner, ENT_QUOTES, 'UTF-8') . '" loading="lazy" decoding="async" /></div>'
+        ? '<div class="' . htmlspecialchars($imgShell, ENT_QUOTES, 'UTF-8') . '"><img src="' . $h($imgUrl) . '"' . $imgSrcset . ' alt="" class="' . htmlspecialchars($imgInner, ENT_QUOTES, 'UTF-8') . '" loading="lazy" decoding="async" /></div>'
         : '<div class="' . htmlspecialchars($imgShell . ' border-dashed dark:border-zinc-600/50', ENT_QUOTES, 'UTF-8') . '" aria-hidden="true"><div class="' . htmlspecialchars($phInner, ENT_QUOTES, 'UTF-8') . '"></div></div>';
     $textClass = $compactLayout
         ? 'text-sm font-bold leading-snug text-slate-800 dark:text-zinc-100'

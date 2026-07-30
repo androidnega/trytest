@@ -50,6 +50,10 @@ if ((bool) $exists->fetchColumn()) {
 $ins = $db->prepare(
     'INSERT INTO student_system_feedback (user_id, stars, body, quiz_ref, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
 );
-$ins->execute([$userId, $stars, '', '']);
+$quizRef = trim((string) ($data['quiz_ref'] ?? ''));
+if (strlen($quizRef) > 64) {
+    $quizRef = substr($quizRef, 0, 64);
+}
+$ins->execute([$userId, $stars, '', $quizRef]);
 
 echo json_encode(['ok' => true], JSON_THROW_ON_ERROR);
