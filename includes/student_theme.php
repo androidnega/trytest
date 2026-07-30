@@ -52,9 +52,9 @@ function trytest_student_theme_tailwind_config_script(): void
 function trytest_student_theme_toggle_button(): void
 {
     ?>
-<button type="button" id="trytestThemeToggle" class="tt-dash-icon-btn flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10" aria-label="Toggle dark mode" title="Dark mode" aria-pressed="false">
-    <i class="fa-solid fa-moon text-[14px]" id="trytestThemeIconMoon" aria-hidden="true"></i>
-    <i class="fa-solid fa-sun text-[14px] hidden" id="trytestThemeIconSun" aria-hidden="true"></i>
+<button type="button" id="trytestThemeToggle" class="tt-dash-icon-btn" aria-label="Toggle dark mode" title="Dark mode" aria-pressed="false">
+    <i class="fa-solid fa-moon" id="trytestThemeIconMoon" aria-hidden="true"></i>
+    <i class="fa-solid fa-sun hidden" id="trytestThemeIconSun" aria-hidden="true"></i>
 </button>
 <?php
 }

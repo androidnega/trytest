@@ -88,23 +88,21 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-lg dark:text-zinc-100'
     : 'min-h-screen pb-24 text-slate-900 md:pb-8 dark:text-zinc-100'; ?>">
     <header class="tt-dash-header <?php echo $dashboardFixedViewport
-        ? 'shrink-0 px-4 py-3'
-        : 'sticky top-0 z-30 px-3 py-2.5 sm:px-4 sm:py-3'; ?>">
-        <?php if ($dashboardFixedViewport): ?>
-        <div class="flex min-w-0 items-center justify-between gap-3">
-            <div class="min-w-0 flex-1">
-                <p class="tt-dash-brand">Trytest</p>
+        ? 'shrink-0'
+        : 'sticky top-0 z-30'; ?>">
+        <div class="tt-dash-bar <?php echo $dashboardFixedViewport ? '' : 'mx-auto max-w-5xl'; ?>">
+            <div class="tt-dash-identity min-w-0 flex-1">
                 <p class="tt-dash-hello truncate"><?php echo $h($userDisplayName); ?></p>
                 <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts</p>
             </div>
-            <div class="tt-dash-actions shrink-0">
-                <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-label="Refresh dashboard">
-                    <i class="fa-solid fa-rotate-right text-[14px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
+            <div class="tt-dash-actions shrink-0" role="toolbar" aria-label="Dashboard tools">
+                <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn" aria-label="Refresh dashboard">
+                    <i class="fa-solid fa-rotate-right transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
                 </button>
                 <?php trytest_student_theme_toggle_button(); ?>
                 <div class="relative shrink-0">
-                    <button type="button" id="profileMenuBtn" class="tt-dash-icon-btn flex h-9 w-9 items-center justify-center overflow-hidden rounded-full p-0" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
-                        <span class="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#dbeafe] dark:bg-zinc-800 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($userIndex, 36, $userId); ?></span>
+                    <button type="button" id="profileMenuBtn" class="tt-dash-avatar-btn" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
+                        <?php echo trytest_student_avatar_svg($userIndex, 40, $userId); ?>
                     </button>
                     <div id="profileMenu" class="hidden absolute right-0 z-40 mt-2 max-h-[min(16rem,45svh)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" role="menu">
                         <p class="px-3 text-xs font-semibold text-slate-900 dark:text-zinc-100">Profile</p>
@@ -145,62 +143,6 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 </div>
             </div>
         </div>
-        <?php else: ?>
-        <div class="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2">
-            <div class="min-w-0 flex-1">
-                <p class="tt-dash-brand">Trytest</p>
-                <p class="truncate text-sm font-bold leading-tight tracking-tight"><?php echo $h($userDisplayName); ?></p>
-                <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?></p>
-            </div>
-            <div class="tt-dash-actions shrink-0">
-                <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10" aria-label="Refresh dashboard">
-                    <i class="fa-solid fa-rotate-right text-[14px] transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
-                </button>
-                <?php trytest_student_theme_toggle_button(); ?>
-                <div class="relative shrink-0">
-                    <button type="button" id="profileMenuBtn" class="tt-dash-icon-btn flex h-9 w-9 items-center justify-center overflow-hidden rounded-full p-0 sm:h-10 sm:w-10" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
-                        <span class="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#dbeafe] dark:bg-zinc-800 [&>svg]:h-full [&>svg]:w-full"><?php echo trytest_student_avatar_svg($userIndex, 36, $userId); ?></span>
-                    </button>
-                    <div id="profileMenu" class="hidden absolute right-0 mt-2 max-h-[min(16rem,45svh)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" role="menu">
-                        <p class="px-3 text-xs font-semibold text-slate-900 dark:text-zinc-100">Profile</p>
-                        <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500 dark:text-zinc-400"><?php echo $h($userIndex); ?></p>
-                        <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300">
-                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Level</span><span class="font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($userLevel); ?></span></p>
-                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Program</span><span class="max-w-[9rem] truncate font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($deptLabel); ?></span></p>
-                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?></span></p>
-                        </div>
-                        <?php if ($departmentOptions !== []): ?>
-                        <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="space-y-2 border-t border-slate-100 px-3 py-2 dark:border-zinc-800" role="none">
-                            <input type="hidden" name="action" value="update_student_department">
-                            <p class="text-[11px] font-semibold text-slate-700 dark:text-zinc-200">Change program</p>
-                            <select name="department" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
-                                <?php foreach ($departmentOptions as $depOpt): ?>
-                                    <?php $dv = (string) ($depOpt['value'] ?? ''); ?>
-                                    <option value="<?php echo $h($dv); ?>" <?php echo strcasecmp($dv, $userDepartment) === 0 ? 'selected' : ''; ?>><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if ($levelOptions !== []): ?>
-                            <select name="level" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
-                                <?php foreach ($levelOptions as $lo): ?>
-                                    <?php $lv = (string) ($lo['value'] ?? ''); ?>
-                                    <option value="<?php echo $h($lv); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php endif; ?>
-                            <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-2 py-1.5 text-xs font-semibold text-white">Update</button>
-                        </form>
-                        <?php endif; ?>
-                        <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800" role="menuitem">My results</a>
-                        <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
-                        <form method="post" class="border-t border-slate-100 px-2 pt-2 dark:border-zinc-800">
-                            <input type="hidden" name="action" value="logout_user">
-                            <button type="submit" class="w-full rounded-lg px-3 py-2 text-left text-sm text-[#E50914] hover:bg-red-50 dark:text-[#ff6b6b] dark:hover:bg-red-950/40" role="menuitem">Log out</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
     </header>
 
     <main class="<?php echo $dashboardFixedViewport
