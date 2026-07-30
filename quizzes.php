@@ -8,6 +8,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/departments.php';
+require_once __DIR__ . '/includes/levels.php';
 require_once __DIR__ . '/includes/student_theme.php';
 
 if (empty($_SESSION['user_id'])) {
@@ -29,6 +31,40 @@ $_SESSION['user_department'] = $userDepartment;
 $_SESSION['user_nickname'] = trim((string) ($syncRow['nickname'] ?? ''));
 trytest_student_require_nickname($db);
 
+$departmentOptions = trytest_department_dropdown_options($db);
+$levelOptions = trytest_level_dropdown_options($db);
+$departmentUpdateError = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_student_department') {
+    $deptRaw = (string) ($_POST['department'] ?? '');
+    $levelRaw = trim((string) ($_POST['level'] ?? ''));
+    $resolvedDept = trytest_resolve_department_for_save($deptRaw, $departmentOptions);
+    if ($departmentOptions === [] || $resolvedDept === null) {
+        $departmentUpdateError = 'Choose your program from the list, then save.';
+    } else {
+        $resolvedLevel = $levelRaw !== '' ? trytest_resolve_level_for_save($levelRaw, $levelOptions) : null;
+        if ($levelRaw !== '' && $resolvedLevel === null) {
+            $departmentUpdateError = 'Choose a valid level from the list.';
+        } else {
+            try {
+                if ($resolvedLevel !== null) {
+                    $db->prepare('UPDATE users SET department = ?, level = ? WHERE id = ?')
+                        ->execute([$resolvedDept, $resolvedLevel, $userId]);
+                    $userLevel = $resolvedLevel;
+                    $_SESSION['user_level'] = $resolvedLevel;
+                } else {
+                    $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $userId]);
+                }
+                $userDepartment = $resolvedDept;
+                $_SESSION['user_department'] = $resolvedDept;
+                trytest_redirect(trytest_url('quizzes'));
+            } catch (Throwable $e) {
+                $departmentUpdateError = 'Could not save your program now. Please try again shortly.';
+            }
+        }
+    }
+}
+
 try {
     $db->prepare('UPDATE users SET quizzes_feed_last_seen_at = datetime(\'now\') WHERE id = ?')->execute([$userId]);
 } catch (Throwable $e) {
@@ -36,10 +72,14 @@ try {
 }
 
 $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
+$needsDepartmentSetup = $departmentOptions !== []
+    && trytest_student_should_offer_department_change($userDepartment, $departmentOptions, $coursesWithQuizzes);
+$departmentSetupRequired = trytest_student_department_needs_refresh($userDepartment, $departmentOptions);
 
 $dashboardUrl = trytest_url('dashboard');
 $quizUrlBase = trytest_url('quiz');
 $quizSchedulesPollUrl = trytest_url('api_quiz_schedules.php');
+$studentPortalPostUrl = trytest_url('student_portal.php');
 
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -78,14 +118,57 @@ $h = static function (string $s): string {
         </div>
     </header>
     <main class="mx-auto w-full max-w-5xl px-4 py-6">
-        <?php if ($userDepartment === ''): ?>
+        <?php if ($needsDepartmentSetup): ?>
+            <section class="mb-4 rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-4 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40">
+                <h2 class="text-sm font-bold text-amber-950 dark:text-amber-100">
+                    <?php echo $departmentSetupRequired ? 'Update your program' : 'Not seeing your quizzes?'; ?>
+                </h2>
+                <p class="mt-1 text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/80">
+                    <?php if ($departmentSetupRequired): ?>
+                        <?php echo $userDepartment === ''
+                            ? 'Pick your program and level so we can show quizzes for your class.'
+                            : 'Your saved program is no longer available. Choose the current one to unlock quizzes.'; ?>
+                    <?php else: ?>
+                        No quizzes match <strong><?php echo $h($userDepartment); ?></strong> · Lv <?php echo $h($userLevel); ?>. Update below if that looks wrong.
+                    <?php endif; ?>
+                </p>
+                <?php if ($departmentUpdateError !== ''): ?>
+                    <p class="mt-2 rounded-lg bg-red-100 px-3 py-2 text-xs font-medium text-red-800"><?php echo $h($departmentUpdateError); ?></p>
+                <?php endif; ?>
+                <form method="post" class="mt-3 grid gap-2 sm:grid-cols-2">
+                    <input type="hidden" name="action" value="update_student_department">
+                    <label class="block text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-amber-950/80">Program</span>
+                        <select name="department" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Select…</option>
+                            <?php foreach ($departmentOptions as $depOpt): ?>
+                                <?php $dv = (string) ($depOpt['value'] ?? ''); ?>
+                                <option value="<?php echo $h($dv); ?>" <?php echo strcasecmp($dv, $userDepartment) === 0 ? 'selected' : ''; ?>><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label class="block text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-amber-950/80">Level</span>
+                        <select name="level" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Select…</option>
+                            <?php foreach ($levelOptions as $lo): ?>
+                                <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                <option value="<?php echo $h($lv); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <button type="submit" class="rounded-lg bg-[#2C6A7D] px-5 py-2 text-sm font-bold text-white sm:col-span-2">Save &amp; show my quizzes</button>
+                </form>
+            </section>
+        <?php endif; ?>
+        <?php if ($userDepartment !== '' && !$departmentSetupRequired): ?>
+            <?php require __DIR__ . '/templates/partials/student_quiz_course_list.php'; ?>
+        <?php elseif (!$needsDepartmentSetup): ?>
             <section class="rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-4 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40">
                 <h2 class="text-sm font-bold text-amber-950 dark:text-amber-100">Choose your program first</h2>
                 <p class="mt-1 text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/80">Set your program on the home screen so we can show quizzes for your class.</p>
                 <a href="<?php echo $h($dashboardUrl); ?>" class="mt-3 inline-flex text-sm font-bold text-[#2C6A7D] hover:underline dark:text-[#7eb8b8]">Go to home</a>
             </section>
-        <?php else: ?>
-            <?php require __DIR__ . '/templates/partials/student_quiz_course_list.php'; ?>
         <?php endif; ?>
     </main>
     <?php require __DIR__ . '/templates/partials/student_quiz_course_list_script.php'; ?>

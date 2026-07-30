@@ -97,3 +97,50 @@ function trytest_department_matches(?string $targetDepartment, string $userDepar
 
     return $user !== '' && strcasecmp($target, $user) === 0;
 }
+
+/**
+ * True when the student must (re)pick a program: empty, or no longer in the live presets
+ * (deleted/renamed department), so quizzes can line up again.
+ *
+ * @param list<array{value:string,label:string}> $departmentOptions
+ */
+function trytest_student_department_needs_refresh(string $userDepartment, array $departmentOptions): bool
+{
+    if ($departmentOptions === []) {
+        return false;
+    }
+    $userDepartment = trim($userDepartment);
+    if ($userDepartment === '') {
+        return true;
+    }
+
+    return trytest_resolve_department_for_save($userDepartment, $departmentOptions) === null;
+}
+
+/**
+ * Soft prompt: program is set but still no quizzes for this cohort (wrong program / level).
+ *
+ * @param list<array{value:string,label:string}> $departmentOptions
+ * @param list<array<string,mixed>> $coursesWithQuizzes
+ */
+function trytest_student_should_offer_department_change(
+    string $userDepartment,
+    array $departmentOptions,
+    array $coursesWithQuizzes
+): bool {
+    if ($departmentOptions === []) {
+        return false;
+    }
+    if (trytest_student_department_needs_refresh($userDepartment, $departmentOptions)) {
+        return true;
+    }
+    $quizCount = 0;
+    foreach ($coursesWithQuizzes as $course) {
+        $quizCount += count((array) ($course['quizzes'] ?? []));
+        if ($quizCount > 0) {
+            return false;
+        }
+    }
+
+    return trim($userDepartment) !== '';
+}

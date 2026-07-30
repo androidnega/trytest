@@ -20,7 +20,10 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var string $quizzesPageUrl */
 /** @var list<array<string,mixed>> $departmentOptions */
 /** @var bool $needsDepartmentSetup */
+/** @var bool $departmentSetupRequired */
 /** @var string $departmentUpdateError */
+/** @var list<array<string,mixed>> $departmentOptions */
+/** @var list<array<string,mixed>> $levelOptions */
 /** @var array<string,mixed>|null $doneBlock */
 /** @var string $quizDoneYoutubeHtml */
 /** @var array<string,mixed>|null $doneComparison */
@@ -45,7 +48,10 @@ $quizResultsRows = isset($quizResultsRows) && is_array($quizResultsRows) ? $quiz
 $homeNavOn = $tabHome && empty(($doneBlock ?? [])['quiz_id'] ?? null);
 $deptLabel = $userDepartment !== '' ? $userDepartment : 'All programs';
 $needsDepartmentSetup = !empty($needsDepartmentSetup);
+$departmentSetupRequired = !empty($departmentSetupRequired);
 $departmentUpdateError = trim((string) ($departmentUpdateError ?? ''));
+$levelOptions = isset($levelOptions) && is_array($levelOptions) ? $levelOptions : [];
+$departmentOptions = isset($departmentOptions) && is_array($departmentOptions) ? $departmentOptions : [];
 $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
 $downloadsBadgeCount = max(0, (int) ($downloadsBadgeCount ?? 0));
 $newQuizBadgeCount = max(0, (int) ($newQuizBadgeCount ?? 0));
@@ -105,8 +111,30 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500 dark:text-zinc-400"><?php echo $h($userIndex); ?></p>
                         <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300">
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Level</span><span class="font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($userLevel); ?></span></p>
+                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Program</span><span class="max-w-[9rem] truncate font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($deptLabel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
+                        <?php if ($departmentOptions !== []): ?>
+                        <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="space-y-2 border-t border-slate-100 px-3 py-2 dark:border-zinc-800" role="none">
+                            <input type="hidden" name="action" value="update_student_department">
+                            <p class="text-[11px] font-semibold text-slate-700 dark:text-zinc-200">Change program</p>
+                            <select name="department" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
+                                <?php foreach ($departmentOptions as $depOpt): ?>
+                                    <?php $dv = (string) ($depOpt['value'] ?? ''); ?>
+                                    <option value="<?php echo $h($dv); ?>" <?php echo strcasecmp($dv, $userDepartment) === 0 ? 'selected' : ''; ?>><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($levelOptions !== []): ?>
+                            <select name="level" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
+                                <?php foreach ($levelOptions as $lo): ?>
+                                    <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                    <option value="<?php echo $h($lv); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php endif; ?>
+                            <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-2 py-1.5 text-xs font-semibold text-white">Update</button>
+                        </form>
+                        <?php endif; ?>
                         <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2 dark:border-zinc-800">
@@ -140,8 +168,30 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                         <p class="mt-0.5 truncate px-3 text-[11px] text-slate-500 dark:text-zinc-400"><?php echo $h($userIndex); ?></p>
                         <div class="mt-2 space-y-1 border-t border-slate-100 px-3 py-2 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300">
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Level</span><span class="font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($userLevel); ?></span></p>
+                            <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Program</span><span class="max-w-[9rem] truncate font-medium text-slate-800 dark:text-zinc-100"><?php echo $h($deptLabel); ?></span></p>
                             <p class="flex items-center justify-between gap-2"><span class="text-slate-400 dark:text-zinc-500">Points</span><span class="font-semibold tabular-nums text-[#2C6A7D] dark:text-[#7eb8b8]"><?php echo (int) $totalPoints; ?></span></p>
                         </div>
+                        <?php if ($departmentOptions !== []): ?>
+                        <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="space-y-2 border-t border-slate-100 px-3 py-2 dark:border-zinc-800" role="none">
+                            <input type="hidden" name="action" value="update_student_department">
+                            <p class="text-[11px] font-semibold text-slate-700 dark:text-zinc-200">Change program</p>
+                            <select name="department" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
+                                <?php foreach ($departmentOptions as $depOpt): ?>
+                                    <?php $dv = (string) ($depOpt['value'] ?? ''); ?>
+                                    <option value="<?php echo $h($dv); ?>" <?php echo strcasecmp($dv, $userDepartment) === 0 ? 'selected' : ''; ?>><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($levelOptions !== []): ?>
+                            <select name="level" required class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100">
+                                <?php foreach ($levelOptions as $lo): ?>
+                                    <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                    <option value="<?php echo $h($lv); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php endif; ?>
+                            <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-2 py-1.5 text-xs font-semibold text-white">Update</button>
+                        </form>
+                        <?php endif; ?>
                         <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800" role="menuitem">My results</a>
                         <a href="<?php echo $h($downloadsPageUrl); ?>" class="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-sm font-medium text-[#2C6A7D] hover:bg-slate-50 dark:border-zinc-800 dark:text-[#7eb8b8] dark:hover:bg-zinc-800"><span>Downloads</span><?php echo $downloadsMenuBadge; ?></a>
                         <form method="post" class="border-t border-slate-100 px-2 pt-2 dark:border-zinc-800">
@@ -160,23 +210,45 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         : 'mx-auto w-full max-w-5xl px-4 pb-24 pt-4 md:pb-8 dark:bg-[#0f1014]'; ?>">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40" role="region" aria-labelledby="dept-setup-title">
-                <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950 dark:text-amber-100">Choose your program</h2>
-                <p class="mt-1 text-xs text-amber-900/90 dark:text-amber-200/80">Your account has no program set yet. Pick the one that matches you so quizzes and downloads line up with your class.</p>
+                <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950 dark:text-amber-100">
+                    <?php echo $departmentSetupRequired ? 'Update your program' : 'Not seeing your quizzes?'; ?>
+                </h2>
+                <p class="mt-1 text-xs text-amber-900/90 dark:text-amber-200/80">
+                    <?php if ($departmentSetupRequired): ?>
+                        <?php echo $userDepartment === ''
+                            ? 'Your account has no program set yet. Pick the one that matches your class.'
+                            : 'Your saved program is no longer on the list (it may have been renamed or removed). Choose the current program so quizzes show up.'; ?>
+                    <?php else: ?>
+                        Your program is set to <strong><?php echo $h($userDepartment !== '' ? $userDepartment : '—'); ?></strong>
+                        (Lv <?php echo $h($userLevel !== '' ? $userLevel : '—'); ?>). If that looks wrong, update it below — quizzes only appear for the matching class.
+                    <?php endif; ?>
+                </p>
                 <?php if ($departmentUpdateError !== ''): ?>
                     <p class="mt-2 rounded-lg bg-red-100 px-3 py-2 text-xs font-medium text-red-800 dark:bg-red-950/50 dark:text-red-200"><?php echo $h($departmentUpdateError); ?></p>
                 <?php endif; ?>
-                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <form method="post" action="<?php echo $h($studentPortalPostUrl); ?>" class="mt-3 grid gap-2 sm:grid-cols-2">
                     <input type="hidden" name="action" value="update_student_department">
-                    <label class="block min-w-0 flex-1 text-left">
+                    <label class="block min-w-0 text-left">
                         <span class="mb-1 block text-[11px] font-medium text-amber-950/80 dark:text-amber-200/90">Program / department</span>
                         <select name="department" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-amber-700 dark:bg-zinc-900 dark:text-zinc-100">
                             <option value="">Select…</option>
                             <?php foreach ($departmentOptions as $depOpt): ?>
-                                <option value="<?php echo $h((string) ($depOpt['value'] ?? '')); ?>"><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
+                                <?php $dv = (string) ($depOpt['value'] ?? ''); ?>
+                                <option value="<?php echo $h($dv); ?>" <?php echo strcasecmp($dv, $userDepartment) === 0 ? 'selected' : ''; ?>><?php echo $h((string) ($depOpt['label'] ?? '')); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </label>
-                    <button type="submit" class="w-full shrink-0 rounded-lg bg-[#2C6A7D] px-5 py-2 text-sm font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91] dark:hover:bg-[#356d7f] sm:w-auto">Save program</button>
+                    <label class="block min-w-0 text-left">
+                        <span class="mb-1 block text-[11px] font-medium text-amber-950/80 dark:text-amber-200/90">Level</span>
+                        <select name="level" required class="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-amber-700 dark:bg-zinc-900 dark:text-zinc-100">
+                            <option value="">Select…</option>
+                            <?php foreach ($levelOptions as $lo): ?>
+                                <?php $lv = (string) ($lo['value'] ?? ''); ?>
+                                <option value="<?php echo $h($lv); ?>" <?php echo trytest_level_canon($lv) === trytest_level_canon($userLevel) ? 'selected' : ''; ?>><?php echo $h((string) ($lo['label'] ?? '')); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <button type="submit" class="w-full rounded-lg bg-[#2C6A7D] px-5 py-2 text-sm font-bold text-white hover:bg-[#24586a] dark:bg-[#3d7d91] dark:hover:bg-[#356d7f] sm:col-span-2">Save &amp; show my quizzes</button>
                 </form>
             </section>
         <?php endif; ?>

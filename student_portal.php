@@ -116,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_student_department' && !empty($_SESSION['user_id'])) {
         $uid = (int) $_SESSION['user_id'];
         $deptRaw = (string) ($_POST['department'] ?? '');
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
         if ($departmentOptions === []) {
             trytest_redirect(trytest_url('dashboard'));
         }
@@ -123,19 +124,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resolvedDept === null) {
             $departmentUpdateError = 'Choose your program from the list, then save.';
         } else {
-            try {
-                $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $uid]);
-                $_SESSION['user_department'] = $resolvedDept;
-                trytest_redirect(trytest_url('dashboard'));
-            } catch (Throwable $e) {
-                $departmentUpdateError = 'Could not save your program now. Please try again shortly.';
+            $resolvedLevel = null;
+            if ($levelRaw !== '') {
+                $resolvedLevel = trytest_resolve_level_for_save($levelRaw, $levelOptions);
+                if ($resolvedLevel === null) {
+                    $departmentUpdateError = 'Choose a valid level from the list.';
+                }
+            }
+            if ($departmentUpdateError === '') {
+                try {
+                    if ($resolvedLevel !== null) {
+                        $db->prepare('UPDATE users SET department = ?, level = ? WHERE id = ?')
+                            ->execute([$resolvedDept, $resolvedLevel, $uid]);
+                        $_SESSION['user_level'] = $resolvedLevel;
+                    } else {
+                        $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$resolvedDept, $uid]);
+                    }
+                    $_SESSION['user_department'] = $resolvedDept;
+                    trytest_redirect(trytest_url('dashboard'));
+                } catch (Throwable $e) {
+                    $departmentUpdateError = 'Could not save your program now. Please try again shortly.';
+                }
             }
         }
     }
 
     if ($action === 'update_student_level' && !empty($_SESSION['user_id'])) {
-        // Level is assigned by admins only; ignore forged POSTs.
-        trytest_redirect(trytest_url('dashboard'));
+        $uid = (int) $_SESSION['user_id'];
+        $levelRaw = trim((string) ($_POST['level'] ?? ''));
+        $resolvedLevel = trytest_resolve_level_for_save($levelRaw, $levelOptions);
+        if ($resolvedLevel === null) {
+            $departmentUpdateError = 'Choose a valid level from the list.';
+        } else {
+            try {
+                $db->prepare('UPDATE users SET level = ? WHERE id = ?')->execute([$resolvedLevel, $uid]);
+                $_SESSION['user_level'] = $resolvedLevel;
+                trytest_redirect(trytest_url('dashboard'));
+            } catch (Throwable $e) {
+                $departmentUpdateError = 'Could not save your level now. Please try again shortly.';
+            }
+        }
     }
 
     if ($action === 'check_index') {
@@ -313,7 +341,20 @@ if ($isUserLoggedIn) {
     if ($syncRow) {
         $_SESSION['user_index_number'] = (string) $syncRow['index_number'];
         $_SESSION['user_level'] = (string) $syncRow['level'];
-        $_SESSION['user_department'] = trim((string) ($syncRow['department'] ?? ''));
+        $syncedDept = trim((string) ($syncRow['department'] ?? ''));
+        // Heal case / spelling to the live preset label when it still matches.
+        if ($syncedDept !== '' && $departmentOptions !== []) {
+            $canonDept = trytest_resolve_department_for_save($syncedDept, $departmentOptions);
+            if ($canonDept !== null && $canonDept !== $syncedDept) {
+                try {
+                    $db->prepare('UPDATE users SET department = ? WHERE id = ?')->execute([$canonDept, $userId]);
+                    $syncedDept = $canonDept;
+                } catch (Throwable $e) {
+                    // keep synced value
+                }
+            }
+        }
+        $_SESSION['user_department'] = $syncedDept;
         $_SESSION['user_nickname'] = trim((string) ($syncRow['nickname'] ?? ''));
         $userLevel = (string) $syncRow['level'];
     }
@@ -466,7 +507,19 @@ $studentPasswordOnlyView = !$isUserLoggedIn
     && $loginMode === 'index'
     && $error === '';
 
-$needsDepartmentSetupForLayout = $isUserLoggedIn && trim($userDepartment) === '' && $departmentOptions !== [];
+$needsDepartmentSetupForLayout = $isUserLoggedIn
+    && $departmentOptions !== []
+    && (
+        trytest_student_department_needs_refresh($userDepartment, $departmentOptions)
+        || (
+            $isUserLoggedIn
+            && trytest_student_should_offer_department_change(
+                $userDepartment,
+                $departmentOptions,
+                $coursesWithQuizzes ?? []
+            )
+        )
+    );
 $studentDashboardFixedViewport = $isUserLoggedIn
     && $activeTab === 'home'
     && (!is_array($doneBlock) || empty($doneBlock['quiz_id']))
@@ -550,8 +603,11 @@ if ($isUserLoggedIn) {
     $downloadsBadgeCount = (int) ($downloadsBadgeCount ?? 0);
     $newQuizBadgeCount = (int) ($newQuizBadgeCount ?? 0);
     $quizzesPageUrl = (string) ($quizzesPageUrl ?? '');
-    $needsDepartmentSetup = $userDepartment === '' && $departmentOptions !== [];
+    $needsDepartmentSetup = $departmentOptions !== []
+        && trytest_student_should_offer_department_change($userDepartment, $departmentOptions, $coursesWithQuizzes);
+    $departmentSetupRequired = trytest_student_department_needs_refresh($userDepartment, $departmentOptions);
     $departmentUpdateError = (string) ($departmentUpdateError ?? '');
+    $levelOptions = $levelOptions ?? [];
     $quizDoneYoutubeHtml = (string) ($quizDoneYoutubeHtml ?? '');
     $doneComparison = is_array($doneComparison) ? $doneComparison : null;
     $showHomeFeatured = $activeTab === 'home' && (!is_array($doneBlock) || empty($doneBlock['quiz_id']));

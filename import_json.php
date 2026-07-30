@@ -228,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'mcq', $question, $optA, $optB, $optC, $optD, $answerField, null, null, 'pending']);
+                                $stmt->execute([$quizId, 'mcq', $question, $optA, $optB, $optC, $optD, $answerField, null, null, 'approved']);
                                 $imported++;
                                 continue;
                             }
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'fill', $question, '', '', '', '', $answerField, null, null, 'pending']);
+                                $stmt->execute([$quizId, 'fill', $question, '', '', '', '', $answerField, null, null, 'approved']);
                                 $imported++;
                                 continue;
                             }
@@ -271,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     array_map(static fn ($x) => trim((string) $x), $acceptForRubric)
                                 );
                                 $seenQuestions[$qKey] = true;
-                                $stmt->execute([$quizId, 'theory', $question, '', '', '', '', $answerField, $rubricJson, null, 'pending']);
+                                $stmt->execute([$quizId, 'theory', $question, '', '', '', '', $answerField, $rubricJson, null, 'approved']);
                                 $imported++;
                                 continue;
                             }

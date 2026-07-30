@@ -224,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $item['options']['C'],
                                 $item['options']['D'],
                                 $item['options'][$item['correct_letter']],
-                                'pending',
+                                'approved',
                             ]);
                         }
                         $db->commit();
