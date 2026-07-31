@@ -423,9 +423,9 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <p id="ttPlayToastBody" class="tt-play-toast__body"></p>
 </div>
 
-<div id="quizAppShell" class="min-h-screen touch-manipulation bg-stone-100 dark:bg-zinc-950">
-<div class="sticky top-0 z-30 border-b border-zinc-200/90 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-    <div class="mx-auto flex max-w-lg items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+<div id="quizAppShell" class="min-h-screen touch-manipulation">
+<div class="sticky top-0 z-30 border-b border-zinc-200/90 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+    <div class="tt-quiz-header-inner flex items-center gap-2 py-2.5 sm:gap-3 sm:py-3">
         <a href="<?php echo htmlspecialchars(trytest_home_url(), ENT_QUOTES, 'UTF-8'); ?>" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700" aria-label="Back to dashboard">←</a>
         <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-bold dark:text-zinc-100"><?php echo htmlspecialchars($quizTitle, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -433,58 +433,64 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         </div>
         <span id="quizStatus" class="shrink-0 rounded-full border border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">…</span>
     </div>
-    <div class="mx-auto max-w-lg px-3 pb-2.5 sm:px-4 sm:pb-3">
-        <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-            <div id="progressBar" class="h-full rounded-full bg-zinc-600 transition-all duration-500 dark:bg-zinc-400" style="width: 0%;"></div>
+    <div class="tt-quiz-header-inner pb-2.5 sm:pb-3">
+        <div class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+            <div id="progressBar" class="h-full rounded-full bg-zinc-700 transition-all duration-500 dark:bg-zinc-300" style="width: 0%;"></div>
         </div>
-        <div id="ttPlayStreak" class="tt-play-streak" aria-label="Answer streak">
-            <span class="tt-play-streak__label">Streak</span>
-            <div class="tt-play-streak__track"><div id="ttPlayStreakFill" class="tt-play-streak__fill"></div></div>
-            <span id="ttPlayStreakValue" class="tt-play-streak__value">0</span>
-        </div>
-        <div id="ttPlayQuests" class="tt-play-quests" aria-label="Quests"></div>
-        <p id="ttPlayXp" class="tt-play-xp">Earn XP with streaks &amp; blitz</p>
     </div>
 </div>
 
-<main class="mx-auto max-w-lg px-3 pt-3 sm:px-4 sm:pt-4">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200/90 bg-white px-3 py-2.5 text-sm shadow-sm sm:mb-4 sm:py-3 dark:border-zinc-700 dark:bg-zinc-900">
-        <div>
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Marks</p>
-            <p class="text-xl font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50"><span id="scoreValue">0</span><span class="text-sm font-normal text-zinc-400 dark:text-zinc-500"> / </span><span id="totalValue" class="text-zinc-700 dark:text-zinc-200">0</span></p>
-            <p id="marksScaleHint" class="mt-0.5 text-[10px] leading-snug text-zinc-500 dark:text-zinc-400"></p>
+<main class="tt-quiz-main">
+    <aside class="tt-quiz-rail" aria-label="Quiz status">
+        <div class="tt-quiz-meta">
+            <div>
+                <p class="tt-quiz-meta__label">Marks</p>
+                <p class="tt-quiz-meta__value"><span id="scoreValue">0</span><span class="text-sm font-normal text-zinc-400 dark:text-zinc-500"> / </span><span id="totalValue">0</span></p>
+                <p id="marksScaleHint" class="tt-quiz-meta__hint"></p>
+            </div>
+            <div class="tt-quiz-meta__right">
+                <p class="tt-quiz-meta__label">Time</p>
+                <p id="timerLabel" class="tt-quiz-meta__value"><?php
+                    if ($effectiveDurationSeconds > 0) {
+                        $tm = intdiv($effectiveDurationSeconds, 60);
+                        $ts = $effectiveDurationSeconds % 60;
+                        echo htmlspecialchars(sprintf('%d:%02d', $tm, $ts), ENT_QUOTES, 'UTF-8');
+                    } else {
+                        echo '—';
+                    }
+                ?></p>
+            </div>
         </div>
-        <div class="text-right">
-            <p class="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Time</p>
-            <p id="timerLabel" class="text-lg font-bold text-zinc-700 dark:text-zinc-200"><?php
-                if ($effectiveDurationSeconds > 0) {
-                    $tm = intdiv($effectiveDurationSeconds, 60);
-                    $ts = $effectiveDurationSeconds % 60;
-                    echo htmlspecialchars(sprintf('%d:%02d', $tm, $ts), ENT_QUOTES, 'UTF-8');
-                } else {
-                    echo '—';
-                }
-            ?></p>
+        <div class="rounded-2xl border border-zinc-200/90 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-900">
+            <div id="ttPlayStreak" class="tt-play-streak" aria-label="Answer streak" style="margin-top:0;">
+                <span class="tt-play-streak__label">Streak</span>
+                <div class="tt-play-streak__track"><div id="ttPlayStreakFill" class="tt-play-streak__fill"></div></div>
+                <span id="ttPlayStreakValue" class="tt-play-streak__value">0</span>
+            </div>
+            <div id="ttPlayQuests" class="tt-play-quests" aria-label="Quests"></div>
+            <p id="ttPlayXp" class="tt-play-xp">Earn XP with streaks &amp; blitz</p>
         </div>
-    </div>
+    </aside>
 
-    <div id="ttPlayBlitz" class="tt-play-blitz" aria-live="polite">
-        <div>
-            <p class="tt-play-blitz__title">Power round</p>
-            <p class="tt-play-blitz__hint">Answer in time for bonus XP</p>
+    <section class="tt-quiz-stage">
+        <div id="ttPlayBlitz" class="tt-play-blitz" aria-live="polite">
+            <div>
+                <p class="tt-play-blitz__title">Power round</p>
+                <p class="tt-play-blitz__hint">Answer in time for bonus XP</p>
+            </div>
+            <div class="tt-play-blitz__ring" aria-hidden="true">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle class="bg" cx="20" cy="20" r="16"></circle>
+                    <circle id="ttPlayBlitzFg" class="fg" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="0"></circle>
+                </svg>
+                <span id="ttPlayBlitzSecs" class="tt-play-blitz__secs">18</span>
+            </div>
         </div>
-        <div class="tt-play-blitz__ring" aria-hidden="true">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-                <circle class="bg" cx="20" cy="20" r="16"></circle>
-                <circle id="ttPlayBlitzFg" class="fg" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="0"></circle>
-            </svg>
-            <span id="ttPlayBlitzSecs" class="tt-play-blitz__secs">18</span>
-        </div>
-    </div>
 
-    <div class="relative touch-manipulation overflow-visible rounded-2xl border border-zinc-200/90 bg-white p-3 shadow-md transition-[border-color,box-shadow] duration-300 sm:p-4 dark:border-zinc-700 dark:bg-zinc-900" id="quizCard">
-        <div id="questionBox"></div>
-    </div>
+        <div class="relative touch-manipulation overflow-visible" id="quizCard">
+            <div id="questionBox"></div>
+        </div>
+    </section>
 </main>
 </div>
 

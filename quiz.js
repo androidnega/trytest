@@ -573,15 +573,13 @@
     function triggerCardCorrectFeedback() {
         playQuizCorrectSound();
         if (!quizCard) return;
-        spawnCelebrationShimmer();
         spawnCelebrationSparkles();
-        spawnCelebrationEmojis();
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;
         quizCard.classList.add('quiz-card--correct');
         setTimeout(function () {
             quizCard.classList.remove('quiz-card--correct');
-        }, 1000);
+        }, 700);
     }
 
     function ensureFxLayer() {
@@ -611,42 +609,22 @@
         var layer = ensureFxLayer();
         if (!layer) return;
         var i;
-        for (i = 0; i < 26; i++) {
+        for (i = 0; i < 10; i++) {
             var el = document.createElement('span');
-            el.className = 'quiz-fly-sparkle' + (Math.random() > 0.62 ? ' quiz-fly-sparkle--diamond' : '');
-            el.style.left = 10 + Math.random() * 80 + '%';
-            el.style.top = 12 + Math.random() * 55 + '%';
+            el.className = 'quiz-fly-sparkle' + (Math.random() > 0.7 ? ' quiz-fly-sparkle--diamond' : '');
+            el.style.left = 18 + Math.random() * 64 + '%';
+            el.style.top = 18 + Math.random() * 45 + '%';
             var ang = Math.random() * Math.PI * 2;
-            var dist = 48 + Math.random() * 110;
+            var dist = 28 + Math.random() * 56;
             el.style.setProperty('--sx', Math.round(Math.cos(ang) * dist) + 'px');
-            el.style.setProperty('--sy', Math.round(Math.sin(ang) * dist - 18) + 'px');
-            el.style.animationDelay = i * 0.022 + 's';
+            el.style.setProperty('--sy', Math.round(Math.sin(ang) * dist - 10) + 'px');
+            el.style.animationDelay = i * 0.018 + 's';
             layer.appendChild(el);
             (function (node) {
                 setTimeout(function () {
                     if (node.parentNode) node.parentNode.removeChild(node);
-                }, 1300);
+                }, 900);
             })(el);
-        }
-        var glyphs = ['✨', '💫', '⭐', '✨', '🌟', '✦'];
-        for (i = 0; i < 10; i++) {
-            var g = document.createElement('span');
-            g.className = 'quiz-fly-emoji quiz-fly-emoji--sparkle';
-            g.textContent = glyphs[i % glyphs.length];
-            g.style.left = 18 + Math.random() * 64 + '%';
-            g.style.top = 18 + Math.random() * 48 + '%';
-            ang = Math.random() * Math.PI * 2;
-            dist = 60 + Math.random() * 90;
-            g.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
-            g.style.setProperty('--dy', (Math.round(Math.sin(ang) * dist) - 22) + 'px');
-            g.style.setProperty('--rot', Math.round(80 + Math.random() * 200) + 'deg');
-            g.style.animationDelay = i * 0.035 + 's';
-            layer.appendChild(g);
-            (function (node) {
-                setTimeout(function () {
-                    if (node.parentNode) node.parentNode.removeChild(node);
-                }, 1500);
-            })(g);
         }
     }
 
@@ -1300,8 +1278,7 @@
      * MCQ row: fixed letter column + fluid text (grid keeps badge and first line on one horizontal rhythm;
      * items-center vertically centers the chip with the answer block for a sleek row).
      */
-    const MCQ_OPTION_BTN_CLASS =
-        'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-[15px] font-medium leading-snug tracking-normal text-zinc-800 shadow-sm transition-all duration-200 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50 sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700';
+    const MCQ_OPTION_BTN_CLASS = 'option';
 
     /** Badge = on-screen position (first row A, …). Distinct color per letter A–D. */
     function mcqLetterBadgeClassForPositionalLetter(letter) {
@@ -1317,6 +1294,14 @@
             D: 'bg-amber-100 text-amber-950 ring-amber-300/80 dark:bg-amber-950/60 dark:text-amber-100 dark:ring-amber-700/55',
         };
         return base + ' ' + (byLetter[L] || 'bg-zinc-200/90 text-zinc-800 ring-zinc-300/80 dark:bg-zinc-600 dark:text-zinc-100 dark:ring-zinc-500/55');
+    }
+
+    function setOptionState(btn, state) {
+        if (!btn) return;
+        btn.classList.remove('is-correct', 'is-wrong', 'is-reveal');
+        if (state) {
+            btn.classList.add(state);
+        }
     }
 
     /** Map bank column letter (A=option_a) → on-screen letter for this shuffle. */
@@ -1438,7 +1423,7 @@
             );
         });
         mcqBankToPosMap = bankToPos;
-        return '<div class="space-y-3" id="optionsWrap">' + parts.join('') + '</div>';
+        return '<div class="tt-mcq-options" id="optionsWrap">' + parts.join('') + '</div>';
     }
 
     function bindMcqHandlers(q) {
@@ -1567,17 +1552,17 @@
                 ? rewriteBothAndPhrasesForShuffle(stemRaw, mcqBankToPosMap)
                 : stemRaw;
         const stemBlock =
-            '<div class="trytest-mcq-stem min-w-0 flex-1 lg:max-w-[52%] lg:pr-2">' +
-            '<h2 class="mb-0 text-left text-base font-bold leading-snug text-slate-900 sm:text-lg lg:pt-0.5 dark:text-zinc-100">' +
+            '<div class="trytest-mcq-stem min-w-0">' +
+            '<h2>' +
             escapeHtml(stemShown) +
             '</h2>' +
             '</div>';
         const choicesBlock =
-            '<div class="trytest-mcq-choices w-full min-w-0 lg:max-w-[min(28rem,46%)] lg:flex-shrink-0">' +
+            '<div class="trytest-mcq-choices min-w-0">' +
             optsHtml +
             '</div>';
         questionBox.innerHTML =
-            '<div class="trytest-mcq-layout flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">' +
+            '<div class="trytest-mcq-layout">' +
             stemBlock +
             choicesBlock +
             '</div>';
@@ -1867,20 +1852,18 @@
         const ok = isMcqSelectionCorrect(selected, correct, q);
 
         if (ok) {
-            btn.className =
-                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 shadow-sm success-pop sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+            setOptionState(btn, 'is-correct');
             setMcqOptionFeedbackInnerHtml(
                 btn,
                 selected,
-                '<span class="mt-0.5 shrink-0 text-base leading-none text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+                '<span class="mt-0.5 shrink-0 text-base leading-none text-emerald-700 dark:text-emerald-300" aria-hidden="true">✓</span>'
             );
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
             triggerCardCorrectFeedback();
             gameNotifyAnswered('correct');
         } else {
-            btn.className =
-                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-red-300 bg-red-50 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
+            setOptionState(btn, 'is-wrong');
             setMcqOptionFeedbackInnerHtml(
                 btn,
                 selected,
@@ -1924,12 +1907,11 @@
                 return;
             }
             done = true;
-            b.className =
-                'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-zinc-400 bg-zinc-100 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-zinc-900 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
+            setOptionState(b, 'is-reveal');
             setMcqOptionFeedbackInnerHtml(
                 b,
                 val,
-                '<span class="mt-0.5 shrink-0 text-base leading-none text-zinc-600 dark:text-zinc-300" aria-hidden="true">✓</span>'
+                '<span class="mt-0.5 shrink-0 text-base leading-none text-emerald-700 dark:text-emerald-300" aria-hidden="true">✓</span>'
             );
         });
     }

@@ -89,12 +89,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 };
 ?>
 <div class="trytest-student-shell tt-dash <?php echo $dashboardFixedViewport
-    ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-lg dark:text-zinc-100'
+    ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-3xl lg:max-w-5xl xl:max-w-6xl dark:text-zinc-100'
     : 'min-h-screen pb-24 text-slate-900 md:pb-8 dark:text-zinc-100'; ?>">
     <header class="tt-dash-header <?php echo $dashboardFixedViewport
         ? 'shrink-0'
         : 'sticky top-0 z-30'; ?>">
-        <div class="tt-dash-bar <?php echo $dashboardFixedViewport ? '' : 'mx-auto max-w-5xl'; ?>">
+        <div class="tt-dash-bar <?php echo $dashboardFixedViewport ? '' : 'mx-auto max-w-6xl'; ?>">
             <div class="tt-dash-identity min-w-0 flex-1">
                 <p class="tt-dash-hello truncate"><?php echo $h($userDisplayName); ?></p>
                 <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts<?php echo $studentGameXp > 0 ? ' · ' . (int) $studentGameXp . ' XP' : ''; ?></p>
@@ -151,7 +151,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 
     <main class="<?php echo $dashboardFixedViewport
         ? 'mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden p-4'
-        : 'mx-auto w-full max-w-5xl px-4 pb-24 pt-4 md:pb-8'; ?>">
+        : 'mx-auto w-full max-w-6xl px-4 pb-24 pt-4 md:pb-8'; ?>">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40" role="region" aria-labelledby="dept-setup-title">
                 <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950 dark:text-amber-100">
@@ -488,7 +488,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     <nav class="tt-dash-nav <?php echo $dashboardFixedViewport
         ? 'shrink-0 md:hidden'
         : 'fixed bottom-0 left-0 right-0 z-50 md:hidden'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
-        <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-lg' : 'mx-auto flex max-w-5xl'; ?>">
+        <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl' : 'mx-auto flex max-w-6xl'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $h($navClass($homeNavOn)); ?>">
                 <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>
                 <span class="text-[9px] font-semibold leading-tight">Home</span>

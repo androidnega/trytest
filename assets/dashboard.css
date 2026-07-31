@@ -267,8 +267,23 @@
   background: rgba(11, 18, 32, 0.94) !important;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tt-dash .trytest-quiz-home-icon--pulse {
-    animation: none !important;
+@media (min-width: 1024px) {
+  .tt-dash .tt-dash-bar {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    min-height: 3.75rem;
+  }
+
+  .tt-dash .tt-dash-hello {
+    font-size: 1.2rem;
+  }
+
+  .tt-dash .tt-dash-tile {
+    min-height: 4.5rem !important;
+    padding: 0.9rem 1rem !important;
+  }
+
+  .tt-dash .tt-dash-cheer {
+    padding: 1.15rem 1.25rem !important;
   }
 }
