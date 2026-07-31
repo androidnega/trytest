@@ -399,6 +399,11 @@ if ($isUserLoggedIn) {
     $ptsStmt->execute([$userId]);
     $totalPoints = (int) $ptsStmt->fetchColumn();
 
+    require_once __DIR__ . '/includes/quiz_game.php';
+    $studentGameStats = trytest_student_game_stats($db, $userId);
+    $studentKnowledgeCards = trytest_student_knowledge_cards($db, $userId);
+    $studentGamePanelHtml = '';
+
     $coursesWithQuizzes = trytest_student_load_courses_with_quizzes($db, $userId, $userLevel, $userDepartment);
 
     $feedSeenRow = $db->prepare('SELECT created_at, quizzes_feed_last_seen_at FROM users WHERE id = ?');
@@ -645,6 +650,15 @@ if ($isUserLoggedIn) {
             $studentFeedbackAlreadySubmitted = false;
         }
     }
+    $hGame = static function (string $s): string {
+        return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+    };
+    $studentGamePanelHtml = trytest_student_game_dashboard_html(
+        $studentGameStats ?? ['xp' => 0, 'cards_unlocked' => 0, 'best_streak' => 0],
+        $studentKnowledgeCards ?? [],
+        $hGame
+    );
+    $studentGameXp = (int) (($studentGameStats ?? [])['xp'] ?? 0);
     require __DIR__ . '/templates/student_gamified_shell.php';
 else: ?>
     <?php

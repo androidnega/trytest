@@ -37,6 +37,8 @@ require_once dirname(__DIR__) . '/includes/student_theme.php';
 /** @var string $dashboardFeaturedHtml Featured shell (Video | Words) — always present on home when logged in on home tab. */
 /** @var string $dashboardFeaturedKind "video" when featured slot is YouTube; "words" when quote + image (layout unchanged). */
 /** @var string $dashboardNudgesHtml Dismissible tips (praise, last quiz, downloads, YouTube). */
+/** @var string $studentGamePanelHtml Game XP + knowledge cards strip for home. */
+/** @var int $studentGameXp */
 $h = static function (string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 };
@@ -74,6 +76,8 @@ $dashboardNudgesHtml = (string) ($dashboardNudgesHtml ?? '');
 $studentPortalPostUrl = isset($studentPortalPostUrl) ? (string) $studentPortalPostUrl : (string) ($dashboardUrl ?? '');
 $studentFeedbackApiUrl = isset($studentFeedbackApiUrl) ? (string) $studentFeedbackApiUrl : '';
 $studentFeedbackAlreadySubmitted = !empty($studentFeedbackAlreadySubmitted ?? false);
+$studentGamePanelHtml = (string) ($studentGamePanelHtml ?? '');
+$studentGameXp = max(0, (int) ($studentGameXp ?? 0));
 
 $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     $py = $dashboardFixedViewport ? 'py-3' : 'py-2';
@@ -93,7 +97,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
         <div class="tt-dash-bar <?php echo $dashboardFixedViewport ? '' : 'mx-auto max-w-5xl'; ?>">
             <div class="tt-dash-identity min-w-0 flex-1">
                 <p class="tt-dash-hello truncate"><?php echo $h($userDisplayName); ?></p>
-                <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts</p>
+                <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts<?php echo $studentGameXp > 0 ? ' · ' . (int) $studentGameXp . ' XP' : ''; ?></p>
             </div>
             <div class="tt-dash-actions shrink-0" role="toolbar" aria-label="Dashboard tools">
                 <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn" aria-label="Refresh dashboard">
@@ -201,6 +205,9 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     <span class="whitespace-nowrap"><?php echo (int) $doneBlock['score']; ?><span class="text-sm font-normal text-slate-400 dark:text-zinc-500">/<?php echo (int) $doneBlock['total']; ?></span></span>
                 </div>
                 <p class="mt-3 text-center text-sm text-slate-600 dark:text-zinc-400">Accuracy <?php echo $acc; ?>%</p>
+                <?php if ($studentGameXp > 0): ?>
+                    <p class="mt-1 text-center text-xs font-semibold text-[#1d4ed8] dark:text-sky-300">Game XP on your profile: <?php echo (int) $studentGameXp; ?></p>
+                <?php endif; ?>
                 <?php if (is_array($doneComparison)): ?>
                     <?php $delta = (int) ($doneComparison['delta'] ?? 0); ?>
                     <p class="mt-1 text-center text-sm font-semibold <?php echo $delta >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'; ?>">
@@ -329,6 +336,9 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 <div<?php echo $homeFlexLock ? ' class="min-h-0 shrink-0 overflow-hidden"' : ''; ?>>
                     <?php echo $dashboardFeaturedHtml; ?>
                 </div>
+            <?php endif; ?>
+            <?php if ($studentGamePanelHtml !== '' && !$homeFlexLock): ?>
+                <?php echo $studentGamePanelHtml; ?>
             <?php endif; ?>
             <section class="<?php echo $h($quickSectionClass); ?>" aria-label="Quick links">
                 <div class="flex w-full min-w-0 flex-col gap-1.5 sm:gap-2">

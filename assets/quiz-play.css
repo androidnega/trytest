@@ -1,0 +1,276 @@
+/* Trytest quiz play — streak, blitz, quests, checkpoint */
+.tt-play-streak {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+.tt-play-streak__label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  white-space: nowrap;
+}
+.tt-play-streak__track {
+  flex: 1;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.tt-play-streak__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  transition: width 0.35s ease;
+}
+.tt-play-streak__value {
+  font-size: 0.75rem;
+  font-weight: 800;
+  tabular-nums: true;
+  color: #b45309;
+  min-width: 2.5rem;
+  text-align: right;
+}
+.tt-play-streak.is-hot .tt-play-streak__value {
+  color: #dc2626;
+}
+.dark .tt-play-streak__label { color: #94a3b8; }
+.dark .tt-play-streak__track { background: #334155; }
+.dark .tt-play-streak__value { color: #fbbf24; }
+
+.tt-play-quests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+.tt-play-quest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 650;
+  color: #475569;
+  line-height: 1.2;
+}
+.tt-play-quest.is-done {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+.dark .tt-play-quest {
+  border-color: #3f3f46;
+  background: #18181b;
+  color: #a1a1aa;
+}
+.dark .tt-play-quest.is-done {
+  border-color: #166534;
+  background: rgba(22, 101, 52, 0.25);
+  color: #86efac;
+}
+
+.tt-play-xp {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-top: 0.2rem;
+}
+.dark .tt-play-xp { color: #93c5fd; }
+
+.tt-play-blitz {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid #fde68a;
+  background: linear-gradient(135deg, #fffbeb, #fff);
+  padding: 0.55rem 0.75rem;
+}
+.tt-play-blitz.is-on { display: flex; }
+.tt-play-blitz__title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+.tt-play-blitz__hint {
+  font-size: 0.625rem;
+  color: #92400e;
+  margin-top: 0.1rem;
+}
+.tt-play-blitz__ring {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+}
+.tt-play-blitz__ring svg { transform: rotate(-90deg); }
+.tt-play-blitz__ring circle {
+  fill: none;
+  stroke-width: 3.5;
+}
+.tt-play-blitz__ring .bg { stroke: #fde68a; }
+.tt-play-blitz__ring .fg {
+  stroke: #f59e0b;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.2s linear;
+}
+.tt-play-blitz__secs {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #92400e;
+}
+.dark .tt-play-blitz {
+  border-color: #854d0e;
+  background: linear-gradient(135deg, #422006, #18181b);
+}
+.dark .tt-play-blitz__title { color: #fbbf24; }
+.dark .tt-play-blitz__hint,
+.dark .tt-play-blitz__secs { color: #fcd34d; }
+.dark .tt-play-blitz__ring .bg { stroke: #78350f; }
+.dark .tt-play-blitz__ring .fg { stroke: #fbbf24; }
+
+.tt-play-toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(120%);
+  z-index: 240;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  padding: 0.7rem 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.tt-play-toast.is-show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.tt-play-toast__title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.tt-play-toast__body {
+  margin-top: 0.15rem;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+.dark .tt-play-toast {
+  border-color: #3f3f46;
+  background: #18181b;
+}
+.dark .tt-play-toast__title { color: #f4f4f5; }
+.dark .tt-play-toast__body { color: #a1a1aa; }
+
+.tt-play-checkpoint {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+}
+.tt-play-checkpoint.is-on { display: flex; }
+.tt-play-checkpoint__card {
+  width: min(22rem, 100%);
+  border-radius: 1.25rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 1.1rem 1.15rem 1rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  text-align: center;
+}
+.tt-play-checkpoint__eyebrow {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+.tt-play-checkpoint__title {
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.tt-play-checkpoint__stats {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.tt-play-checkpoint__stat {
+  border-radius: 0.85rem;
+  background: #f8fafc;
+  padding: 0.55rem 0.35rem;
+}
+.tt-play-checkpoint__stat b {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  tabular-nums: true;
+  color: #0f172a;
+}
+.tt-play-checkpoint__stat span {
+  font-size: 0.5625rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tt-play-checkpoint__btn {
+  margin-top: 0.95rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0.85rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+}
+.dark .tt-play-checkpoint__card {
+  border-color: #3f3f46;
+  background: #18181b;
+}
+.dark .tt-play-checkpoint__title,
+.dark .tt-play-checkpoint__stat b { color: #f4f4f5; }
+.dark .tt-play-checkpoint__stat { background: #27272a; }
+.dark .tt-play-checkpoint__stat span { color: #a1a1aa; }
+.dark .tt-play-checkpoint__btn {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-play-streak__fill,
+  .tt-play-toast,
+  .tt-play-blitz__ring .fg {
+    transition: none !important;
+  }
+}

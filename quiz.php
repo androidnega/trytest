@@ -9,6 +9,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
 require_once __DIR__ . '/includes/student_theme.php';
+require_once __DIR__ . '/includes/quiz_game.php';
 
 /** Viewport for all quiz UI states: lock pinch-zoom on mobile (user-scalable=no, shrink-to-fit). */
 $trytestQuizViewport = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no';
@@ -78,6 +79,12 @@ $ytChId = trim((string) ($ytSettings['channel_id'] ?? ''));
 if ($ytChId !== '') {
     $ytSubscribeBrowserUrl = trytest_youtube_channel_browser_url($ytChId);
 }
+
+$gameOwnedCards = [];
+foreach (trytest_student_knowledge_cards($db, (int) ($_SESSION['user_id'] ?? 0)) as $ownedCard) {
+    $gameOwnedCards[] = (string) ($ownedCard['card_id'] ?? '');
+}
+$gameCardCatalog = trytest_quiz_knowledge_card_catalog();
 
 $startsRaw = isset($quizRow['quiz_starts_at']) ? trim((string) $quizRow['quiz_starts_at']) : '';
 $endsRaw = isset($quizRow['quiz_ends_at']) ? trim((string) $quizRow['quiz_ends_at']) : '';
@@ -234,6 +241,7 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <?php trytest_student_theme_tailwind_config_script(); ?>
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(trytest_url('assets/quiz-play.css') . '?v=' . (string) (@filemtime(__DIR__ . '/assets/quiz-play.css') ?: time()), ENT_QUOTES, 'UTF-8'); ?>">
     <style>
         html.quiz-no-zoom,
         html.quiz-no-zoom body {
@@ -397,6 +405,24 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
     <div id="quizOutroMount" class="w-full max-w-lg"></div>
 </div>
 
+<div id="ttPlayCheckpoint" class="tt-play-checkpoint" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ttCkTitle">
+    <div class="tt-play-checkpoint__card">
+        <p class="tt-play-checkpoint__eyebrow">Checkpoint</p>
+        <h2 id="ttCkTitle" class="tt-play-checkpoint__title">Nice pace — keep going</h2>
+        <div class="tt-play-checkpoint__stats">
+            <div class="tt-play-checkpoint__stat"><b id="ttCkScore">0</b><span>Score</span></div>
+            <div class="tt-play-checkpoint__stat"><b id="ttCkStreak">0</b><span>Streak</span></div>
+            <div class="tt-play-checkpoint__stat"><b id="ttCkXp">0</b><span>XP</span></div>
+        </div>
+        <button type="button" id="ttPlayCheckpointBtn" class="tt-play-checkpoint__btn">Continue</button>
+    </div>
+</div>
+
+<div id="ttPlayToast" class="tt-play-toast" role="status" aria-live="polite">
+    <p id="ttPlayToastTitle" class="tt-play-toast__title"></p>
+    <p id="ttPlayToastBody" class="tt-play-toast__body"></p>
+</div>
+
 <div id="quizAppShell" class="min-h-screen touch-manipulation bg-stone-100 dark:bg-zinc-950">
 <div class="sticky top-0 z-30 border-b border-zinc-200/90 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
     <div class="mx-auto flex max-w-lg items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
@@ -411,6 +437,13 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
         <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
             <div id="progressBar" class="h-full rounded-full bg-zinc-600 transition-all duration-500 dark:bg-zinc-400" style="width: 0%;"></div>
         </div>
+        <div id="ttPlayStreak" class="tt-play-streak" aria-label="Answer streak">
+            <span class="tt-play-streak__label">Streak</span>
+            <div class="tt-play-streak__track"><div id="ttPlayStreakFill" class="tt-play-streak__fill"></div></div>
+            <span id="ttPlayStreakValue" class="tt-play-streak__value">0</span>
+        </div>
+        <div id="ttPlayQuests" class="tt-play-quests" aria-label="Quests"></div>
+        <p id="ttPlayXp" class="tt-play-xp">Earn XP with streaks &amp; blitz</p>
     </div>
 </div>
 
@@ -432,6 +465,20 @@ $effectiveDurationSeconds = trytest_quiz_effective_duration_seconds(
                     echo '—';
                 }
             ?></p>
+        </div>
+    </div>
+
+    <div id="ttPlayBlitz" class="tt-play-blitz" aria-live="polite">
+        <div>
+            <p class="tt-play-blitz__title">Power round</p>
+            <p class="tt-play-blitz__hint">Answer in time for bonus XP</p>
+        </div>
+        <div class="tt-play-blitz__ring" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+                <circle class="bg" cx="20" cy="20" r="16"></circle>
+                <circle id="ttPlayBlitzFg" class="fg" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="0"></circle>
+            </svg>
+            <span id="ttPlayBlitzSecs" class="tt-play-blitz__secs">18</span>
         </div>
     </div>
 
@@ -459,7 +506,12 @@ window.QUIZ_CONFIG = {
     examOutroImage: <?php echo json_encode($examOutroImageUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
     quizAuthorName: <?php echo json_encode($quizAuthorName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
     presenceWsUrl: <?php echo json_encode(trytest_presence_ws_url(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
-    ytSubscribeBrowserUrl: <?php echo json_encode($ytSubscribeBrowserUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>
+    ytSubscribeBrowserUrl: <?php echo json_encode($ytSubscribeBrowserUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>,
+    game: {
+        enabled: true,
+        catalog: <?php echo json_encode($gameCardCatalog, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); ?>,
+        ownedCards: <?php echo json_encode(array_values($gameOwnedCards), JSON_THROW_ON_ERROR); ?>
+    }
 };
 window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES); ?>;
 </script>
@@ -476,6 +528,7 @@ window.TRYTEST_WEB_BASE = <?php echo json_encode(trytest_base_path(), JSON_THROW
 })();
 </script>
 <?php trytest_student_theme_controller_script(); ?>
+<script src="<?php echo htmlspecialchars(trytest_url('assets/quiz_game.js') . '?v=' . (string) (@filemtime(__DIR__ . '/assets/quiz_game.js') ?: time()), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <script src="<?php echo htmlspecialchars(trytest_url('quiz.js?v=' . (string) @filemtime(__DIR__ . '/quiz.js')), ENT_QUOTES, 'UTF-8'); ?>"></script>
 </body>
 </html>

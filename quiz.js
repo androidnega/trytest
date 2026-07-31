@@ -228,6 +228,27 @@
     /** Each quiz item counts as one mark (MCQ, theory, fill, etc.). */
     const MARKS_PER_QUESTION = 1;
 
+    const gameApi = typeof window.TrytestQuizGame === 'object' && window.TrytestQuizGame ? window.TrytestQuizGame : null;
+
+    function gameNotifyAnswered(verdict) {
+        if (gameApi && typeof gameApi.onAnswered === 'function') {
+            gameApi.onAnswered(verdict);
+        }
+    }
+
+    function gameNotifyQuestionShown() {
+        if (gameApi && typeof gameApi.onQuestionShown === 'function') {
+            gameApi.onQuestionShown(currentIndex);
+        }
+    }
+
+    function gamePayload() {
+        if (gameApi && typeof gameApi.getPayload === 'function') {
+            return gameApi.getPayload();
+        }
+        return { xp_gained: 0, best_streak: 0, cards: [] };
+    }
+
     function maxQuizMarks() {
         return orderedIds.length * MARKS_PER_QUESTION;
     }
@@ -1591,6 +1612,7 @@
         resolveQuestion(id)
             .then(function (q) {
                 showLoadedQuestion(q);
+                gameNotifyQuestionShown();
             })
             .catch(function () {
                 renderFetchError('Could not load this question.', function () {
@@ -1855,6 +1877,7 @@
             score += MARKS_PER_QUESTION;
             setScoreDisplay();
             triggerCardCorrectFeedback();
+            gameNotifyAnswered('correct');
         } else {
             btn.className =
                 'option grid min-h-[48px] w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-3 rounded-2xl border border-red-300 bg-red-50 px-3 py-2.5 text-left text-[15px] font-semibold leading-snug tracking-normal text-red-950 shadow-sm sm:min-h-[52px] sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-base dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-100';
@@ -1868,6 +1891,7 @@
             }
             triggerCardWrongFeedback();
             highlightCorrectMcq(correct, q);
+            gameNotifyAnswered('wrong');
         }
 
         pendingAttemptLog = {
@@ -1999,6 +2023,7 @@
             score += frMarks;
             setScoreDisplay();
             triggerCardCorrectFeedback();
+            gameNotifyAnswered('correct');
         } else if (verdict === 'partial') {
             setFreeInputState('partial');
             submit.className =
@@ -2006,6 +2031,7 @@
             submit.innerHTML = 'Partially correct <span aria-hidden="true">◆</span>';
             score += frMarks;
             setScoreDisplay();
+            gameNotifyAnswered('partial');
         } else {
             setFreeInputState('wrong');
             submit.className =
@@ -2015,6 +2041,7 @@
                 navigator.vibrate(200);
             }
             triggerCardWrongFeedback();
+            gameNotifyAnswered('wrong');
         }
 
         const ua =
@@ -2123,10 +2150,17 @@
     }
 
     function advance() {
-        flushPendingQuestionAttempt();
-        currentIndex++;
-        saveQuizResume();
-        showQuestionAtCurrentIndex();
+        function goNext() {
+            flushPendingQuestionAttempt();
+            currentIndex++;
+            saveQuizResume();
+            showQuestionAtCurrentIndex();
+        }
+        if (gameApi && typeof gameApi.beforeAdvance === 'function') {
+            gameApi.beforeAdvance(score, maxQuizMarks(), goNext);
+            return;
+        }
+        goNext();
     }
 
     function endQuiz() {
@@ -2209,6 +2243,7 @@
                 score: finalScore,
                 total: finalTotal,
                 review: examReviewItems,
+                game: gamePayload(),
             }),
         })
             .then(function (res) {
@@ -2230,6 +2265,9 @@
         questionBank = null;
         pendingAttemptLog = null;
         examReviewItems = [];
+        if (gameApi && typeof gameApi.init === 'function') {
+            gameApi.init(cfg.game || { enabled: true, catalog: [], ownedCards: [] });
+        }
 
         renderLoading();
         progressLabel.textContent = 'Starting…';

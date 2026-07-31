@@ -34,10 +34,12 @@ if ($quizId < 1 || $score < 0 || $total < 1 || $score > $total) {
 
 require __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/student_helpers.php';
+require_once __DIR__ . '/includes/quiz_game.php';
 
 $userId = !empty($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 $reviewPayload = isset($data['review']) && is_array($data['review']) ? $data['review'] : null;
 $reviewJson = trytest_quiz_review_json_normalize($reviewPayload, $total);
+$gamePayload = isset($data['game']) && is_array($data['game']) ? $data['game'] : [];
 
 try {
     if ($userId !== null && $userId > 0) {
@@ -65,8 +67,15 @@ try {
             $upd->execute([$score, $total, $reviewJson, $existingId]);
             $cleanup = $db->prepare('DELETE FROM scores WHERE quiz_id = ? AND user_id = ? AND id <> ?');
             $cleanup->execute([$quizId, $userId, $existingId]);
+            $gameResult = trytest_student_game_apply_session($db, $userId, $quizId, $gamePayload);
             $db->commit();
-            echo json_encode(['ok' => true, 'id' => $existingId, 'attempt_id' => $attemptId, 'replaced' => true]);
+            echo json_encode([
+                'ok' => true,
+                'id' => $existingId,
+                'attempt_id' => $attemptId,
+                'replaced' => true,
+                'game' => $gameResult,
+            ]);
             exit;
         }
         $ins = $db->prepare(
@@ -74,8 +83,15 @@ try {
         );
         $ins->execute([$quizId, $userId, $score, $total, $reviewJson]);
         $newId = (int) $db->lastInsertId();
+        $gameResult = trytest_student_game_apply_session($db, $userId, $quizId, $gamePayload);
         $db->commit();
-        echo json_encode(['ok' => true, 'id' => $newId, 'attempt_id' => $attemptId, 'replaced' => false]);
+        echo json_encode([
+            'ok' => true,
+            'id' => $newId,
+            'attempt_id' => $attemptId,
+            'replaced' => false,
+            'game' => $gameResult,
+        ]);
         exit;
     }
 

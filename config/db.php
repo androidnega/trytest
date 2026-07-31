@@ -403,6 +403,29 @@ try {
 }
 
 $db->exec('
+CREATE TABLE IF NOT EXISTS student_game_stats (
+    user_id INTEGER PRIMARY KEY,
+    xp INTEGER NOT NULL DEFAULT 0,
+    cards_unlocked INTEGER NOT NULL DEFAULT 0,
+    best_streak INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
+);
+');
+
+$db->exec('
+CREATE TABLE IF NOT EXISTS student_knowledge_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    card_id TEXT NOT NULL,
+    quiz_id INTEGER,
+    unlocked_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
+    UNIQUE(user_id, card_id)
+);
+');
+$db->exec('CREATE INDEX IF NOT EXISTS idx_student_knowledge_cards_user ON student_knowledge_cards(user_id, unlocked_at DESC)');
+
+
+$db->exec('
 CREATE TABLE IF NOT EXISTS trytest_boot_flags (
     flag TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
