@@ -89,16 +89,26 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
 };
 ?>
 <div class="trytest-student-shell tt-dash <?php echo $dashboardFixedViewport
-    ? 'mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-3xl lg:max-w-5xl xl:max-w-6xl dark:text-zinc-100'
+    ? 'tt-dash--home-lock mx-auto flex h-svh max-h-svh w-full max-w-md flex-col overflow-hidden text-slate-900 md:max-w-3xl lg:max-w-none dark:text-zinc-100'
     : 'min-h-screen pb-24 text-slate-900 md:pb-8 dark:text-zinc-100'; ?>">
     <header class="tt-dash-header <?php echo $dashboardFixedViewport
         ? 'shrink-0'
         : 'sticky top-0 z-30'; ?>">
-        <div class="tt-dash-bar <?php echo $dashboardFixedViewport ? '' : 'mx-auto max-w-6xl'; ?>">
+        <div class="tt-dash-bar mx-auto w-full max-w-6xl lg:max-w-7xl">
             <div class="tt-dash-identity min-w-0 flex-1">
+                <p class="tt-dash-brand-mark">Trytest</p>
                 <p class="tt-dash-hello truncate"><?php echo $h($userDisplayName); ?></p>
                 <p class="tt-dash-meta truncate">Lv&nbsp;<?php echo $h($userLevel); ?> · <?php echo $h($deptLabel); ?> · <?php echo (int) $totalPoints; ?> pts<?php echo $studentGameXp > 0 ? ' · ' . (int) $studentGameXp . ' XP' : ''; ?></p>
             </div>
+            <nav class="tt-dash-topnav" aria-label="Primary">
+                <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $homeNavOn ? 'is-on' : ''; ?>">Home</a>
+                <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $tabRank ? 'is-on' : ''; ?>">Rank</a>
+                <a href="<?php echo $h($dashboardUrl); ?>?tab=results" class="<?php echo $tabResults ? 'is-on' : ''; ?>">Results</a>
+                <?php if ($quizzesPageUrl !== ''): ?>
+                <a href="<?php echo $h($quizzesPageUrl); ?>">Quizzes<?php echo $newQuizBadgeCount > 0 ? ' · ' . ($newQuizBadgeCount > 9 ? '9+' : (string) $newQuizBadgeCount) : ''; ?></a>
+                <?php endif; ?>
+                <a href="<?php echo $h($downloadsPageUrl); ?>">Files<?php echo $downloadsBadgeCount > 0 ? ' · ' . ($downloadsBadgeCount > 9 ? '9+' : (string) $downloadsBadgeCount) : ''; ?></a>
+            </nav>
             <div class="tt-dash-actions shrink-0" role="toolbar" aria-label="Dashboard tools">
                 <button type="button" id="dashboardRefreshBtn" class="tt-dash-icon-btn" aria-label="Refresh dashboard">
                     <i class="fa-solid fa-rotate-right transition-transform duration-500" id="dashboardRefreshIcon" aria-hidden="true"></i>
@@ -150,8 +160,8 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     </header>
 
     <main class="<?php echo $dashboardFixedViewport
-        ? 'mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden p-4'
-        : 'mx-auto w-full max-w-6xl px-4 pb-24 pt-4 md:pb-8'; ?>">
+        ? 'tt-dash-main mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-3 overflow-hidden p-4 lg:max-w-7xl lg:overflow-visible lg:pb-10'
+        : 'tt-dash-main mx-auto w-full max-w-6xl px-4 pb-24 pt-4 md:pb-8 lg:max-w-7xl'; ?>">
         <?php if ($needsDepartmentSetup): ?>
             <section class="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-600/50 dark:bg-amber-950/40" role="region" aria-labelledby="dept-setup-title">
                 <h2 id="dept-setup-title" class="text-sm font-bold text-amber-950 dark:text-amber-100">
@@ -311,10 +321,12 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 .trytest-quiz-home-icon--pulse { animation: trytest-quiz-icon-breathe 2.4s ease-in-out infinite; }
             </style>
             <?php if ($homeFlexLock): ?>
-            <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+            <div class="tt-dash-home flex min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:overflow-visible">
+            <?php else: ?>
+            <div class="tt-dash-home flex flex-col gap-4">
             <?php endif; ?>
             <?php if ($enc !== null): ?>
-                <section id="trytest-dash-cheer" class="<?php echo $h($cheerSectionClass); ?>" aria-labelledby="dash-cheer-title">
+                <section id="trytest-dash-cheer" class="<?php echo $h($cheerSectionClass); ?> tt-dash-home__cheer" aria-labelledby="dash-cheer-title">
                     <h2 id="dash-cheer-title" class="font-bold leading-tight"><?php echo $h((string) ($enc['lead'] ?? '')); ?></h2>
                     <p class="<?php echo $h($cheerBodyClass); ?>"><?php echo $h((string) ($enc['body'] ?? '')); ?></p>
                     <div class="mt-2 flex min-w-0 flex-wrap gap-1.5">
@@ -328,20 +340,18 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                 </section>
             <?php endif; ?>
             <?php if ($dashboardNudgesHtml !== ''): ?>
-                <div<?php echo $homeFlexLock ? ' class="min-h-0 shrink-0"' : ''; ?>>
+                <div class="tt-dash-home__nudge<?php echo $homeFlexLock ? ' min-h-0 shrink-0' : ''; ?>">
                     <?php echo $dashboardNudgesHtml; ?>
                 </div>
             <?php endif; ?>
+            <div class="tt-dash-home__grid">
             <?php if ($dashboardFeaturedHtml !== ''): ?>
-                <div<?php echo $homeFlexLock ? ' class="min-h-0 shrink-0 overflow-hidden"' : ''; ?>>
+                <div class="tt-dash-home__featured<?php echo $homeFlexLock ? ' min-h-0 shrink-0 overflow-hidden' : ''; ?>">
                     <?php echo $dashboardFeaturedHtml; ?>
                 </div>
             <?php endif; ?>
-            <?php if ($studentGamePanelHtml !== '' && !$homeFlexLock): ?>
-                <?php echo $studentGamePanelHtml; ?>
-            <?php endif; ?>
-            <section class="<?php echo $h($quickSectionClass); ?>" aria-label="Quick links">
-                <div class="flex w-full min-w-0 flex-col gap-1.5 sm:gap-2">
+            <section class="<?php echo $h($quickSectionClass); ?> tt-dash-home__links" aria-label="Quick links">
+                <div class="tt-dash-tile-grid flex w-full min-w-0 flex-col gap-1.5 sm:gap-2">
                     <?php if ($homeQuickVideoLayout): ?>
                         <div class="<?php echo $h($tileRow2); ?>">
                             <a href="<?php echo $h($dashboardUrl); ?>?tab=rank" class="<?php echo $h($slimCard); ?>">
@@ -424,24 +434,30 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
                     <?php endif; ?>
                 </div>
             </section>
-            <?php if ($homeFlexLock): ?>
             </div>
+            <?php if ($studentGamePanelHtml !== ''): ?>
+                <div class="tt-dash-home__game<?php echo $homeFlexLock ? ' hidden lg:block' : ''; ?>">
+                    <?php echo $studentGamePanelHtml; ?>
+                </div>
             <?php endif; ?>
+            </div>
         <?php endif; ?>
 
         <?php if ($tabRank): ?>
-            <section class="mb-4">
+            <section class="mb-4 tt-dash-pagehead">
                 <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D] dark:text-[#7eb8b8]">← Home</a>
-                <h2 class="mt-2 text-xl font-bold dark:text-zinc-100">Leaderboard</h2>
+                <h2 class="mt-2 text-xl font-bold dark:text-zinc-100 lg:text-2xl">Leaderboard</h2>
             </section>
+            <div class="tt-dash-rankboard">
             <?php echo trytest_render_level_podium_html($levelLeaderboardRows, $userId, $h); ?>
+            </div>
         <?php endif; ?>
 
         <?php if ($tabResults): ?>
-            <section class="mb-4">
+            <section class="mb-4 tt-dash-pagehead">
                 <a href="<?php echo $h($dashboardUrl); ?>" class="text-sm text-[#2C6A7D] dark:text-[#7eb8b8]">← Home</a>
-                <h2 class="mt-2 text-xl font-bold dark:text-zinc-100">My results</h2>
-                <p class="mt-1 text-xs text-slate-600 dark:text-zinc-400">Scores from quizzes you have finished. <strong>View quiz</strong> shows each question with right or wrong. <strong>Try again</strong> removes your saved score and attempts, then opens a fresh run.</p>
+                <h2 class="mt-2 text-xl font-bold dark:text-zinc-100 lg:text-2xl">My results</h2>
+                <p class="mt-1 text-xs text-slate-600 dark:text-zinc-400 lg:text-sm">Scores from quizzes you have finished. <strong>View quiz</strong> shows each question with right or wrong. <strong>Try again</strong> removes your saved score and attempts, then opens a fresh run.</p>
             </section>
             <?php if ($quizResultsRows === []): ?>
                 <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
@@ -488,7 +504,7 @@ $navClass = function (bool $on) use ($dashboardFixedViewport): string {
     <nav class="tt-dash-nav <?php echo $dashboardFixedViewport
         ? 'shrink-0 md:hidden'
         : 'fixed bottom-0 left-0 right-0 z-50 md:hidden'; ?>" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
-        <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl' : 'mx-auto flex max-w-6xl'; ?>">
+        <div class="<?php echo $dashboardFixedViewport ? 'mx-auto flex w-full max-w-md md:max-w-3xl' : 'mx-auto flex max-w-6xl'; ?>">
             <a href="<?php echo $h($dashboardUrl); ?>" class="<?php echo $h($navClass($homeNavOn)); ?>">
                 <span class="tt-dash-nav-icon flex h-6 w-6 items-center justify-center" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg></span>
                 <span class="text-[9px] font-semibold leading-tight">Home</span>
