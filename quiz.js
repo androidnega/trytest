@@ -573,13 +573,15 @@
     function triggerCardCorrectFeedback() {
         playQuizCorrectSound();
         if (!quizCard) return;
+        spawnCelebrationShimmer();
         spawnCelebrationSparkles();
+        spawnCelebrationEmojis();
         quizCard.classList.remove('quiz-card--correct');
         void quizCard.offsetWidth;
         quizCard.classList.add('quiz-card--correct');
         setTimeout(function () {
             quizCard.classList.remove('quiz-card--correct');
-        }, 700);
+        }, 900);
     }
 
     function ensureFxLayer() {
@@ -609,52 +611,72 @@
         var layer = ensureFxLayer();
         if (!layer) return;
         var i;
-        for (i = 0; i < 10; i++) {
+        for (i = 0; i < 18; i++) {
             var el = document.createElement('span');
-            el.className = 'quiz-fly-sparkle' + (Math.random() > 0.7 ? ' quiz-fly-sparkle--diamond' : '');
-            el.style.left = 18 + Math.random() * 64 + '%';
-            el.style.top = 18 + Math.random() * 45 + '%';
+            el.className = 'quiz-fly-sparkle' + (Math.random() > 0.65 ? ' quiz-fly-sparkle--diamond' : '');
+            el.style.left = 12 + Math.random() * 76 + '%';
+            el.style.top = 14 + Math.random() * 52 + '%';
             var ang = Math.random() * Math.PI * 2;
-            var dist = 28 + Math.random() * 56;
+            var dist = 36 + Math.random() * 90;
             el.style.setProperty('--sx', Math.round(Math.cos(ang) * dist) + 'px');
-            el.style.setProperty('--sy', Math.round(Math.sin(ang) * dist - 10) + 'px');
-            el.style.animationDelay = i * 0.018 + 's';
+            el.style.setProperty('--sy', Math.round(Math.sin(ang) * dist - 14) + 'px');
+            el.style.animationDelay = i * 0.016 + 's';
             layer.appendChild(el);
             (function (node) {
                 setTimeout(function () {
                     if (node.parentNode) node.parentNode.removeChild(node);
-                }, 900);
+                }, 1100);
             })(el);
+        }
+        var glyphs = ['✨', '✦', '⭐', '✧'];
+        for (i = 0; i < 6; i++) {
+            var g = document.createElement('span');
+            g.className = 'quiz-fly-emoji quiz-fly-emoji--sparkle';
+            g.textContent = glyphs[i % glyphs.length];
+            g.style.left = 18 + Math.random() * 64 + '%';
+            g.style.top = 18 + Math.random() * 48 + '%';
+            ang = Math.random() * Math.PI * 2;
+            dist = 50 + Math.random() * 80;
+            g.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
+            g.style.setProperty('--dy', Math.round(Math.sin(ang) * dist - 20) + 'px');
+            g.style.setProperty('--rot', Math.round(60 + Math.random() * 160) + 'deg');
+            g.style.animationDelay = i * 0.03 + 's';
+            layer.appendChild(g);
+            (function (node) {
+                setTimeout(function () {
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                }, 1200);
+            })(g);
         }
     }
 
     function spawnCelebrationEmojis() {
         var layer = ensureFxLayer();
         if (!layer) return;
-        var faces = ['😀', '😊', '🙂', '😄', '🌟'];
-        var n = 12;
+        var faces = ['✨', '🌟', '💫', '⭐'];
+        var n = 8;
         for (var i = 0; i < n; i++) {
             var el = document.createElement('span');
             el.className = 'quiz-fly-emoji';
             el.textContent = faces[i % faces.length];
-            var lx = 12 + Math.random() * 76;
-            var ly = 15 + Math.random() * 45;
+            var lx = 14 + Math.random() * 72;
+            var ly = 16 + Math.random() * 42;
             el.style.left = lx + '%';
             el.style.top = ly + '%';
             var angle = Math.random() * Math.PI * 2;
-            var dist = 55 + Math.random() * 95;
+            var dist = 48 + Math.random() * 88;
             var dx = Math.round(Math.cos(angle) * dist);
-            var dy = Math.round(Math.sin(angle) * dist) - 25;
-            var rot = Math.round((Math.random() - 0.5) * 40);
+            var dy = Math.round(Math.sin(angle) * dist) - 22;
+            var rot = Math.round((Math.random() - 0.5) * 50);
             el.style.setProperty('--dx', dx + 'px');
             el.style.setProperty('--dy', dy + 'px');
             el.style.setProperty('--rot', rot + 'deg');
-            el.style.animationDelay = i * 0.04 + 's';
+            el.style.animationDelay = i * 0.035 + 's';
             layer.appendChild(el);
             (function (node) {
                 setTimeout(function () {
                     if (node.parentNode) node.parentNode.removeChild(node);
-                }, 1600);
+                }, 1300);
             })(el);
         }
     }
